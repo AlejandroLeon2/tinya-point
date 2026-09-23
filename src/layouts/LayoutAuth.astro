@@ -2,9 +2,8 @@
 import '../styles/global.css'
 import { pwaInfo } from 'virtual:pwa-info';
 
-// Structural shell only: <html> + the three composition slots.
-// No business logic, no business styles (doc/astrobase.md §3.1).
-// Screen-specific variants live in their own file (see LayoutAuth.astro).
+// Auth shell: same document infrastructure, no footer slot
+// (doc/astrobase.md §3.1 — variants live in separate layout files).
 ---
 <!doctype html>
 <html lang="es">
@@ -16,15 +15,14 @@ import { pwaInfo } from 'virtual:pwa-info';
 		<meta name="generator" content={Astro.generator} />
 		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.woff2" as="font" type="font/woff2" crossorigin>
 		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Bold.woff2" as="font" type="font/woff2" crossorigin>
-		<title>Tinya Point — Punto de venta</title>
+		<title>Iniciar sesión — Tinya Point</title>
 		<script src="/src/pwa.ts"></script>
 		{pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
 	</head>
 	<body>
 		<slot name="header" />
 		<slot />
-		<slot name="footer" />
-		<!-- Route guard: everything behind /login (plan-features Fase 1, owner decision 2026-09-22) -->
+		<!-- Route guard: authenticated users skip /login (plan-features Fase 1, owner decision 2026-09-22) -->
 		<script>import '../components/islands/route-guard';</script>
 	</body>
 </html>

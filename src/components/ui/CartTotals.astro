@@ -1,0 +1,32 @@
+---
+// Totals block (visual, plan-features Fase 3 deviation "totales"): the smart
+// passes formatted values and the tax label as PROPS; islands/cart-actions.ts
+// keeps the [data-cart-*] hooks in sync with stores/cart.ts (astrobase.md
+// §3.2 — ui/ only draws what it is handed).
+interface Props {
+	subtotal?: string;
+	impuesto?: string;
+	total?: string;
+	taxLabel?: string;
+}
+const {
+	subtotal = 'S/ 0.00',
+	impuesto = 'S/ 0.00',
+	total = 'S/ 0.00',
+	taxLabel = 'Impuesto',
+} = Astro.props;
+---
+<dl class="flex flex-col gap-2 rounded-lg border-2 border-border bg-surface p-4 text-base">
+	<div class="flex justify-between gap-3">
+		<dt class="text-text-muted">Subtotal</dt>
+		<dd data-cart-subtotal class="font-semibold text-text">{subtotal}</dd>
+	</div>
+	<div class="flex justify-between gap-3">
+		<dt class="text-text-muted">{taxLabel}</dt>
+		<dd data-cart-impuesto class="font-semibold text-text">{impuesto}</dd>
+	</div>
+	<div class="flex justify-between gap-3 text-lg font-bold">
+		<dt class="text-text">Total</dt>
+		<dd data-cart-total class="text-text">{total}</dd>
+	</div>
+</dl>

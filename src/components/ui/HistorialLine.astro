@@ -1,0 +1,25 @@
+---
+// Read-only history row — SINGLE source of truth for a venta row, cloned per
+// sale by islands/historial.ts (same template mechanism as ui/Card/CartLine,
+// option A plan-features Fase 2-5). Since Fase 3 the whole row is a LINK to
+// the static detail page (/historial/venta/?id= — gotcha G1): full-row
+// target, visible focus ring, never color-only (stilesbase §4/a11y). Inside
+// a day group the date lives in the summary, so the row leads with the TIME.
+// ui/ rule: draws, never fetches or reads local data (astrobase §1).
+---
+<template data-hist-line-template>
+	<li data-hist-line="">
+		<a
+			data-hist-link
+			href="/historial/venta/"
+			class="flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 text-base no-underline text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+		>
+			<span class="flex flex-wrap items-center gap-3">
+				<span data-hist-hora class="font-semibold text-text"></span>
+				<span data-hist-metodo class="text-text-muted"></span>
+				<span data-hist-items class="text-text-muted"></span>
+			</span>
+			<span data-hist-total class="font-bold text-text"></span>
+		</a>
+	</li>
+</template>

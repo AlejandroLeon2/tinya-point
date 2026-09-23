@@ -1,0 +1,21 @@
+---
+// Reusable empty state (doc/extras.md §6): "Todavía no hay productos
+// cargados" / "sin resultados de búsqueda" — message comes as a prop.
+// ui/ admission rule: props only — no fetch, no localStorage, no api/ imports
+// (doc/astrobase.md §3.2).
+// `state` is a data-attribute hook for islands to pick WHICH empty state to
+// reveal (no fixed ids, astrobase §3.4) — catalog states (islands/catalog)
+// and history states (islands/historial); `hidden` sets the build-time
+// visibility (shell renders hidden, the island reveals).
+// TODO(Fase 7): add the generic product icon/illustration (extras.md §4 —
+// never leave the space blank).
+interface Props {
+  mensaje?: string;
+  hidden?: boolean;
+  state?: 'empty-catalog' | 'no-results' | 'empty-historial' | 'no-date-results' | 'venta-notfound';
+}
+const { mensaje = 'Todavía no hay productos cargados', hidden = false, state } = Astro.props;
+---
+<div class="card flex flex-col items-center gap-2 p-8 text-center" data-empty-state={state} hidden={hidden}>
+  <p class="text-base text-text-muted">{mensaje}</p>
+</div>

@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Fonts — self-hosted (doc/stilesbase.md §3.1)
+   Single place for @font-face: the layout only carries the
+   preload <link>s (they must live in HTML anyway).
+   ============================================================ */
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  src: url("/fonts/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ============================================================
+   Design tokens (doc/stilesbase.md §2 y §3)
+   Semantic names only — the token name IS the utility class.
+   ============================================================ */
+@theme {
+  /* Base de la interfaz */
+  --color-bg: #F7F5F1;          /* fondo general de la app */
+  --color-surface: #FFFFFF;     /* tarjetas, modales, barras */
+  --color-border: #D8D3C8;      /* líneas divisorias, bordes de inputs */
+
+  --color-text: #1A1A1A;        /* texto principal */
+  --color-text-muted: #4B4B46;  /* texto secundario */
+
+  /* Acción principal */
+  --color-primary: #1C4E80;
+  --color-primary-hover: #163E66;
+  --color-primary-content: #FFFFFF;
+
+  /* Confirmación / éxito */
+  --color-success: #1F7A3D;
+  --color-success-hover: #17612F;
+  --color-success-content: #FFFFFF;
+
+  /* Peligro / destructivo */
+  --color-danger: #B3261E;
+  --color-danger-hover: #8F1E18;
+  --color-danger-content: #FFFFFF;
+
+  /* Advertencia */
+  --color-warning: #A85D00;
+  --color-warning-hover: #874A00;
+  --color-warning-content: #FFFFFF;
+
+  /* Fuente única de toda la app */
+  --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+
+  /* Escala tipográfica — piso de 18px, nada más chico (§3.2) */
+  --text-base: 1.125rem;
+  --text-base--line-height: 1.6;
+
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.5;
+
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 1.4;
+
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: 1.3;
+
+  --text-3xl: 2.25rem;
+  --text-3xl--line-height: 1.2;
+}
+
+/* ============================================================
+   Base (único tema fijo — sin dark mode automático, §0/§5.6)
+   ============================================================ */
+@layer base {
+  body {
+    @apply bg-bg text-text text-base font-sans;
+  }
+}
+
+/* ============================================================
+   Componentes reutilizables (doc/stilesbase.md §4)
+
+   NOTE: `.btn` is registered with `@utility` (not a plain class in
+   `@layer components`) because Tailwind v4's @apply cannot resolve
+   plain component classes ("Cannot apply unknown utility class").
+   The variant classes below inline its styles via `@apply btn …`.
+   Public class names in HTML are unchanged from the style guide.
+   ============================================================ */
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2
+         rounded-lg px-6 py-4 text-lg font-semibold
+         min-h-14 min-w-14
+         transition-colors
+         focus-visible:outline focus-visible:outline-2
+         focus-visible:outline-offset-2 focus-visible:outline-primary
+         disabled:opacity-50 disabled:pointer-events-none;
+}
+
+@layer components {
+  .btn-primary {
+    @apply btn bg-primary text-primary-content active:bg-primary-hover;
+  }
+
+  .btn-success {
+    @apply btn bg-success text-success-content active:bg-success-hover;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-danger-content active:bg-danger-hover;
+  }
+
+  .btn-secondary {
+    @apply btn bg-surface text-text border-2 border-border active:bg-bg;
+  }
+
+  .input-field {
+    @apply w-full rounded-lg border-2 border-border bg-surface
+           px-4 py-3 text-lg text-text
+           focus-visible:outline focus-visible:outline-2
+           focus-visible:outline-offset-2 focus-visible:outline-primary;
+  }
+
+  .card {
+    @apply rounded-xl border border-border bg-surface p-5;
+  }
+
+  .badge-warning {
+    @apply inline-block rounded-full bg-warning px-3 py-1
+           text-base font-semibold text-warning-content;
+  }
+}

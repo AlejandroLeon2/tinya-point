@@ -1,0 +1,55 @@
+---
+// Product admin container (plan-mejoras-2.md Fase 1) — smart layer composes
+// chrome + ui/ parts and wires the islands: every string the cashier reads
+// comes from ui/, all behavior from islands/product-admin.ts (astrobase §3.3).
+// Deactivate is confirmed through the shared ui/Modal + modal-controller
+// contract (stilesbase §5.5). SyncStatusIndicator + OfflineBanner ride along
+// like every app page (extras.md §6 — none of them blocks the sale).
+import Alert from '../ui/Alert.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import Modal from '../ui/Modal.astro';
+import ProductForm from '../ui/ProductForm.astro';
+import ProductRow from '../ui/ProductRow.astro';
+---
+<section data-productos-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-xl font-bold text-text">Productos</h1>
+
+	<Alert tone="success" name="productos-ok" hidden>
+		<span data-alert-ok-text></span>
+	</Alert>
+	<Alert tone="danger" name="productos-error" hidden>
+		<span data-alert-error-text></span>
+	</Alert>
+
+	<div class="card flex flex-col gap-4">
+		<ProductForm />
+	</div>
+
+	<ul data-product-rows class="flex flex-col gap-3"></ul>
+	<ProductRow />
+	<EmptyState state="empty-productos" mensaje="Todavía no hay productos" hidden />
+
+	<Modal modalKey="confirmar-desactivar" title="¿Desactivar producto?">
+		<p>
+			El producto va a dejar de aparecer en la venta. Podés restaurarlo cuando
+			quieras.
+		</p>
+		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+			Cancelar
+		</button>
+		<button
+			slot="actions"
+			type="button"
+			class="btn btn-danger"
+			data-product-confirm-deactivate
+			data-modal-close
+		>
+			Sí, desactivar
+		</button>
+	</Modal>
+</section>
+
+<script>
+	import '../islands/product-admin';
+	import '../islands/modal-controller';
+</script>

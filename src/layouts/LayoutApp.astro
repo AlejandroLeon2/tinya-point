@@ -1,0 +1,101 @@
+---
+import '../styles/global.css';
+import { pwaInfo } from 'virtual:pwa-info';
+import Sidebar from '../components/ui/Sidebar.astro';
+
+// App shell variant: same document infrastructure as Layout.astro plus the
+// sidebar + content column (doc/astrobase.md §3.1 — variants live in their
+// OWN file, never as an `if` inside Layout.astro; doc/plan-sidebar.md Fase 2).
+// Layout.astro itself stays untouched: 3 slots, 0 conditionals (plan.md Fase 8).
+//
+// <main id="contenido"> is owned HERE so both pages share ONE landmark and the
+// skip link has a stable target — pages must NOT render their own <main>.
+// Route guard mounts on this layout too (same branch as Layout.astro).
+
+// Navigation order = order of use for the cashier (plan-sidebar.md §1.2;
+// Caja sits between Historial and Productos — plan-mejoras-2.md Fase 2).
+const navItems = [
+	{ href: '/', label: 'Venta' },
+	{ href: '/historial', label: 'Historial' },
+	{ href: '/caja', label: 'Caja' },
+	{ href: '/productos', label: 'Productos' },
+];
+
+// Build-time active state (output: "static"): each page renders with its own
+// URL; Sidebar normalizes the trailing slash (gotcha G3).
+const currentPath = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.woff2" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Bold.woff2" as="font" type="font/woff2" crossorigin>
+		<title>Tinya Point — Punto de venta</title>
+		<script src="/src/pwa.ts"></script>
+		{pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
+	</head>
+	<body class="min-h-screen">
+		<!-- Skip link: first focusable element, visible only on focus (a11y) -->
+		<a
+			href="#contenido"
+			class="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-3 focus:text-primary-content"
+		>
+			Saltar al contenido
+		</a>
+
+		<div class="flex min-h-screen">
+			<Sidebar id="sidebar-principal" items={navItems} currentPath={currentPath}>
+				<!-- Logout trigger for islands/sidebar.ts (Fase 3): only the token
+				     is dropped — cart and history survive (stores/session). -->
+				<button slot="footer" type="button" data-logout class="btn btn-secondary w-full">
+					Cerrar sesión
+				</button>
+			</Sidebar>
+
+			<div class="flex min-w-0 flex-1 flex-col">
+				<!-- Mobile drawer toggle (plan-sidebar.md Fase 2). Behavior lands
+				     with islands/sidebar.ts (Fase 3). z-40: under OfflineBanner
+				     and modals (z-50), over page content — Fase 4 revisits the
+				     banner overlap. pt-16 reserves the band it floats over. -->
+				<button
+					type="button"
+					data-sidebar-toggle
+					aria-expanded="false"
+					aria-controls="sidebar-principal"
+					class="fixed left-3 top-3 z-40 min-h-14 rounded-lg border-2 border-border bg-surface px-4 text-lg font-semibold text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						class="h-6 w-6"
+						aria-hidden="true"
+					>
+						<path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
+					</svg>
+					Menú
+				</button>
+
+				<div class="pt-16 md:pt-0">
+					<slot name="header" />
+				</div>
+				<main id="contenido" class="flex flex-1 flex-col">
+					<slot />
+				</main>
+				<slot name="footer" />
+			</div>
+		</div>
+
+		<!-- Route guard: everything behind /login (plan-features Fase 1, owner decision 2026-09-22) -->
+		<script>import '../components/islands/route-guard';</script>
+		<!-- Sidebar drawer + logout (plan-sidebar.md Fase 3) -->
+		<script>import '../components/islands/sidebar';</script>
+	</body>
+</html>

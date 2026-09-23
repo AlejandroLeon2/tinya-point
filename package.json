@@ -12,9 +12,16 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "^7.3.3"
+    "@tailwindcss/vite": "^4.3.3",
+    "@vite-pwa/astro": "^1.2.0",
+    "astro": "^7.3.3",
+    "fuse.js": "^7.5.0",
+    "tailwindcss": "^4.3.3"
   },
   "allowScripts": {
     "esbuild": true
+  },
+  "devDependencies": {
+    "workbox-window": "^7.4.1"
   }
 }

@@ -1,0 +1,25 @@
+---
+// "Cancelar venta" flow in ONE place (stilesbase §2.3: .btn-danger = cancelar
+// venta; §5.5: confirmación explícita antes de destruir): the trigger opens
+// the ui/Modal (focus trap + Esc via utils/modal.ts, delegation via
+// islands/modal-controller.ts) and ONLY the confirm button inside clears the
+// cart (islands/cart-actions.ts). Both btn-danger instances live inside this
+// confirmation context — nothing else in the app gets a danger button.
+// Modal key is referenced by cart-actions (single instance, keep in sync).
+import Modal from './Modal.astro';
+---
+<button type="button" class="btn btn-danger" data-modal-open="cancel-sale">
+	Cancelar venta
+</button>
+
+<Modal modalKey="cancel-sale" title="¿Cancelar venta?">
+	<p class="text-base text-text">
+		Se vaciarán todos los productos del carrito. Esta acción no se puede deshacer.
+	</p>
+	<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+		Seguir vendiendo
+	</button>
+	<button slot="actions" type="button" class="btn btn-danger" data-cart-cancel-confirm>
+		Sí, cancelar
+	</button>
+</Modal>

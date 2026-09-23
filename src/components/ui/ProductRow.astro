@@ -1,0 +1,42 @@
+---
+// Admin product row — SINGLE template cloned per product by
+// islands/product-admin.ts (same mechanism as ui/HistorialLine.astro).
+// State is never color-only (stilesbase §5.2): the badge carries the word
+// "Activo"/"Inactivo" next to its tone, and the row's toggle button names
+// its action. Deactivate opens the shared confirm modal (§5.5); restore is
+// safe and direct. ui/ draws, never fetches or reads local data (astrobase §1).
+---
+<template data-product-row-template>
+	<li
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+		data-product-row=""
+	>
+		<span class="flex min-w-0 flex-col gap-1">
+			<span data-product-nombre class="text-base font-semibold text-text"></span>
+			<span class="flex flex-wrap items-center gap-3 text-base text-text-muted">
+				<span data-product-precio class="font-bold text-text"></span>
+				<span data-product-stock></span>
+				<span
+					data-product-badge
+					class="inline-block rounded-full px-3 py-1 text-base font-semibold"
+				></span>
+			</span>
+		</span>
+		<span class="flex flex-wrap gap-3">
+			<button type="button" class="btn btn-secondary" data-product-edit="">
+				Editar
+			</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				data-product-deactivate=""
+				data-modal-open="confirmar-desactivar"
+			>
+				Desactivar
+			</button>
+			<button type="button" class="btn btn-secondary" data-product-restore="" hidden>
+				Restaurar
+			</button>
+		</span>
+	</li>
+</template>

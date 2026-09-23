@@ -1,0 +1,56 @@
+---
+// Product create/edit form — pure markup: visible labels, .input-field (18px),
+// .btn 56px with gap-3 (stilesbase §4/§5). Mode is flipped IN-PAGE by the
+// island through hidden hooks (plan-mejoras-2.md gotcha G1 — no navigation,
+// no query params: /productos is one static page). Validation copy is set by
+// the island in simple Spanish (§5.7), never raw error codes.
+// ui/ draws, never fetches (astrobase §1).
+import Button from './Button.astro';
+---
+<form data-product-form novalidate class="flex flex-col gap-4">
+	<h2 data-product-form-title class="text-lg font-bold text-text">Nuevo producto</h2>
+
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Nombre
+		<input data-product-nombre type="text" class="input-field" autocomplete="off" />
+	</label>
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Categoría
+		<input data-product-categoria type="text" class="input-field" autocomplete="off" />
+	</label>
+
+	<div class="flex flex-wrap gap-3">
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+			Precio (S/)
+			<input
+				data-product-precio
+				type="number"
+				class="input-field"
+				min="0"
+				step="0.01"
+				inputmode="decimal"
+			/>
+		</label>
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+			Stock
+			<input
+				data-product-stock
+				type="number"
+				class="input-field"
+				min="0"
+				step="1"
+				inputmode="numeric"
+			/>
+		</label>
+	</div>
+
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Imagen (URL, opcional)
+		<input data-product-imagen type="url" class="input-field" autocomplete="off" />
+	</label>
+
+	<div class="flex flex-wrap gap-3">
+		<Button type="submit" variant="primary" data-product-submit>Guardar producto</Button>
+		<Button type="button" variant="secondary" data-product-cancel hidden>Cancelar</Button>
+	</div>
+</form>

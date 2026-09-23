@@ -1,0 +1,18 @@
+---
+// Read-only checkout row — SINGLE source of truth for a checkout line, cloned
+// per item by islands/checkout.ts (same template mechanism as ui/Card and
+// ui/CartLine, option A plan-features Fase 2-4). No quantity controls: the
+// cart above owns editing. data hooks only, no fixed ids (astrobase §3.4).
+---
+<template data-checkout-line-template>
+	<li
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+		data-checkout-line=""
+	>
+		<span data-checkout-name class="text-base font-semibold text-text"></span>
+		<span class="text-base text-text-muted">
+			<span data-checkout-qty>0</span> × <span data-checkout-unit></span>
+		</span>
+		<span data-checkout-importe class="text-base font-bold text-text"></span>
+	</li>
+</template>

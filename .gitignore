@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# clasp local link (contains the script ID — never commit)
+.clasp.json

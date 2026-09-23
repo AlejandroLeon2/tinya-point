@@ -1,11 +1,33 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import LayoutApp from '../layouts/LayoutApp.astro';
+import CatalogContainer from '../components/smart/CatalogContainer.astro';
+import CartSummary from '../components/smart/CartSummary.astro';
+import CheckoutPanel from '../components/smart/CheckoutPanel.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import Alert from '../components/ui/Alert.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// Pages combine LayoutApp with smart/ containers only — never ui/ directly when
+// a smart equivalent exists (doc/astrobase.md §3.8). OfflineBanner and the
+// caja alert have NO smart equivalent (pure visual, wired by their islands —
+// plan-features Fase 1 / plan-mejoras-2 Fase 2). SyncStatusIndicator rides
+// the header slot — the "ícono discreto en el header" of extras.md §6.
+// LayoutApp adds the sidebar shell + owns <main> (doc/plan-sidebar.md Fase 2).
 ---
-
-<Layout>
-	<Welcome />
-</Layout>
+<LayoutApp>
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<!-- Non-blocking caja reminder (extras.md §6): a banner, never a gate —
+	     the sale proceeds with or without an open caja (plan-mejoras-2 Fase 2). -->
+	<Alert tone="warning" name="aviso-caja" hidden>
+		<span>No hay caja abierta todavía.</span>
+		<a slot="actions" href="/caja" class="btn btn-secondary">Ir a caja</a>
+	</Alert>
+	<CatalogContainer />
+	<CartSummary />
+	<CheckoutPanel />
+</LayoutApp>
+<script>
+	import '../components/islands/offline-banner';
+	import '../components/islands/caja-banner';
+</script>

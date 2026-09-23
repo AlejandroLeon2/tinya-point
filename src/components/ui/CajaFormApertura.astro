@@ -1,0 +1,22 @@
+---
+// Caja apertura form — pure markup: visible label, .input-field (18px),
+// .btn 56px (stilesbase §4/§5). Validation copy is set by islands/caja.ts in
+// simple Spanish (§5.7); ui/ never reads data or runs rules (astrobase §1).
+import Button from './Button.astro';
+---
+<form data-caja-form novalidate class="card flex flex-col gap-4">
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Monto de apertura (S/)
+		<input
+			data-caja-monto
+			type="number"
+			class="input-field"
+			min="0"
+			step="0.01"
+			inputmode="decimal"
+		/>
+	</label>
+	<div class="flex flex-wrap gap-3">
+		<Button type="submit" variant="primary">Abrir caja</Button>
+	</div>
+</form>

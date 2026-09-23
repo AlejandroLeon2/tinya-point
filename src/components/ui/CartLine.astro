@@ -1,0 +1,27 @@
+---
+// Cart line — SINGLE source of truth for a cart row (same template mechanism
+// as ui/Card, option A plan-features Fase 2/3): inert markup cloned per item
+// by islands/cart-actions.ts, which fills the [data-line-*] slots and sets
+// data-cart-line="<id>" on each clone. Quantity/remove buttons carry data
+// hooks only — no fixed ids (astrobase.md §3.4). ui/ rule: draws, never
+// fetches (astrobase.md §1).
+---
+<template data-cart-line-template>
+	<li class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-3" data-cart-line="">
+		<div class="min-w-36 flex-1">
+			<p data-line-name class="text-base font-semibold text-text"></p>
+			<p data-line-unit class="text-base text-text-muted"></p>
+		</div>
+		<div class="flex items-center gap-3">
+			<button type="button" class="btn btn-secondary" data-cart-qty-step="down" aria-label="Restar una unidad">
+				−
+			</button>
+			<span data-line-qty class="text-lg font-semibold text-text">1</span>
+			<button type="button" class="btn btn-secondary" data-cart-qty-step="up" aria-label="Sumar una unidad">
+				+
+			</button>
+		</div>
+		<p data-line-importe class="w-28 text-right text-base font-bold text-text"></p>
+		<button type="button" class="btn btn-secondary" data-cart-remove>Quitar</button>
+	</li>
+</template>

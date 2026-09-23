@@ -1,0 +1,27 @@
+---
+// Transverse alert (extras.md §6: generic action error, success feedback and
+// permanent sync error all reuse this). Tone via props; the Spanish copy
+// lives with whoever renders it, NEVER raw error codes (stilesbase §5.7).
+// Hidden by default — islands decide visibility; role="status" announces
+// appearance without stealing focus.
+interface Props {
+	tone: 'success' | 'danger' | 'warning';
+	name?: string;
+	hidden?: boolean;
+}
+const { tone, name, hidden = true } = Astro.props;
+const toneClass = {
+	success: 'border-success bg-success text-success-content',
+	danger: 'border-danger bg-danger text-danger-content',
+	warning: 'border-warning bg-warning text-warning-content',
+}[tone];
+---
+<div
+	class={`flex flex-col gap-3 rounded-lg border-2 p-4 text-base font-semibold ${toneClass}`}
+	role="status"
+	hidden={hidden}
+	{...(name ? { 'data-alert': name } : {})}
+>
+	<div><slot /></div>
+	<div class="flex flex-wrap gap-3"><slot name="actions" /></div>
+</div>

@@ -1,0 +1,20 @@
+---
+import LayoutApp from '../layouts/LayoutApp.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import HistorialContainer from '../components/smart/HistorialContainer.astro';
+
+// Sales history page (doc/astrobase.md §3.8 — LayoutApp + smart only, never ui/
+// directly). The <main> landmark is owned by LayoutApp now — the page must NOT
+// render its own (doc/plan-sidebar.md Fase 2). OfflineBanner has no smart
+// equivalent (plan-features Fase 1). SyncStatusIndicator rides the header slot
+// on every app page (extras.md §6 — never blocks the sale).
+---
+<LayoutApp>
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<HistorialContainer />
+</LayoutApp>
+<script>
+	import '../components/islands/offline-banner';
+</script>

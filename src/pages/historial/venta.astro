@@ -1,0 +1,19 @@
+---
+import LayoutApp from '../../layouts/LayoutApp.astro';
+import OfflineBanner from '../../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../../components/smart/SyncStatusIndicator.astro';
+import VentaDetailContainer from '../../components/smart/VentaDetailContainer.astro';
+
+// Sale detail page (doc/plan-mejoras-2.md Fase 3, decision D3): ONE static
+// route + ?id= — getStaticPaths per venta is impossible with output: "static"
+// (gotcha G1). Route-guard covers it (any route ≠ /login). Shell mirrors
+// historial.astro: LayoutApp owns <main>, banner + sync indicator ride along.
+---
+<LayoutApp>
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<VentaDetailContainer />
+</LayoutApp>
+<script>
+	import '../../components/islands/offline-banner';
+</script>

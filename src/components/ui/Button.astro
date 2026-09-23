@@ -1,0 +1,16 @@
+---
+// Reusable visual button (doc/astrobase.md §3.2). Variant and state arrive
+// via props only — the class names come from stilesbase.md §4 (global.css).
+// Extra attributes (data-* hooks for islands) pass through untouched.
+interface Props {
+	variant?: 'primary' | 'secondary' | 'success' | 'danger';
+	type?: 'button' | 'submit' | 'reset';
+	disabled?: boolean;
+	[key: string]: unknown;
+}
+
+const { variant = 'primary', type = 'button', disabled = false, ...rest } = Astro.props;
+---
+<button type={type} class={`btn btn-${variant}`} disabled={disabled} {...rest}>
+	<slot />
+</button>

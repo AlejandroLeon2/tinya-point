@@ -1,0 +1,14 @@
+# clasp root = src/api/ — only Apps Script sources + manifest go up.
+# (.gs/.js are already filtered by scriptExtensions; this guards future
+# stray files too — appscript-gas skill.)
+node_modules/
+.git/
+.env
+.env.*
+*.md
+*.ts
+*.json
+!appsscript.json
+actions/
+dist/
+.astro/

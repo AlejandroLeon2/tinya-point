@@ -1,0 +1,32 @@
+---
+// Caja abierta summary — labels are static, values are filled by
+// islands/caja.ts through data-* hooks (no fixed ids, invariant 5). The
+// "Efectivo esperado" line = monto_apertura + efectivo del día (island math,
+// G4 rounding). "Cerrar caja" opens the shared confirmation Modal (§5.5).
+---
+<section data-caja-resumen class="card flex flex-col gap-4" hidden>
+	<h2 class="text-lg font-bold text-text">Caja abierta</h2>
+	<ul class="flex flex-col gap-2 text-base">
+		<li class="flex justify-between gap-3">
+			<span class="text-text-muted">Monto de apertura</span>
+			<span data-caja-monto-apertura class="font-semibold text-text"></span>
+		</li>
+		<li class="flex justify-between gap-3">
+			<span class="text-text-muted">Abierta a las</span>
+			<span data-caja-hora-apertura class="font-semibold text-text"></span>
+		</li>
+		<li class="flex justify-between gap-3">
+			<span class="text-text-muted">Ventas del día</span>
+			<span data-caja-n-ventas class="font-semibold text-text"></span>
+		</li>
+		<li class="flex justify-between gap-3">
+			<span class="text-text-muted">Efectivo esperado</span>
+			<span data-caja-esperado class="font-bold text-text"></span>
+		</li>
+	</ul>
+	<div class="flex flex-wrap gap-3">
+		<button type="button" class="btn btn-primary" data-modal-open="cerrar-caja">
+			Cerrar caja
+		</button>
+	</div>
+</section>

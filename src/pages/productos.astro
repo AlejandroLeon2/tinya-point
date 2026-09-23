@@ -1,0 +1,18 @@
+---
+import LayoutApp from '../layouts/LayoutApp.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import ProductContainer from '../components/smart/ProductContainer.astro';
+
+// Product admin page (doc/plan-mejoras-2.md Fase 1) — same shell contract as
+// historial.astro: LayoutApp owns <main>, route-guard already covers every
+// non-/login route, banner + sync indicator ride every app page (extras §6).
+---
+<LayoutApp>
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<ProductContainer />
+</LayoutApp>
+<script>
+	import '../components/islands/offline-banner';
+</script>

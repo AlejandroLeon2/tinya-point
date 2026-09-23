@@ -1,0 +1,53 @@
+---
+// Catalog section — presentational shell: title, search input, category
+// filter, stale notice and the grid where the Card template renders
+// (astrobase §3.2). Every interactive behavior belongs to
+// islands/catalog.ts — this file only draws, props/DOM only (ui/ rule).
+---
+<section class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-2xl font-bold text-text">Catálogo</h1>
+
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+		<label class="flex flex-1 flex-col gap-1 text-base font-semibold text-text">
+			Buscar producto
+			<input
+				data-catalog-search
+				class="input-field"
+				type="search"
+				placeholder="Buscar por nombre…"
+				autocomplete="off"
+			/>
+		</label>
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Categoría
+			<select data-catalog-category class="input-field">
+				<option value="">Todas las categorías</option>
+			</select>
+		</label>
+	</div>
+
+	<!-- "Catálogo desactualizado" (extras.md §6 fila 2) — text set by the
+	     island with formatNumero; hidden until the cache is stale and could
+	     not be refreshed. -->
+	<div
+		data-catalog-stale
+		hidden
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border-2 border-border bg-surface px-4 py-3"
+	>
+		<p data-catalog-stale-text class="text-base text-text-muted"></p>
+		<button data-catalog-refresh type="button" class="btn btn-secondary">
+			Actualizar
+		</button>
+	</div>
+
+	<div data-catalog-empty-area class="flex flex-col gap-4">
+		<slot name="empty" />
+	</div>
+
+	<div
+		data-catalog-grid
+		class="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+	>
+		<slot />
+	</div>
+</section>

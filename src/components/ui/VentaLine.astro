@@ -1,0 +1,18 @@
+---
+// One product line of the sale detail (plan-mejoras-2.md Fase 3) — SINGLE
+// template cloned per item by islands/venta-detail.ts. Shows nombre,
+// cantidad × precio unitario and the line importe. ui/ draws, never fetches
+// or reads local data (astrobase §1).
+---
+<template data-venta-line-template>
+	<li
+		data-venta-line=""
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+	>
+		<span class="flex min-w-0 flex-col gap-1">
+			<span data-venta-nombre class="text-base font-semibold text-text"></span>
+			<span data-venta-cantidad class="text-base text-text-muted"></span>
+		</span>
+		<span data-venta-importe class="text-base font-bold text-text"></span>
+	</li>
+</template>

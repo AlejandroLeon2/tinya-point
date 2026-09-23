@@ -1,0 +1,40 @@
+---
+// Sales-history container — 100% local: reads historial_ventas via
+// utils/storage.ts inside islands/historial.ts (SSG cannot touch
+// localStorage at build — same option-A pattern as the catalog). This
+// component renders only the filter chrome + shell; every row comes from
+// ui/ (astrobase §3.3) and nothing here ever calls the API (base.md §7
+// "del propio dispositivo"). The extras.md §5 omissions stay out of scope —
+// omitted by explicit user decision).
+import EmptyState from '../ui/EmptyState.astro';
+import HistorialDay from '../ui/HistorialDay.astro';
+import HistorialLine from '../ui/HistorialLine.astro';
+---
+<section data-historial-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-xl font-bold text-text">Historial de ventas</h1>
+
+	<!-- Date filter (base.md §7 "filtrable por fecha"): visible labels,
+	     .input-field 18px (stilesbase §5). Island applies it on change. -->
+	<div class="flex flex-wrap items-end gap-3">
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Desde
+			<input data-hist-from type="date" class="input-field" />
+		</label>
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Hasta
+			<input data-hist-to type="date" class="input-field" />
+		</label>
+	</div>
+
+	<!-- Day groups (<details>, Fase 3): the island clones a HistorialDay per
+	     localDay, then a HistorialLine per venta inside it. -->
+	<div data-hist-days class="flex flex-col gap-3"></div>
+	<HistorialDay />
+	<HistorialLine />
+	<EmptyState state="empty-historial" mensaje="Todavía no hay ventas" hidden />
+	<EmptyState state="no-date-results" mensaje="Sin ventas en ese rango de fechas" hidden />
+</section>
+
+<script>
+	import '../islands/historial';
+</script>

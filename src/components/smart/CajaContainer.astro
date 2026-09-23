@@ -1,0 +1,63 @@
+---
+// Caja container (doc/plan-mejoras-2.md Fase 2) — smart layer composes chrome
+// + ui/ parts and wires islands/caja.ts. Apertura form OR open-session
+// summary (mutually exclusive — the island flips them: static output, ONE
+// page for both states, gotcha G1) plus the shared confirmation Modal for
+// the cierre (stilesbase §5.5). Feedback only through ui/Alert.
+import Alert from '../ui/Alert.astro';
+import CajaFormApertura from '../ui/CajaFormApertura.astro';
+import CajaResumen from '../ui/CajaResumen.astro';
+import Modal from '../ui/Modal.astro';
+---
+<section data-caja-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-xl font-bold text-text">Caja</h1>
+
+	<Alert tone="success" name="caja-ok" hidden>
+		<span data-caja-ok-text></span>
+	</Alert>
+	<Alert tone="danger" name="caja-error" hidden>
+		<span data-caja-error-text></span>
+	</Alert>
+	<!-- render-managed: only while the open session belongs to another day -->
+	<Alert tone="warning" name="caja-aviso" hidden>
+		<span data-caja-aviso-text></span>
+	</Alert>
+	<!-- close-flow feedback: "Faltan/Sobran" when the counted cash differs -->
+	<Alert tone="warning" name="caja-cierre" hidden>
+		<span data-caja-cierre-text></span>
+	</Alert>
+
+	<CajaFormApertura />
+	<CajaResumen />
+
+	<Modal modalKey="cerrar-caja" title="Cerrar caja">
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Efectivo contado (S/)
+			<input
+				data-caja-conteo
+				type="number"
+				class="input-field"
+				min="0"
+				step="0.01"
+				inputmode="decimal"
+			/>
+		</label>
+		<p class="mt-2 text-base text-text-muted">
+			Contá el efectivo que queda en la caja antes de cerrar.
+		</p>
+		<p data-caja-modal-error class="mt-2 text-base font-semibold text-danger" hidden></p>
+		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+			Cancelar
+		</button>
+		<!-- NO data-modal-close here: the island closes only on a valid close,
+		     so a bad input never dismisses the modal. -->
+		<button slot="actions" type="button" class="btn btn-danger" data-caja-confirmar>
+			Sí, cerrar
+		</button>
+	</Modal>
+</section>
+
+<script>
+	import '../islands/caja';
+	import '../islands/modal-controller';
+</script>

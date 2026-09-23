@@ -1,0 +1,31 @@
+---
+// Cart summary container — the smart reads stores/cart.ts and delegates ALL
+// drawing to ui/ (doc/astrobase.md §3.3). Under output: "static" the live
+// rows/totals are painted by islands/cart-actions.ts (same runtime pattern
+// as the catalog, option A plan-features Fase 2/3).
+import CartLine from '../ui/CartLine.astro';
+import CartTotals from '../ui/CartTotals.astro';
+import CancelSale from '../ui/CancelSale.astro';
+import { TAX_RATE } from '../../utils/tax';
+
+const taxLabel = `IGV (${Math.round(TAX_RATE * 100)}%)`;
+---
+<section
+	data-cart-summary
+	class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6"
+	aria-label="Tu carrito"
+>
+	<h2 class="text-xl font-bold text-text">
+		Tu carrito (<span data-cart-badge>0</span>)
+	</h2>
+	<ul data-cart-lines class="flex flex-col gap-3"></ul>
+	<CartLine />
+	<CartTotals taxLabel={taxLabel} />
+	<CancelSale />
+</section>
+
+<script>
+	import '../islands/cart-badge';
+	import '../islands/cart-actions';
+	import '../islands/modal-controller';
+</script>
