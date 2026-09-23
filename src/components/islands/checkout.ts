@@ -27,7 +27,7 @@ import {
   type ItemVenta,
   type VentaLocal,
 } from '../../utils/storage';
-import { calcTax, calcTotal } from '../../utils/tax';
+import { calcTax, calcTotal, etiquetaIgv } from '../../utils/tax';
 import type { MetodoPago } from '../../utils/storage';
 
 const root = document.querySelector<HTMLElement>('[data-checkout-root]');
@@ -38,6 +38,10 @@ if (root) {
   const subtotalEl = root.querySelector<HTMLElement>('[data-cart-subtotal]');
   const taxEl = root.querySelector<HTMLElement>('[data-cart-impuesto]');
   const totalEl = root.querySelector<HTMLElement>('[data-cart-total]');
+  const taxLabelEl = root.querySelector<HTMLElement>('[data-cart-tax-label]');
+  // Configured IGV overwrites the build-time default label (Fase 5) — once
+  // at startup: the rate only changes via /ajustes, which reloads the page.
+  if (taxLabelEl) taxLabelEl.textContent = etiquetaIgv();
   const cashBlock = root.querySelector<HTMLElement>('[data-checkout-cash]');
   const recibidoInput = root.querySelector<HTMLInputElement>('[data-checkout-recibido]');
   const vueltoEl = root.querySelector<HTMLElement>('[data-checkout-vuelto]');

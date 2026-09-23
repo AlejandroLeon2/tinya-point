@@ -13,12 +13,16 @@ import Sidebar from '../components/ui/Sidebar.astro';
 // Route guard mounts on this layout too (same branch as Layout.astro).
 
 // Navigation order = order of use for the cashier (plan-sidebar.md §1.2;
-// Caja sits between Historial and Productos — plan-mejoras-2.md Fase 2).
+// Caja sits between Historial and Productos — plan-mejoras-2.md Fase 2;
+// Categorías trails Productos as its admin companion — plan-productos-v2
+// Fase 2, D-C2).
 const navItems = [
 	{ href: '/', label: 'Venta' },
 	{ href: '/historial', label: 'Historial' },
 	{ href: '/caja', label: 'Caja' },
 	{ href: '/productos', label: 'Productos' },
+	{ href: '/categorias', label: 'Categorías' },
+	{ href: '/ajustes', label: 'Ajustes' },
 ];
 
 // Build-time active state (output: "static"): each page renders with its own

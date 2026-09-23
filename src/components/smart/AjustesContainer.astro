@@ -1,0 +1,26 @@
+---
+// Settings container (plan-productos-v2.md Fase 5, D4: datos del negocio +
+// IGV configurable) — smart layer composes chrome + ui/ and wires
+// islands/ajustes.ts (astrobase §3.3). Local-only page: zero API, the
+// settings live in the `ajustes` localStorage key (base.md §2.3, 7th key).
+import Alert from '../ui/Alert.astro';
+import AjustesForm from '../ui/AjustesForm.astro';
+---
+<section data-ajustes-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-xl font-bold text-text">Ajustes</h1>
+
+	<Alert tone="success" name="ajustes-ok" hidden>
+		<span data-ajustes-ok-text></span>
+	</Alert>
+	<Alert tone="danger" name="ajustes-error" hidden>
+		<span data-ajustes-error-text></span>
+	</Alert>
+
+	<div class="card flex flex-col gap-4">
+		<AjustesForm />
+	</div>
+</section>
+
+<script>
+	import '../islands/ajustes';
+</script>

@@ -247,8 +247,8 @@ Plan de ejecución para **agentes**. Continúa directamente sobre el esqueleto t
 
 **Tareas:**
 
-- [ ] **(Acción humana)** Crear cuenta Cloudinary y anotar el `cloud name` (`extras.md` §3 paso 6) → completar `PUBLIC_CLOUDINARY_CLOUD_NAME` en `.env` local (ya existe la línea placeholder). *(23/09/2026: línea placeholder verificada en `.env` (existe, valor pendiente).)*
-- [ ] **(Acción humana — flujo del dueño, documentado en `extras.md` §4):** subir fotos a la Media Library (drag & drop, **sin código**) y pegar la URL resultante en la columna `imagen_url` del Sheet. *No construir uploader — explícitamente innecesario según §4.*
+- [x] **(Acción humana)** Crear cuenta Cloudinary y anotar el `cloud name` (`extras.md` §3 paso 6) → completar `PUBLIC_CLOUDINARY_CLOUD_NAME` en `.env` local (ya existe la línea placeholder). *(23/09/2026: `PUBLIC_CLOUDINARY_CLOUD_NAME=dlxh4jrix` en `.env` — verificado.)*
+- [x] **(Acción humana — flujo del dueño, documentado en `extras.md` §4):** subir fotos a la Media Library (drag & drop, **sin código**) y pegar la URL resultante en la columna `imagen_url` del Sheet. *No construir uploader — explícitamente innecesario según §4.* *(23/09/2026: **resuelto por vía alternativa** — el dueño pide upload desde el form de productos vía Cloudinary unsigned, lo que deja la subida manual innecesaria; ver `plan-cierre.md` Fase 3 y la anotación en `extras.md` §4.)*
 - [x] Helper de transformación de URL (inglés, en `utils/`):
   - [x] Para URLs `res.cloudinary.com/...` → agregar optimización `f_auto,q_auto,w_400` (o el ancho que pida el componente) (`extras.md` §4). *(23/09/2026: `utils/cloudinary.ts` — desviación anotada ANTES de crear; `withTransforms()` inyecta tras `/upload/`, idempotente si ya tiene `f_auto`/`q_auto`, `width` opcional default 400.)*
   - [x] Si `imagen_url` viene como ruta relativa/id del cloud declarado en `PUBLIC_CLOUDINARY_CLOUD_NAME` → construir la URL absoluta; URL de otro cloud/absoluta no-cloudinary → respetar tal cual. *(23/09/2026: 4 ramas — cloud declarado ≠ segmento → as-is; host absoluto no-cloudinary → as-is; relativa + cloud declarado → absoluta optimizada; relativa sin cloud name → `''` (queda el placeholder). Scheme-relative `//` normalizado a https.)*
@@ -280,16 +280,16 @@ Plan de ejecución para **agentes**. Continúa directamente sobre el esqueleto t
 
 **Tareas:**
 
-- [ ] **(Acción humana — autorización previa):** definir remote + estrategia de commit/PR con el usuario.
-- [ ] **(Acción humana)** Crear proyecto en Vercel desde el repo: build command `astro build`, output `dist/` (defaults que Vercel detecta — `extras.md` §8; **sin** adapter, `output: "static"` ya está).
-- [ ] **(Acción humana)** Configurar en Project → Settings → Environment Variables: `PUBLIC_API_URL` y `PUBLIC_CLOUDINARY_CLOUD_NAME` — **no** se commitean valores reales (`extras.md` §8).
-- [ ] Verificar HTTPS efectivo del dominio (`*.vercel.app`) y que el service worker **se registra en el dominio** (los navegadores no lo hacen en HTTP — `extras.md` §8).
-- [ ] Verificar deploy continuo: un push a la rama principal dispara build + deploy sin paso manual.
+- [x] **(Acción humana — autorización previa):** definir remote + estrategia de commit/PR con el usuario. *Hecho — remote `origin/main` (`github.com/AlejandroLeon2/tinya-point`), push directo a `main`, sincronizado verificado 23/09/2026.*
+- [x] **(Acción humana)** Crear proyecto en Vercel desde el repo: build command `astro build`, output `dist/` (defaults que Vercel detecta — `extras.md` §8; **sin** adapter, `output: "static"` ya está). *Confirmado por el dueño 23/09/2026.*
+- [x] **(Acción humana)** Configurar en Project → Settings → Environment Variables: `PUBLIC_API_URL` y `PUBLIC_CLOUDINARY_CLOUD_NAME` — **no** se commitean valores reales (`extras.md` §8). *Confirmado por el dueño 23/09/2026.*
+- [x] Verificar HTTPS efectivo del dominio (`*.vercel.app`) y que el service worker **se registra en el dominio** (los navegadores no lo hacen en HTTP — `extras.md` §8). *Confirmado por el dueño 23/09/2026.*
+- [x] Verificar deploy continuo: un push a la rama principal dispara build + deploy sin paso manual. *Confirmado por el dueño 23/09/2026.*
 
 **Gate de salida:**
 
-- [ ] Autorización de commit/remote registrada con fecha.
-- [ ] **(Acción humana):** dominio en vivo carga `/`, `/login`, `/historial`; DevTools → Application → SW registrado + manifest OK sobre HTTPS; smoke `?action=productos` desde el dominio con datos reales. *Evidencia: URL + fecha.*
+- [x] Autorización de commit/remote registrada con fecha. *23/09/2026.*
+- [x] **(Acción humana):** dominio en vivo carga `/`, `/login`, `/historial`; DevTools → Application → SW registrado + manifest OK sobre HTTPS; smoke `?action=productos` desde el dominio con datos reales. *Confirmado por el dueño 23/09/2026. Evidencia URL: ______ (pendiente de anotar por el dueño).*
 
 ---
 
@@ -325,7 +325,7 @@ Plan de ejecución para **agentes**. Continúa directamente sobre el esqueleto t
 - [x] Los audits originales + los nuevos en verde, con evidencia. *(23/09/2026 — todos los checks de arriba fechados y con líneas.)*
 - [x] Las fases con verificación humana tienen su evidencia fechada. *(23/09/2026: prereqs Fase 0 ✓ + fases 1✓ 2✓ 3✓ 4✓ 5✓ 6✓ con gates humanos fechados; **Fase 7 aplazada por el usuario** (nota arriba) — su verificación humana queda pendiente junto con la fase.)*
 - [x] TODOs residuales de esta pasada documentados (si los hay) — ninguna feature "a medias" disfrazada de terminada. *(23/09/2026: 1 residual real — `EmptyState.astro:10` `TODO(Fase 7)`: ilustración/ícono genérico DENTRO de los estados vacíos; el estado nunca queda en blanco (mensaje visible, extras §6 ✓) y el placeholder obligatorio de `extras.md` §4 (card con foto vacía/404) SÍ está implementado y verificado en Fase 6 — la ilustración queda como polish consciente y pendiente, no escondido. `historial.astro:8` es nota de resolución, no TODO. Falsos positivos del grep de TODOs: `METODOS_PAGO`/`METODO_LABEL` contienen "TODO" como substring.)*
-- [ ] PR: **pendiente por la misma decisión del usuario** (commit/remote) —checkbox heredado, no marcado hasta autorización.
+- [x] PR: *Resuelto sin PR — push directo a `main` (decisión del dueño 23/09/2026, ver `plan.md` Fase 8).*
 
 ---
 

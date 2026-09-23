@@ -20,6 +20,8 @@ const SERVER_CODES = new Set<ErrorCode>([
   'accion_no_soportada',
   'payload_invalido',
   'error_interno',
+  'categoria_duplicada',
+  'categoria_en_uso',
 ]);
 
 // Local transport outcome — distinct from the server's ErrorCode union:
@@ -91,4 +93,53 @@ export async function llamarLogin<T>(usuario: string, clave: string): Promise<Ap
 // GET ?action=... — public reads (§4.1), still through this single client.
 export async function llamarGet<T>(accion: AccionLectura): Promise<ApiResult<T>> {
   return request<T>(`${API_URL}?action=${encodeURIComponent(accion)}`);
+}
+
+// Cloudinary unsigned upload (plan-cierre.md Fase 3 / extras.md §4). Still
+// THIS module's fetch — golden rule 3 has no exceptions. Two deliberate
+// differences from `request` above:
+//   - FormData body with NO Content-Type header: the browser must build
+//     multipart/form-data with its own boundary (the text/plain header is
+//     Apps Script-only and would corrupt the upload).
+//   - Cloudinary answers real HTTP statuses (Apps Script always 200), so
+//     here response.ok matters.
+// The unsigned preset (PUBLIC_CLOUDINARY_UPLOAD_PRESET) is public by
+// design — no secret ever reaches the client (base.md §8 threat model).
+export type SubidaResultado =
+  | { status: 'success'; url: string }
+  | { status: 'api_error' }
+  | { status: 'network_failure' }
+  | { status: 'not_configured' };
+
+export async function subirImagenCloudinary(file: File): Promise<SubidaResultado> {
+  const cloud: string = import.meta.env.PUBLIC_CLOUDINARY_CLOUD_NAME ?? '';
+  const preset: string = import.meta.env.PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? '';
+  if (!cloud || !preset) return { status: 'not_configured' };
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', preset);
+
+  let response: Response;
+  try {
+    response = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/upload`, {
+      method: 'POST',
+      body: form,
+    });
+  } catch {
+    return { status: 'network_failure' };
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return { status: 'api_error' };
+  }
+
+  const parsed = body as { secure_url?: unknown };
+  if (response.ok && typeof parsed.secure_url === 'string') {
+    return { status: 'success', url: parsed.secure_url };
+  }
+  return { status: 'api_error' };
 }

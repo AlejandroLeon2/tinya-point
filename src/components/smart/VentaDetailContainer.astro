@@ -7,11 +7,12 @@
 // (base.md §7 "del propio dispositivo").
 import EmptyState from '../ui/EmptyState.astro';
 import VentaLine from '../ui/VentaLine.astro';
-import { TAX_RATE } from '../../utils/tax';
+import { etiquetaIgv } from '../../utils/tax';
 
-// Single source of truth for the rate (utils/tax.ts) — same label assembly
-// as smart/CartSummary.
-const taxLabel = `IGV (${Math.round(TAX_RATE * 100)}%)`;
+// Single source of truth for the rate (utils/tax.ts). Build-time default
+// (no localStorage → 18%); islands/venta-detail.ts overwrites it with the
+// configured rate at runtime (plan-productos-v2 Fase 5).
+const taxLabel = etiquetaIgv();
 ---
 <section data-venta-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
 	<h1 class="text-xl font-bold text-text">Detalle de venta</h1>
@@ -32,7 +33,7 @@ const taxLabel = `IGV (${Math.round(TAX_RATE * 100)}%)`;
 				<span data-venta-subtotal class="font-semibold text-text"></span>
 			</div>
 			<div class="flex justify-between gap-3">
-				<span class="text-text-muted">{taxLabel}</span>
+				<span data-venta-tax-label class="text-text-muted">{taxLabel}</span>
 				<span data-venta-igv class="font-semibold text-text"></span>
 			</div>
 			<div class="flex justify-between gap-3">

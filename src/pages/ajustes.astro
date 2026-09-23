@@ -1,0 +1,19 @@
+---
+import LayoutApp from '../layouts/LayoutApp.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import AjustesContainer from '../components/smart/AjustesContainer.astro';
+
+// Settings page (plan-productos-v2.md Fase 5, D4) — same shell contract as
+// productos.astro: LayoutApp owns <main>, route-guard covers every non-/login
+// route, banner + sync indicator ride every app page (extras §6). Local-only:
+// no API calls, settings live in the `ajustes` localStorage key.
+---
+<LayoutApp>
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<AjustesContainer />
+</LayoutApp>
+<script>
+	import '../components/islands/offline-banner';
+</script>

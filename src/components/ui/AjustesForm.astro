@@ -1,0 +1,52 @@
+---
+// Settings form — ui draws only; islands/ajustes.ts fills the fields from
+// utils/storage getAjustes() and persists via setAjustes (astrobase §3.3/§1).
+// Validation copy is set by the island in simple Spanish, never raw codes.
+import Button from './Button.astro';
+---
+<form data-ajustes-form novalidate class="flex flex-col gap-4">
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Nombre del local
+		<input
+			data-ajustes-nombre
+			type="text"
+			class="input-field"
+			placeholder="Ej: Tienda de la esquina"
+			autocomplete="organization"
+		/>
+	</label>
+
+	<div class="flex flex-wrap gap-3">
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+			Moneda (símbolo)
+			<input
+				data-ajustes-moneda
+				type="text"
+				class="input-field"
+				placeholder="S/"
+				autocomplete="off"
+				maxlength="6"
+			/>
+		</label>
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+			IGV (%)
+			<input
+				data-ajustes-igv
+				type="number"
+				class="input-field"
+				min="0"
+				max="100"
+				step="0.5"
+				inputmode="decimal"
+			/>
+		</label>
+	</div>
+
+	<p class="text-base text-text-muted">
+		Los cambios se aplican a precios y totales al guardar.
+	</p>
+
+	<div class="flex flex-wrap gap-3">
+		<Button type="submit" variant="primary" data-ajustes-submit>Guardar ajustes</Button>
+	</div>
+</form>

@@ -1,0 +1,54 @@
+---
+// Categories admin container (plan-productos-v2.md Fase 2, D-C2: página
+// /categorias) — smart layer composes chrome + ui/ parts and wires the
+// islands: copy from ui/, behavior from islands/categorias-admin.ts
+// (astrobase §3.3). Delete is confirmed through the shared ui/Modal +
+// modal-controller contract (stilesbase §5.5).
+import Alert from '../ui/Alert.astro';
+import CategoriaForm from '../ui/CategoriaForm.astro';
+import CategoriaRow from '../ui/CategoriaRow.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import Modal from '../ui/Modal.astro';
+---
+<section data-categorias-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<h1 class="text-xl font-bold text-text">Categorías</h1>
+
+	<Alert tone="success" name="categorias-ok" hidden>
+		<span data-categoria-ok-text></span>
+	</Alert>
+	<Alert tone="danger" name="categorias-error" hidden>
+		<span data-categoria-error-text></span>
+	</Alert>
+
+	<div class="card flex flex-col gap-4">
+		<CategoriaForm />
+	</div>
+
+	<ul data-categoria-rows class="flex flex-col gap-3"></ul>
+	<CategoriaRow />
+	<EmptyState state="empty-categorias" mensaje="Todavía no hay categorías" hidden />
+
+	<Modal modalKey="confirmar-borrar-categoria" title="¿Eliminar categoría?">
+		<p>
+			La categoría se borra de la lista. Solo se puede eliminar si ningún
+			producto la está usando.
+		</p>
+		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+			Cancelar
+		</button>
+		<button
+			slot="actions"
+			type="button"
+			class="btn btn-danger"
+			data-categoria-confirm-delete
+			data-modal-close
+		>
+			Sí, eliminar
+		</button>
+	</Modal>
+</section>
+
+<script>
+	import '../islands/categorias-admin';
+	import '../islands/modal-controller';
+</script>

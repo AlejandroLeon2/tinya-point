@@ -8,9 +8,11 @@ import Alert from '../ui/Alert.astro';
 import Button from '../ui/Button.astro';
 import CartTotals from '../ui/CartTotals.astro';
 import CheckoutLine from '../ui/CheckoutLine.astro';
-import { TAX_RATE } from '../../utils/tax';
+import { etiquetaIgv } from '../../utils/tax';
 
-const taxLabel = `IGV (${Math.round(TAX_RATE * 100)}%)`;
+// Build-time default (no localStorage → 18%); islands/checkout.ts overwrites
+// it with the configured rate at runtime (plan-productos-v2 Fase 5).
+const taxLabel = etiquetaIgv();
 // Wire values in Spanish (base.md §2.2 / METODOS_PAGO), UI labels in Spanish.
 const metodos = [
 	{ value: 'efectivo', label: 'Efectivo' },

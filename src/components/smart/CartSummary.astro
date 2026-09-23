@@ -6,9 +6,11 @@
 import CartLine from '../ui/CartLine.astro';
 import CartTotals from '../ui/CartTotals.astro';
 import CancelSale from '../ui/CancelSale.astro';
-import { TAX_RATE } from '../../utils/tax';
+import { etiquetaIgv } from '../../utils/tax';
 
-const taxLabel = `IGV (${Math.round(TAX_RATE * 100)}%)`;
+// Build-time default (no localStorage → 18%); islands/cart-actions.ts
+// overwrites it with the configured rate at runtime (plan-productos-v2 Fase 5).
+const taxLabel = etiquetaIgv();
 ---
 <section
 	data-cart-summary

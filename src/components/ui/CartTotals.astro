@@ -22,7 +22,9 @@ const {
 		<dd data-cart-subtotal class="font-semibold text-text">{subtotal}</dd>
 	</div>
 	<div class="flex justify-between gap-3">
-		<dt class="text-text-muted">{taxLabel}</dt>
+		<!-- data-cart-tax-label: islands overwrite the build-time default with
+		     the configured IGV rate (plan-productos-v2.md Fase 5). -->
+		<dt data-cart-tax-label class="text-text-muted">{taxLabel}</dt>
 		<dd data-cart-impuesto class="font-semibold text-text">{impuesto}</dd>
 	</div>
 	<div class="flex justify-between gap-3 text-lg font-bold">

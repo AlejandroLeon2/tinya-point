@@ -51,7 +51,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.1 Punto de entrada
 
 - **`doGet(e)`**
-  Atiende únicamente lecturas públicas. Lee `e.parameter.action`. Si `action === "productos"`, delega a `obtenerProductos()`. Cualquier otro valor devuelve error de acción no soportada. No requiere token.
+  Atiende únicamente lecturas públicas. Lee `e.parameter.action`. Si `action === "productos"`, delega a `obtenerProductos()`; si `action === "categorias"`, a `obtenerCategorias()`. Cualquier otro valor devuelve error de acción no soportada. No requiere token.
 
 - **`doPost(e)`**
   Punto de entrada único para login y escrituras. Lee `e.postData.contents` (string plano, ver sección 1 sobre CORS), lo parsea con `JSON.parse`, y despacha según `body.action` a la función correspondiente. Nunca ejecuta lógica de negocio directamente aquí — solo parsea, valida forma básica del payload, y delega.
@@ -59,7 +59,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.2 Router interno
 
 - **`despacharAccion(action, body)`**
-  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
+  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10), `"crearCategoria"`, `"actualizarCategoria"`, `"borrarCategoria"` (§4.12–§4.14). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
 
 ### 3.3 Autenticación
 
@@ -103,6 +103,26 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 
 - **`respuestaError(codigo, mensajeInterno)`**
   Construye siempre la misma forma `{ ok: false, error: codigo }`. El `mensajeInterno` es solo para `Logger.log`, nunca se expone al cliente — evita filtrar detalles internos (nombres de hoja, stack traces) en las respuestas.
+
+### 3.7 Categorías (plan-productos-v2.md Fase 2, D2)
+
+- **`obtenerCategorias()`**
+  Lee la hoja "Categorias" y devuelve `{ ok: true, categorias: [{ id, nombre }] }` ordenado por nombre — lectura pública vía `doGet(?action=categorias)` (§4.11), misma luz que `obtenerProductos()`.
+
+- **`crearCategoria(token, data)`** (§4.12)
+  1. `validarToken(token)` → si inválido, corta acá.
+  2. Valida `nombre` no vacío (`payload_invalido`).
+  3. Chequeo de duplicado case-insensitive (`categoria_duplicada`).
+  4. `LockService` + `appendRow` con `id` de `Utilities.getUuid()` (mismo motivo que `crearProducto`: el alta no es un flujo offline).
+
+- **`actualizarCategoria(token, data)`** (§4.13)
+  Renombra por `id` con las mismas validaciones y **en cascada**: los productos cuya `categoria` coincida con el nombre viejo pasan al nuevo, dentro del mismo lock — ningún producto queda apuntando a un nombre inexistente.
+
+- **`borrarCategoria(token, data)`** (§4.14)
+  Borra por `id`; si algún producto la referencia → `categoria_en_uso` y la fila queda (el Sheet es la red de seguridad; la UI solo muestra el mensaje amable). `payload_invalido` si el `id` no existe. No hay soft delete: una categoría sin productos no deja trazabilidad que preservar.
+
+- **`existeNombreEn(hoja, nombre, exceptoId)` / `categoriaEnUso(nombre)` / `renombrarCategoriaEnProductos(viejo, nuevo)`** (helpers internos)
+  Duplicados case-insensitive (ignorando una fila al renombrar), uso en Productos y el cascade — todos bajo el lock del handler que los llama.
 
 ---
 
@@ -204,6 +224,8 @@ Esta sección es la que debe quedar fija y versionada — el frontend en Astro s
 | `accion_no_soportada` | `action` no reconocida por el router |
 | `payload_invalido` | Falta un campo requerido en `data` o el JSON no parsea |
 | `error_interno` | Cualquier excepción no controlada (se loggea el detalle real con `Logger.log`, pero el cliente solo recibe este código genérico) |
+| `categoria_duplicada` | Alta o renombre de categoría con un nombre ya existente (case-insensitive) |
+| `categoria_en_uso` | Borrado de categoría que al menos un producto referencia (`plan-productos-v2` §4.14) |
 
 Definir esta tabla ahora evita que cada función invente su propio texto de error y que el frontend tenga que adivinar contra qué comparar.
 
@@ -326,6 +348,82 @@ Handler: `actualizarProducto(token, data)`. Edita por `id` solo los campos envia
 
 Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a editar.
 
+### 4.11 `GET ?action=categorias` (pública, sin token)
+
+**Request:** sin body, solo query string.
+
+**Response (200, siempre):**
+```json
+{
+  "ok": true,
+  "categorias": [
+    { "id": "3f2a1c9e-...", "nombre": "bebidas" }
+  ]
+}
+```
+
+Lista liviana (`id`, `nombre`) ordenada por nombre — alimenta el `<select>` del form de productos y la pantalla `/categorias` (`plan-productos-v2.md` Fase 2/3).
+
+### 4.12 `POST { action: "crearCategoria" }` (requiere token)
+
+Handler: `crearCategoria(token, data)`.
+
+**Request:**
+```json
+{
+  "action": "crearCategoria",
+  "token": "3f2a1c9e-...",
+  "data": { "nombre": "bebidas" }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true, "id": "uuid-generado-en-servidor" }
+```
+
+Errores: `payload_invalido` (nombre vacío), `categoria_duplicada` (nombre ya existente, case-insensitive). `id` lo genera el servidor con `Utilities.getUuid()`; `LockService` alrededor de la escritura.
+
+### 4.13 `POST { action: "actualizarCategoria" }` (requiere token)
+
+Handler: `actualizarCategoria(token, data)`. Renombra por `id` y aplica el cambio **en cascada** a los productos que usaban el nombre viejo, dentro del mismo lock.
+
+**Request:**
+```json
+{
+  "action": "actualizarCategoria",
+  "token": "3f2a1c9e-...",
+  "data": { "id": "3f2a1c9e-...", "nombre": "gaseosas" }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true }
+```
+
+Errores: `payload_invalido` (falta `id`/`nombre` o `id` inexistente), `categoria_duplicada`.
+
+### 4.14 `POST { action: "borrarCategoria" }` (requiere token)
+
+Handler: `borrarCategoria(token, data)`.
+
+**Request:**
+```json
+{
+  "action": "borrarCategoria",
+  "token": "3f2a1c9e-...",
+  "data": { "id": "3f2a1c9e-..." }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true }
+```
+
+Errores: `payload_invalido` (`id` inexistente), `categoria_en_uso` (algún producto la referencia — renombralos o desactivalos antes). Sin soft delete: la fila se borra de verdad cuando está libre.
+
 ---
 
 ## 5. Guía de consumo desde el cliente (Astro)
@@ -366,10 +464,12 @@ Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a ed
 
 ## 6. Checklist antes de desplegar el Web App
 
-- [ ] `usuario` y `clave` cargados en Script Properties, no en el código fuente.
-- [ ] Deploy configurado como "Cualquier persona con el enlace" (`Anyone`), ejecutándose como el propietario del script (no "el usuario que accede"), porque el cliente nunca inicia sesión con una cuenta de Google.
-- [ ] Cada función de escritura pasa por `validarToken` antes de tocar el Sheet — ninguna excepción "porque total es solo para pruebas".
-- [ ] `LockService` envolviendo toda escritura, especialmente `actualizarStock`.
-- [ ] `doGet`/`doPost` nunca dejan una excepción sin capturar — todo error cae en `respuestaError("error_interno", ...)`, nunca en una página de error HTML de Apps Script (eso rompe el `JSON.parse` del cliente).
-- [ ] Verificado que el cliente manda `Content-Type: text/plain` para evitar el problema de CORS/preflight.
-- [ ] Prueba manual de qué pasa si `expira` de una sesión ya pasó: debe devolver `unauthorized`, no un token "que sigue funcionando por las dudas".
+*Hecho — todos verificados/hechos, deploy en producción confirmado por el dueño 23/09/2026 (`Content-Type: text/plain` verificado en `client.ts:70`; token vencido → `unauthorized` → `expirarSesion()` en `client.ts:65`).*
+
+- [x] `usuario` y `clave` cargados en Script Properties, no en el código fuente.
+- [x] Deploy configurado como "Cualquier persona con el enlace" (`Anyone`), ejecutándose como el propietario del script (no "el usuario que accede"), porque el cliente nunca inicia sesión con una cuenta de Google.
+- [x] Cada función de escritura pasa por `validarToken` antes de tocar el Sheet — ninguna excepción "porque total es solo para pruebas".
+- [x] `LockService` envolviendo toda escritura, especialmente `actualizarStock`.
+- [x] `doGet`/`doPost` nunca dejan una excepción sin capturar — todo error cae en `respuestaError("error_interno", ...)`, nunca en una página de error HTML de Apps Script (eso rompe el `JSON.parse` del cliente).
+- [x] Verificado que el cliente manda `Content-Type: text/plain` para evitar el problema de CORS/preflight.
+- [x] Prueba manual de qué pasa si `expira` de una sesión ya pasó: debe devolver `unauthorized`, no un token "que sigue funcionando por las dudas".

@@ -13,6 +13,10 @@ const KEY_SESION_TOKEN = 'sesion_token';
 // 6th key (plan-mejoras-2.md Fase 2): operational source of truth for caja
 // sessions; the "Cajas" Sheet row is the backup (base.md §2.4).
 const KEY_CAJAS = 'cajas';
+// 7th key (plan-productos-v2.md Fase 5, D4): app settings — business data
+// (nombre/moneda) + the configurable IGV rate (base.md §7). Single-device
+// settings, same localStorage source as the rest of the operational state.
+const KEY_AJUSTES = 'ajustes';
 
 // Local domain types — this layer must not depend on src/api/ (Dependency
 // Inversion: stores/utils sit below the wire contract, not beside it).
@@ -179,4 +183,48 @@ export function getCajas(): CajaLocal[] {
 
 export function setCajas(cajas: CajaLocal[]): void {
   write(KEY_CAJAS, cajas);
+}
+
+// ── Ajustes (plan-productos-v2.md Fase 5, D4) ────────────────────────────
+
+// igv_tasa travels in PERCENTAGE POINTS (18 = 18%) — tax.ts converts to the
+// fraction at use time; wire/local identifiers stay simple numbers.
+export interface Ajustes {
+  nombre_local: string;
+  moneda: string; // symbol prefix shown by formatCurrency
+  igv_tasa: number; // 0–100, default 18
+}
+
+export const AJUSTES_DEFAULT: Ajustes = {
+  nombre_local: '',
+  moneda: 'S/',
+  igv_tasa: 18,
+};
+
+// Field-wise validation: a partially corrupted payload degrades per field
+// instead of resetting everything (same fail-soft policy as read()).
+export function getAjustes(): Ajustes {
+  const crudo = read<Partial<Ajustes> | null>(KEY_AJUSTES, null);
+  if (!crudo || typeof crudo !== 'object') return { ...AJUSTES_DEFAULT };
+  return {
+    nombre_local:
+      typeof crudo.nombre_local === 'string'
+        ? crudo.nombre_local
+        : AJUSTES_DEFAULT.nombre_local,
+    moneda:
+      typeof crudo.moneda === 'string' && crudo.moneda.trim() !== ''
+        ? crudo.moneda.trim()
+        : AJUSTES_DEFAULT.moneda,
+    igv_tasa:
+      typeof crudo.igv_tasa === 'number' &&
+      Number.isFinite(crudo.igv_tasa) &&
+      crudo.igv_tasa >= 0 &&
+      crudo.igv_tasa <= 100
+        ? crudo.igv_tasa
+        : AJUSTES_DEFAULT.igv_tasa,
+  };
+}
+
+export function setAjustes(ajustes: Ajustes): void {
+  write(KEY_AJUSTES, ajustes);
 }

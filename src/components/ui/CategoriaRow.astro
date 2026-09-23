@@ -1,0 +1,25 @@
+---
+// Admin category row — SINGLE template cloned per category by
+// islands/categorias-admin.ts (same mechanism as ui/ProductRow.astro).
+// ui/ draws, never fetches or reads local data (astrobase §1). Delete opens
+// the shared confirm modal (stilesbase §5.5); rename is safe and direct.
+---
+<template data-categoria-row-template>
+	<li
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+		data-categoria-row=""
+	>
+		<span data-categoria-nombre class="text-base font-semibold text-text"></span>
+		<span class="flex flex-wrap gap-3">
+			<button type="button" class="btn btn-secondary" data-categoria-edit="">Editar</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				data-categoria-delete=""
+				data-modal-open="confirmar-borrar-categoria"
+			>
+				Eliminar
+			</button>
+		</span>
+	</li>
+</template>

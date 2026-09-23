@@ -13,6 +13,7 @@
 
 import { round2, totalesDelDia } from '../../utils/caja';
 import { formatCurrency, formatDia, formatHora, localDayKey } from '../../utils/format';
+import { topProductosDelDia } from '../../utils/reportes';
 import { getCajas, getHistorialVentas, type CajaLocal, type MetodoPago, type VentaLocal } from '../../utils/storage';
 
 const root = document.querySelector<HTMLElement>('[data-historial-root]');
@@ -103,6 +104,8 @@ if (root) {
       const nEl = day.querySelector<HTMLElement>('[data-hist-n]');
       const totalEl = day.querySelector<HTMLElement>('[data-hist-total]');
       const desgloseEl = day.querySelector<HTMLElement>('[data-hist-desglose]');
+      const topEl = day.querySelector<HTMLElement>('[data-hist-top]');
+      const topTextoEl = day.querySelector<HTMLElement>('[data-hist-top-texto]');
       const cajaEl = day.querySelector<HTMLElement>('[data-hist-caja]');
       const cajaTextoEl = day.querySelector<HTMLElement>('[data-hist-caja-texto]');
       const linesUl = day.querySelector<HTMLElement>('[data-hist-lines]');
@@ -122,6 +125,20 @@ if (root) {
         })
           .filter((parte) => parte !== '')
           .join(' · ');
+      }
+
+      // "Productos más vendidos" (base.md §7 / plan-cierre Fase 1) — top 3 of
+      // the day's already-filtered ventas, same input as the desglose above.
+      if (topEl && topTextoEl) {
+        const top = topProductosDelDia(ventas);
+        if (top.length > 0) {
+          topTextoEl.textContent = `Más vendidos: ${top
+            .map((producto) => `${producto.nombre} ×${producto.unidades}`)
+            .join(' · ')}`;
+          topEl.hidden = false;
+        } else {
+          topEl.hidden = true;
+        }
       }
 
       // Caja del día card: only if a local session exists for this fecha_dia

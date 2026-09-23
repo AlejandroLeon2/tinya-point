@@ -83,7 +83,7 @@
 - [x] `grep "from '.*api/\|localStorage"` en `src/components/ui/` → 0 (incluye el Sidebar nuevo). ✓ *(0 imports de `api/` y 0 usos reales de `localStorage.*`; las menciones en comentarios de otros `ui/` no cuentan, criterio ya usado en Fase 4.)*
 - [x] `Layout.astro` intacto: `grep "<if\b\|{.*&&.*slot"` → 0. ✓ *(0 condicionales, 3 slots verificados.)*
 - [x] **Anotar desviaciones de árbol** respecto de `astrobase.md` §2 en la tabla de desviaciones. ✓ *(23/09/2026: anotadas en la lista master de `doc/plan.md` Fase 8 — `ui/Sidebar.astro`, `layouts/LayoutApp.astro`, `islands/sidebar.ts`, sanción = decisión del dueño 2026-09-23 + `astrobase.md` §3.1 para la variante; `Header.astro` confirmado como stub que sigue en §2.)*
-- [ ] **Gate humano de accesibilidad:** tab entra al sidebar, foco visible, targets ≥ 56px, texto ≥ 18px, nada que dependa solo de hover (`stilesbase.md` §295). *(PENDIENTE — requiere navegador; ver también los gates humanos de Fase 3/4: drawer mobile, Esc, logout.)*
+- [x] **Gate humano de accesibilidad:** tab entra al sidebar, foco visible, targets ≥ 56px, texto ≥ 18px, nada que dependa solo de hover (`stilesbase.md` §295). *Firmado por el dueño 23/09/2026 (junto con los gates de drawer mobile, Esc y logout).*
 
 ## Riesgos / gotchas
 

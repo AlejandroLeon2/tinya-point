@@ -62,6 +62,7 @@ Esta hoja es **respaldo/reporte**, no la fuente de verdad operativa (esa es loca
 - `carrito_actual`: items en la venta en curso
 - `historial_ventas`: ventas cerradas localmente
 - `cola_sync`: ventas/movimientos de stock pendientes de enviar al Sheet (para modo offline)
+- `ajustes`: datos del negocio (nombre, moneda) + tasa de IGV — **7ma llave**, agregada por `plan-productos-v2.md` Fase 5 (D4); defaults aplicados cuando no existe
 
 ### 2.4 Google Sheet — hoja "Cajas" (sesiones de apertura/cierre)
 
@@ -82,6 +83,15 @@ Nueva en `plan-mejoras-2.md` (Fase 0/2, decisión D1). Una fila por sesión de c
 | diferencia | number | `conteo_cierre − (monto_apertura + efectivo_ventas)` |
 
 Mismo patrón que "Ventas": la fuente operativa vive en localStorage (llave `cajas`, `plan-mejoras-2.md` Fase 2) y la fila del Sheet es respaldo/reporte con sync offline-first.
+
+### 2.5 Google Sheet — hoja "Categorias" *(plan-productos-v2.md Fase 2, implementada 23/09/2026 — requiere crear la hoja + redeploy del backend)*
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | string | uuid generado en servidor |
+| nombre | string | único (case-insensitive) |
+
+CRUD con token; borrar solo si ningún producto la usa (`categoria_en_uso`). El filtro del catálogo sigue derivándose de los productos; el form de productos pasa a `<select>` alimentado por esta hoja.
 
 ---
 
@@ -209,6 +219,9 @@ Principio clave: **la venta nunca depende de que el Sheet responda**. El Sheet e
 - Reporte básico del día: total vendido, número de ventas, productos más vendidos — **calculado solo sobre datos locales de ese dispositivo** *(23/09/2026: la vista en pantalla —historial agrupado por día + apertura/cierre de caja— pasa a `plan-mejoras-2.md` Fases 2–4 por pedido explícito del dueño e **implementada el mismo día** (historial por día + tarjeta de caja del día); **"productos más vendidos" queda pendiente de decisión del dueño** — no estaba en los 3 pedidos que cubre ese plan; ver `extras.md` §5)*
 - Export manual de historial local a CSV (respaldo ante borrado de caché) *(sigue fuera de esta pasada — `extras.md` §5)*
 - Funcionamiento offline vía PWA: la venta debe poder completarse sin internet
+- Gestión de categorías con CRUD propio (hoja "Categorias") y el form de productos conectado a ella *(D2/D3, `plan-productos-v2.md`)*
+- Foto en las filas del listado admin de `/productos` (thumbnail; el POS ya muestra imagen) *(D3, `plan-productos-v2.md` Fase 4)*
+- Ajustes (`/ajustes`): nombre del local, moneda y IGV configurable *(D4, `plan-productos-v2.md` Fase 5 — el impuesto de §7 "configurable" ahora es dato, no constante)*
 
 ---
 
@@ -231,7 +244,7 @@ Si el agente detecta que una tarea requiere resolver alguno de estos puntos, deb
 
 - No cargar el catálogo completo con todos los campos en cada fetch: usar un índice liviano (id, nombre, precio, categoría, imagen) para listar/buscar, y solo pedir detalle completo si se necesita
 - Búsqueda client-side con índice simple (ej. Fuse.js) sobre el catálogo cacheado, no contra el Sheet en cada tecla
-- Paginación o virtualización de listas en UI si se renderizan los 1000 a la vez
+- Paginación o virtualización de listas en UI si se renderizan los 1000 a la vez *(decidido 23/09/2026 — D1 de `plan-productos-v2.md`: paginación **solo visual** de 50/página en el cliente, sin cambios de API)*
 - Imágenes con lazy-load
 
 ---

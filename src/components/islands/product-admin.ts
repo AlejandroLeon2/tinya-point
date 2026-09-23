@@ -15,7 +15,10 @@ import {
   obtenerProductos,
   productosAdmin,
 } from '../../api/actions/productos';
+import { getCategorias } from '../../api/actions/categorias';
+import { subirImagenCloudinary } from '../../api/client';
 import type { ProductoAdmin } from '../../api/types';
+import { resolveImageUrl } from '../../utils/cloudinary';
 import { formatCurrency } from '../../utils/format';
 import {
   isNonEmpty,
@@ -33,10 +36,15 @@ if (root) {
   const form = root.querySelector<HTMLFormElement>('[data-product-form]');
   const formTitle = root.querySelector<HTMLElement>('[data-product-form-title]');
   const nombreInput = root.querySelector<HTMLInputElement>('[data-product-nombre]');
-  const categoriaInput = root.querySelector<HTMLInputElement>('[data-product-categoria]');
+  const categoriaInput = root.querySelector<HTMLSelectElement>('[data-product-categoria]');
   const precioInput = root.querySelector<HTMLInputElement>('[data-product-precio]');
   const stockInput = root.querySelector<HTMLInputElement>('[data-product-stock]');
   const imagenInput = root.querySelector<HTMLInputElement>('[data-product-imagen]');
+  const imagenFileInput = root.querySelector<HTMLInputElement>('[data-product-imagen-file]');
+  const imagenPreview = root.querySelector<HTMLImageElement>('[data-product-imagen-preview]');
+  const imagenQuitarBtn = root.querySelector<HTMLButtonElement>('[data-product-imagen-quitar]');
+  const imagenEstado = root.querySelector<HTMLElement>('[data-product-imagen-estado]');
+  const imagenError = root.querySelector<HTMLElement>('[data-product-imagen-error]');
   const submitBtn = root.querySelector<HTMLButtonElement>('[data-product-submit]');
   const cancelBtn = root.querySelector<HTMLButtonElement>('[data-product-cancel]');
   const confirmDeactivateBtn = root.querySelector<HTMLButtonElement>(
@@ -57,6 +65,36 @@ if (root) {
   let editingId: string | null = null;
   let pendingDeactivateId: string | null = null;
 
+  // Categoría <select> (plan-productos-v2.md Fase 3): options come from the
+  // public GET ?action=categorias; when that action isn't deployed yet (or
+  // offline) fall back to the categories DERIVED from the admin product
+  // list — same degradation strategy as the productosAdmin fallback below.
+  // Only the blank first option is preserved across rebuilds.
+  async function poblarCategorias(): Promise<void> {
+    if (!categoriaInput) return;
+    const res = await getCategorias();
+    let nombres: string[];
+    if (res.status === 'success') {
+      nombres = res.body.categorias.map((c) => c.nombre);
+    } else {
+      nombres = [...new Set(productos.map((p) => p.categoria).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'es'),
+      );
+    }
+
+    const seleccionPrevia = categoriaInput.value;
+    while (categoriaInput.options.length > 1) categoriaInput.remove(1);
+    for (const nombre of nombres) {
+      const option = document.createElement('option');
+      option.value = nombre;
+      option.textContent = nombre;
+      categoriaInput.append(option);
+    }
+    // Keep the cashier's in-progress selection when it still exists.
+    const existe = Array.from(categoriaInput.options).some((o) => o.value === seleccionPrevia);
+    categoriaInput.value = existe ? seleccionPrevia : '';
+  }
+
   function mostrarOk(mensaje: string): void {
     if (okText) okText.textContent = mensaje;
     if (okAlert) okAlert.hidden = false;
@@ -72,6 +110,54 @@ if (root) {
   function ocultarAlertas(): void {
     if (okAlert) okAlert.hidden = true;
     if (errorAlert) errorAlert.hidden = true;
+  }
+
+  // --- Cloudinary upload (plan-cierre.md Fase 3) -------------------------
+  const MAX_IMAGEN_BYTES = 5 * 1024 * 1024; // preset also caps at 5 MB
+
+  function sincronizarImagen(): void {
+    const url = imagenInput?.value.trim() ?? '';
+    if (imagenPreview) {
+      imagenPreview.src = url;
+      imagenPreview.hidden = url === '';
+    }
+    if (imagenQuitarBtn) imagenQuitarBtn.hidden = url === '';
+  }
+
+  function mostrarErrorImagen(mensaje: string): void {
+    if (!imagenError) return;
+    imagenError.textContent = mensaje;
+    imagenError.hidden = false;
+  }
+
+  function ocultarEstadoImagen(): void {
+    if (imagenEstado) imagenEstado.hidden = true;
+    if (imagenError) imagenError.hidden = true;
+  }
+
+  async function subirImagen(file: File): Promise<void> {
+    if (imagenEstado) {
+      imagenEstado.textContent = 'Subiendo imagen…';
+      imagenEstado.hidden = false;
+    }
+    if (imagenError) imagenError.hidden = true;
+
+    const res = await subirImagenCloudinary(file);
+
+    if (imagenEstado) imagenEstado.hidden = true;
+    if (res.status === 'success') {
+      if (imagenInput) imagenInput.value = res.url;
+      sincronizarImagen();
+      return;
+    }
+    // Simple Spanish, never the raw failure (stilesbase §5.7).
+    if (res.status === 'network_failure') {
+      mostrarErrorImagen('Sin conexión — no se pudo subir la imagen.');
+    } else if (res.status === 'not_configured') {
+      mostrarErrorImagen('La subida de imágenes no está configurada en este entorno.');
+    } else {
+      mostrarErrorImagen('No se pudo subir la imagen. Intentá de nuevo.');
+    }
   }
 
   // Spanish copy per transport outcome / §4.5 code — the code itself never
@@ -100,6 +186,7 @@ if (root) {
     const res = await productosAdmin();
     if (res.status === 'success') {
       productos = res.body.productos;
+      await poblarCategorias();
       render();
       return;
     }
@@ -110,10 +197,13 @@ if (root) {
     const publico = await obtenerProductos();
     if (publico.status === 'success') {
       productos = publico.body.productos.map((p) => ({ ...p, activo: true }));
+      await poblarCategorias();
       render();
       return;
     }
 
+    // Load failed entirely: leave whatever options the select already has —
+    // wiping them would break a form the cashier may be filling right now.
     render();
     mostrarError(
       publico.status === 'network_failure'
@@ -138,10 +228,35 @@ if (root) {
       const badge = row.querySelector<HTMLElement>('[data-product-badge]');
       const desactivar = row.querySelector<HTMLElement>('[data-product-deactivate]');
       const restaurar = row.querySelector<HTMLElement>('[data-product-restore]');
+      const img = row.querySelector<HTMLImageElement>('[data-product-img]');
 
       if (nombre) nombre.textContent = producto.nombre;
       if (precio) precio.textContent = formatCurrency(producto.precio);
       if (stock) stock.textContent = `Stock: ${producto.stock}`;
+
+      // Admin thumbnail (plan-productos-v2.md Fase 4): single render point
+      // via resolveImageUrl (same as the POS card); hidden until `load`, and
+      // any error just leaves the row without the thumb — never a broken icon.
+      if (img) {
+        const url = resolveImageUrl(producto.imagen_url);
+        if (url) {
+          img.addEventListener(
+            'error',
+            () => {
+              img.hidden = true;
+            },
+            { once: true },
+          );
+          img.addEventListener(
+            'load',
+            () => {
+              img.hidden = false;
+            },
+            { once: true },
+          );
+          img.src = url;
+        }
+      }
       if (badge) {
         badge.textContent = producto.activo ? 'Activo' : 'Inactivo';
         badge.className = `inline-block rounded-full px-3 py-1 text-base font-semibold ${
@@ -167,11 +282,27 @@ if (root) {
     if (submitBtn) submitBtn.textContent = 'Guardar cambios';
     if (cancelBtn) cancelBtn.hidden = false;
     if (nombreInput) nombreInput.value = producto.nombre;
-    if (categoriaInput) categoriaInput.value = producto.categoria;
+    if (categoriaInput) {
+      // Legacy products may carry a category the select doesn't offer yet
+      // (created before Fase 3, or missing from the sheet): inject it so the
+      // value never silently resets to blank while editing.
+      const existe = Array.from(categoriaInput.options).some(
+        (o) => o.value === producto.categoria,
+      );
+      if (producto.categoria && !existe) {
+        const option = document.createElement('option');
+        option.value = producto.categoria;
+        option.textContent = producto.categoria;
+        categoriaInput.append(option);
+      }
+      categoriaInput.value = producto.categoria;
+    }
     if (precioInput) precioInput.value = String(producto.precio);
     if (stockInput) stockInput.value = String(producto.stock);
     if (imagenInput) imagenInput.value = producto.imagen_url;
     ocultarAlertas();
+    ocultarEstadoImagen();
+    sincronizarImagen();
     nombreInput?.focus();
   }
 
@@ -182,6 +313,8 @@ if (root) {
     if (submitBtn) submitBtn.textContent = 'Guardar producto';
     if (cancelBtn) cancelBtn.hidden = true;
     ocultarAlertas();
+    ocultarEstadoImagen();
+    sincronizarImagen();
   }
 
   type DatosForm = {
@@ -194,7 +327,7 @@ if (root) {
 
   function leerFormulario():
     | { ok: true; datos: DatosForm }
-    | { ok: false; mensaje: string; campo: HTMLInputElement | null } {
+    | { ok: false; mensaje: string; campo: HTMLInputElement | HTMLSelectElement | null } {
     const nombre = nombreInput?.value.trim() ?? '';
     const categoria = categoriaInput?.value.trim() ?? '';
     const precioRaw = precioInput?.value.trim() ?? '';
@@ -207,7 +340,7 @@ if (root) {
     if (!isNonEmpty(categoria)) {
       return {
         ok: false,
-        mensaje: 'Ingresá la categoría del producto.',
+        mensaje: 'Elegí la categoría del producto.',
         campo: categoriaInput ?? null,
       };
     }
@@ -298,6 +431,28 @@ if (root) {
 
   cancelBtn?.addEventListener('click', () => {
     modoNuevo();
+  });
+
+  imagenFileInput?.addEventListener('change', () => {
+    const file = imagenFileInput.files?.[0];
+    // Clear immediately so picking the SAME file again still fires change.
+    imagenFileInput.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      mostrarErrorImagen('Elegí un archivo de imagen (JPG, PNG o WebP).');
+      return;
+    }
+    if (file.size > MAX_IMAGEN_BYTES) {
+      mostrarErrorImagen('La imagen pesa más de 5 MB. Reducí el tamaño e intentá de nuevo.');
+      return;
+    }
+    void subirImagen(file);
+  });
+
+  imagenQuitarBtn?.addEventListener('click', () => {
+    if (imagenInput) imagenInput.value = '';
+    ocultarEstadoImagen();
+    sincronizarImagen();
   });
 
   rowsEl?.addEventListener('click', (event) => {

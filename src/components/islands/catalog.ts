@@ -33,10 +33,19 @@ const staleText = document.querySelector<HTMLElement>('[data-catalog-stale-text]
 const refreshBtn = document.querySelector<HTMLButtonElement>('[data-catalog-refresh]');
 const emptyCatalog = document.querySelector<HTMLElement>('[data-empty-state="empty-catalog"]');
 const noResults = document.querySelector<HTMLElement>('[data-empty-state="no-results"]');
+const pagination = document.querySelector<HTMLElement>('[data-catalog-pagination]');
+const rangeText = document.querySelector<HTMLElement>('[data-catalog-range]');
+const prevBtn = document.querySelector<HTMLButtonElement>('[data-catalog-prev]');
+const nextBtn = document.querySelector<HTMLButtonElement>('[data-catalog-next]');
+
+// Visual pagination (plan-productos-v2 D1): client-side chunks over the
+// already-filtered list. No API, no storage, no server paging.
+const PAGE_SIZE = 50;
 
 if (grid && template && searchInput && categorySelect) {
   let products: Producto[] = [];
   let fuse: Fuse<Producto> | null = null;
+  let page = 0;
 
   function buildIndex(items: Producto[]): void {
     fuse = new Fuse(items, { keys: ['nombre', 'categoria'], threshold: 0.3 });
@@ -136,12 +145,30 @@ if (grid && template && searchInput && categorySelect) {
     return node;
   }
 
+  function updatePagination(total: number, totalPages: number): void {
+    if (!pagination || !rangeText || !prevBtn || !nextBtn) return;
+    // One page (or nothing) → the controls only add noise.
+    pagination.hidden = totalPages <= 1;
+    if (totalPages <= 1) return;
+    const from = page * PAGE_SIZE + 1;
+    const to = Math.min((page + 1) * PAGE_SIZE, total);
+    rangeText.textContent = `${formatNumero(from)}–${formatNumero(to)} de ${formatNumero(total)}`;
+    prevBtn.disabled = page === 0;
+    nextBtn.disabled = page >= totalPages - 1;
+  }
+
   function render(): void {
     const list = visibleProducts();
 
+    // Clamp first: a narrower filter or a refresh may have shrunk the list
+    // under the cashier's current page.
+    const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    page = Math.min(Math.max(page, 0), totalPages - 1);
+
     // Remove only previously painted cards — template and coexistents stay.
     grid.querySelectorAll('[data-product-card]').forEach((card) => card.remove());
-    for (const product of list) {
+    const start = page * PAGE_SIZE;
+    for (const product of list.slice(start, start + PAGE_SIZE)) {
       const card = paintCard(product);
       if (card) grid.append(card);
     }
@@ -149,6 +176,7 @@ if (grid && template && searchInput && categorySelect) {
     const isEmptyCatalog = products.length === 0;
     if (emptyCatalog) emptyCatalog.hidden = !isEmptyCatalog;
     if (noResults) noResults.hidden = !(products.length > 0 && list.length === 0);
+    updatePagination(list.length, totalPages);
   }
 
   function setStale(timestamp: number | null): void {
@@ -215,11 +243,26 @@ if (grid && template && searchInput && categorySelect) {
   // (plan-features Fase 2 gate, appscriptbase.md §5.3).
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   searchInput.addEventListener('input', () => {
+    page = 0;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(render, 200);
   });
 
-  categorySelect.addEventListener('change', render);
+  // New filter context → back to the first page (render clamps anyway).
+  categorySelect.addEventListener('change', () => {
+    page = 0;
+    render();
+  });
+
+  prevBtn?.addEventListener('click', () => {
+    page -= 1;
+    render();
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    page += 1;
+    render();
+  });
 
   refreshBtn?.addEventListener('click', () => {
     void refreshFromApi(getCatalogoCache());

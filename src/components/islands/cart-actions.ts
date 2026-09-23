@@ -17,7 +17,7 @@ import { closestCard } from '../../utils/dom';
 import { formatCurrency } from '../../utils/format';
 import { closeModal } from '../../utils/modal';
 import type { ItemCarrito } from '../../utils/storage';
-import { calcTax, calcTotal } from '../../utils/tax';
+import { calcTax, calcTotal, etiquetaIgv } from '../../utils/tax';
 
 // Scoped to the cart summary section — the checkout panel on the same page
 // renders its OWN CartTotals instance with the same hooks.
@@ -27,6 +27,10 @@ const lineTemplate = document.querySelector<HTMLTemplateElement>('[data-cart-lin
 const subtotalEl = summary?.querySelector<HTMLElement>('[data-cart-subtotal]') ?? null;
 const taxEl = summary?.querySelector<HTMLElement>('[data-cart-impuesto]') ?? null;
 const totalEl = summary?.querySelector<HTMLElement>('[data-cart-total]') ?? null;
+const taxLabelEl = summary?.querySelector<HTMLElement>('[data-cart-tax-label]') ?? null;
+// Configured IGV overwrites the build-time default label (Fase 5) — once at
+// startup: the rate only changes via /ajustes, which reloads the page.
+if (taxLabelEl) taxLabelEl.textContent = etiquetaIgv();
 // Modal key lives in ui/CancelSale.astro — single cancel-sale instance.
 const cancelTrigger =
   summary?.querySelector<HTMLElement>('[data-modal-open="cancel-sale"]') ?? null;

@@ -12,15 +12,24 @@
 		class="rounded-lg border border-border bg-surface"
 	>
 		<summary
-			class="flex cursor-pointer flex-wrap items-center justify-between gap-3 p-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+			class="flex cursor-pointer flex-col gap-1 p-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 		>
-			<span class="flex flex-wrap items-center gap-3">
-				<span data-hist-dia class="font-semibold text-text"></span>
-				<span data-hist-n class="text-text-muted"></span>
+			<span class="flex flex-wrap items-center justify-between gap-3">
+				<span class="flex flex-wrap items-center gap-3">
+					<span data-hist-dia class="font-semibold text-text"></span>
+					<span data-hist-n class="text-text-muted"></span>
+				</span>
+				<span class="flex flex-wrap items-center justify-end gap-3">
+					<span data-hist-desglose class="text-text-muted"></span>
+					<span data-hist-total class="font-bold text-text"></span>
+				</span>
 			</span>
-			<span class="flex flex-wrap items-center justify-end gap-3">
-				<span data-hist-desglose class="text-text-muted"></span>
-				<span data-hist-total class="font-bold text-text"></span>
+			<!-- "Productos más vendidos" of the day (base.md §7, plan-cierre
+			     Fase 1) — TEXT line inside the recap, revealed by the island
+			     only when the day has products with movement (stilesbase
+			     §5.2: words carry the meaning, never color alone). -->
+			<span data-hist-top class="text-text-muted" hidden>
+				<span data-hist-top-texto></span>
 			</span>
 		</summary>
 		<!-- Caja del día card (Fase 4): text-only summary of the local caja

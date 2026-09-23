@@ -16,7 +16,12 @@ import Button from './Button.astro';
 	</label>
 	<label class="flex flex-col gap-1 text-base font-semibold text-text">
 		Categoría
-		<input data-product-categoria type="text" class="input-field" autocomplete="off" />
+		<!-- <select> fed from GET ?action=categorias with a products-derived
+		     fallback (plan-productos-v2.md Fase 3/D2) — the island rebuilds
+		     the options; ui/ only draws the shell. -->
+		<select data-product-categoria class="input-field">
+			<option value="">Elegí una categoría</option>
+		</select>
 	</label>
 
 	<div class="flex flex-wrap gap-3">
@@ -44,10 +49,39 @@ import Button from './Button.astro';
 		</label>
 	</div>
 
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
-		Imagen (URL, opcional)
-		<input data-product-imagen type="url" class="input-field" autocomplete="off" />
-	</label>
+	<!-- Imagen (plan-cierre.md Fase 3): upload to Cloudinary via unsigned
+	     preset — the file input lives inside its label (keyboard-reachable),
+	     the resulting secure_url lands in the hidden [data-product-imagen]
+	     input that leerFormulario() already validates. Preview + states are
+	     pure markup; the island fills them (ui/ draws, never fetches). -->
+	<div class="flex flex-col gap-2">
+		<span class="text-base font-semibold text-text">Imagen (opcional)</span>
+		<img
+			data-product-imagen-preview
+			alt=""
+			hidden
+			class="h-32 w-32 rounded-lg border border-border object-cover"
+		/>
+		<input data-product-imagen type="url" class="hidden" tabindex="-1" aria-hidden="true" autocomplete="off" />
+		<div class="flex flex-wrap items-center gap-3">
+			<label
+				class="btn btn-secondary inline-flex cursor-pointer items-center justify-center focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+			>
+				Subir foto
+				<input
+					data-product-imagen-file
+					type="file"
+					accept="image/*"
+					class="sr-only"
+				/>
+			</label>
+			<button type="button" data-product-imagen-quitar class="btn btn-secondary" hidden>
+				Quitar imagen
+			</button>
+		</div>
+		<p data-product-imagen-estado class="text-base text-text-muted" aria-live="polite" hidden></p>
+		<p data-product-imagen-error class="text-base text-danger" role="alert" hidden></p>
+	</div>
 
 	<div class="flex flex-wrap gap-3">
 		<Button type="submit" variant="primary" data-product-submit>Guardar producto</Button>

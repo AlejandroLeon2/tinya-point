@@ -1,0 +1,26 @@
+---
+// Category create/rename form — ui draws only; all behavior belongs to
+// islands/categorias-admin.ts (astrobase §3.3/§1). The title and submit
+// label flip between "Nueva" and "Renombrar" via textContent from the island.
+import Button from './Button.astro';
+---
+<form data-categoria-form class="flex flex-col gap-3 sm:flex-row sm:items-end">
+	<label class="flex flex-1 flex-col gap-1 text-base font-semibold text-text">
+		<span data-categoria-form-title>Nueva categoría</span>
+		<input
+			data-categoria-nombre
+			class="input-field"
+			type="text"
+			placeholder="Ej: bebidas"
+			autocomplete="off"
+		/>
+	</label>
+	<span class="flex gap-3">
+		<Button type="submit" variant="primary" data-categoria-submit>
+			Guardar categoría
+		</Button>
+		<button type="button" data-categoria-cancel class="btn btn-secondary" hidden>
+			Cancelar
+		</button>
+	</span>
+</form>

@@ -5,7 +5,8 @@
 // page (that would break the client's JSON.parse — §6).
 
 /**
- * Public reads. Only ?action=productos (no token), per §3.1/§4.1.
+ * Public reads. ?action=productos and ?action=categorias (no token), per
+ * §3.1/§4.1/§4.11.
  * @param {{parameter: Object}} e
  * @return {GoogleAppsScript.ContentService.TextOutput}
  */
@@ -14,6 +15,9 @@ function doGet(e) {
     const action = e && e.parameter ? String(e.parameter.action || '') : '';
     if (action === 'productos') {
       return respuestaJson(obtenerProductos());
+    }
+    if (action === 'categorias') {
+      return respuestaJson(obtenerCategorias());
     }
     return respuestaJson(respuestaError('accion_no_soportada', 'doGet: ' + action));
   } catch (err) {
@@ -66,6 +70,13 @@ function despacharAccion(action, body) {
       return abrirCaja(body.token, body.data);
     case 'cerrarCaja':
       return cerrarCaja(body.token, body.data);
+    // plan-productos-v2.md Fase 2 — categorías (contracts §4.12–§4.14).
+    case 'crearCategoria':
+      return crearCategoria(body.token, body.data);
+    case 'actualizarCategoria':
+      return actualizarCategoria(body.token, body.data);
+    case 'borrarCategoria':
+      return borrarCategoria(body.token, body.data);
     default:
       return respuestaError('accion_no_soportada', 'despacharAccion: ' + action);
   }

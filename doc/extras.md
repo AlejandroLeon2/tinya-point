@@ -80,6 +80,8 @@ Muestra la imagen cacheada al instante y la actualiza en segundo plano si cambi�
 
 ## 4. Imágenes con Cloudinary
 
+> **23/09/2026 — cambio de decisión (dueño):** las fotos **sí** se suben desde la app — upload a Cloudinary con **preset sin firmar** desde el form de productos (antes: "sin uploader, subida manual al Sheet"). La subida manual queda innecesaria. Ver `plan-cierre.md` Fase 3.
+
 **Por qué:** ni Sheets ni Drive están hechos para servir imágenes optimizadas en producción (sin resize automático, sin CDN real, URLs poco estables). Cloudinary sí, y tiene plan gratuito suficiente para un catálogo de hasta ~1000 productos.
 
 **Qué cambia en el modelo de datos:** la columna `imagen_url` de la hoja `Productos` (especificación, sección 2.1) ahora guarda directamente la URL de Cloudinary, no una URL cualquiera.
