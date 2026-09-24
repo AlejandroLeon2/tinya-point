@@ -1,8 +1,8 @@
 // Catalog cache helpers (D5).
 // Reference: catalog.ts:265-289, stock.ts:330-355 for refreshFromApi.
 
-import { obtenerProductos } from '../api';
-import { setCatalogoCache } from '../stores/catalog';
+import { obtenerProductos } from '../api/actions/productos';
+import { setCatalogoCache } from './storage';
 
 // Extracted identical body: fetch + map + setCache + timestamp.
 // Returns true on success, false on failure. Caller handles setData/pintar/setStale.
