@@ -37,28 +37,33 @@ import {
   type CatalogoCache,
   type Producto,
 } from '../../utils/storage';
+import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, paintStat } from '../../utils/dom';
+import { crearFeedback } from '../../utils/feedback';
+import { minutosDesde } from '../../utils/catalog-cache';
 
-const root = document.querySelector<HTMLElement>('[data-stock-root]');
+const root = qs<HTMLElement>(document, '[data-stock-root]');
 
 if (root) {
-  const listEl = root.querySelector<HTMLElement>('[data-stock-list]');
-  const template = root.querySelector<HTMLTemplateElement>('[data-stock-row-template]');
-  const umbralEl = root.querySelector<HTMLElement>('[data-stock-umbral]');
-  const staleBox = root.querySelector<HTMLElement>('[data-stock-stale]');
-  const staleText = root.querySelector<HTMLElement>('[data-stock-stale-text]');
-  const staleWarn = root.querySelector<HTMLElement>('[data-stock-stale-warn]');
-  const warningAlert = root.querySelector<HTMLElement>('[data-alert="stock-warning"]');
-  const warningText = root.querySelector<HTMLElement>('[data-stock-warning-text]');
-  const emptyOk = root.querySelector<HTMLElement>('[data-empty-state="stock-ok"]');
-  const emptyNoData = root.querySelector<HTMLElement>('[data-empty-state="stock-nodata"]');
-  const filtroWrap = root.querySelector<HTMLElement>('[data-stock-filter]');
+  const listEl = qs<HTMLElement>(root, '[data-stock-list]');
+  const template = qs<HTMLTemplateElement>(root, '[data-stock-row-template]');
+  const umbralEl = qs<HTMLElement>(root, '[data-stock-umbral]');
+  const staleBox = qs<HTMLElement>(root, '[data-stock-stale]');
+  const staleText = qs<HTMLElement>(root, '[data-stock-stale-text]');
+  const staleWarn = qs<HTMLElement>(root, '[data-stock-stale-warn]');
+  const warningAlert = qs<HTMLElement>(root, '[data-alert="stock-warning"]');
+  const warningText = qs<HTMLElement>(root, '[data-stock-warning-text]');
+  const emptyOk = qs<HTMLElement>(root, '[data-empty-state="stock-ok"]');
+  const emptyNoData = qs<HTMLElement>(root, '[data-empty-state="stock-nodata"]');
+  const filtroWrap = qs<HTMLElement>(root, '[data-stock-filter]');
 
   // KPI cards keyed by data-stock-kpi (reponer | agotados | valorizado).
   const kpis = new Map<string, HTMLElement>();
-  root.querySelectorAll<HTMLElement>('[data-stock-kpi]').forEach((card) => {
+  qsa<HTMLElement>(root, '[data-stock-kpi]').forEach((card) => {
     const key = card.dataset.stockKpi;
     if (key) kpis.set(key, card);
   });
+
+  const feedback = crearFeedback(warningAlert, warningText);
 
   let productos: Producto[] = [];
   let hayDatos = false;
@@ -73,47 +78,32 @@ if (root) {
     return Math.max(STOCK_MIN, Math.min(STOCK_MAX, Math.round(valor)));
   }
 
-  function pintarStat(key: string, valor: string): void {
-    const valueEl = kpis.get(key)?.querySelector<HTMLElement>('[data-stat-value]');
-    if (valueEl) valueEl.textContent = valor;
-  }
-
-  function mostrarErrorStock(mensaje: string): void {
-    if (warningText) warningText.textContent = mensaje;
-    if (warningAlert) warningAlert.hidden = false;
-  }
-
-  function ocultarErrorStock(): void {
-    if (warningAlert) warningAlert.hidden = true;
-  }
-
   function pintarTags(node: HTMLElement, stock: number): void {
     const umbral = getAjustes().stock_alerta_min;
-    const agotado = node.querySelector<HTMLElement>('[data-stock-agotado]');
-    const bajo = node.querySelector<HTMLElement>('[data-stock-bajo]');
-    if (agotado) agotado.hidden = stock !== 0;
+    const agotado = qs<HTMLElement>(node, '[data-stock-agotado]');
+    const bajo = qs<HTMLElement>(node, '[data-stock-bajo]');
+    setHidden(agotado, stock !== 0);
     if (bajo) {
-      bajo.hidden = !(stock > 0 && stock < umbral);
+      setHidden(bajo, !(stock > 0 && stock < umbral));
       bajo.title = `Menos de ${formatNumero(umbral)} unidades`; // "con umbral" (spec §9)
     }
   }
 
   function paintRow(producto: Producto): HTMLElement | null {
-    if (!template) return null;
-    const node = template.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
+    const node = cloneTemplate(template);
     if (!node) return null;
 
     node.dataset.productId = producto.id;
     node.dataset.stockActual = String(producto.stock);
 
-    const nombre = node.querySelector<HTMLElement>('[data-stock-nombre]');
-    const categoria = node.querySelector<HTMLElement>('[data-stock-categoria]');
-    const precio = node.querySelector<HTMLElement>('[data-stock-precio]');
-    const input = node.querySelector<HTMLInputElement>('[data-stock-input]');
+    const nombre = qs<HTMLElement>(node, '[data-stock-nombre]');
+    const categoria = qs<HTMLElement>(node, '[data-stock-categoria]');
+    const precio = qs<HTMLElement>(node, '[data-stock-precio]');
+    const input = qs<HTMLInputElement>(node, '[data-stock-input]');
 
-    if (nombre) nombre.textContent = producto.nombre;
-    if (categoria) categoria.textContent = producto.categoria;
-    if (precio) precio.textContent = formatCurrency(producto.precio);
+    setText(nombre, producto.nombre);
+    setText(categoria, producto.categoria);
+    setText(precio, formatCurrency(producto.precio));
     if (input) {
       input.value = String(producto.stock);
       // No fixed ids: the accessible name carries the product (astrobase §3.4).
@@ -127,15 +117,13 @@ if (root) {
   // clobber the focused stepper input mid-repostock (plan-reponer-buscar D2).
   function pintarStats(): void {
     const umbral = getAjustes().stock_alerta_min;
-    if (umbralEl) {
-      umbralEl.textContent = `Mostrando productos con stock menor a ${formatNumero(umbral)}.`;
-    }
+    setText(umbralEl, `Mostrando productos con stock menor a ${formatNumero(umbral)}.`);
     const porReponer = productos.filter((p) => p.stock < umbral).length;
     const agotados = productos.filter((p) => p.stock === 0).length;
     const valorInventario = productos.reduce((suma, p) => suma + p.stock * p.precio, 0);
-    pintarStat('reponer', formatNumero(porReponer));
-    pintarStat('agotados', formatNumero(agotados));
-    pintarStat('valorizado', formatCurrency(valorInventario));
+    paintStat(kpis.get('reponer') ?? null, formatNumero(porReponer));
+    paintStat(kpis.get('agotados') ?? null, formatNumero(agotados));
+    paintStat(kpis.get('valorizado') ?? null, formatCurrency(valorInventario));
   }
 
   // Rows visible for the active chip: base = bajo bajo el umbral; the
@@ -166,15 +154,15 @@ if (root) {
     const lista = visibles();
 
     if (listEl && template) {
-      listEl.querySelectorAll('[data-stock-row]').forEach((row) => row.remove());
+      qsa(listEl, '[data-stock-row]').forEach((row) => row.remove());
       for (const producto of lista) {
         const row = paintRow(producto);
         if (row) listEl.append(row);
       }
-      listEl.hidden = !hayDatos || lista.length === 0;
+      setHidden(listEl, !hayDatos || lista.length === 0);
     }
-    if (emptyOk) emptyOk.hidden = !(hayDatos && lista.length === 0);
-    if (emptyNoData) emptyNoData.hidden = hayDatos;
+    setHidden(emptyOk, !(hayDatos && lista.length === 0));
+    setHidden(emptyNoData, hayDatos);
   }
 
   // ── Filter chips (spec §9) ─────────────────────────────────────────────
@@ -186,11 +174,7 @@ if (root) {
     const valor = chip.dataset.stockFilterValue;
     if (valor !== 'todos' && valor !== 'agotados' && valor !== 'categoria') return;
     filtro = valor;
-    // aria-pressed travels with static classes at markup time (Chip styles
-    // it); runtime state = that attribute only (§0.4).
-    filtroWrap.querySelectorAll<HTMLElement>('[data-stock-filter-value]').forEach((el) => {
-      el.setAttribute('aria-pressed', String(el === chip));
-    });
+    selectChip(filtroWrap, 'data-stock-filter-value', valor);
     pintar();
   });
 
@@ -262,11 +246,11 @@ if (root) {
         });
       }
       pintarStats();
-      ocultarErrorStock();
+      feedback.ocultar();
     } else {
       // Revert to the last server-known value so the screen never lies.
       input.value = String(guardado);
-      mostrarErrorStock(mensajeDeError(res.status, res.status === 'api_error' ? res.error : undefined));
+      feedback.error(mensajeDeError(res.status, res.status === 'api_error' ? res.error : undefined));
     }
 
     // Work queued while this save was in flight → keep going.
@@ -283,7 +267,7 @@ if (root) {
     const btn = target.closest<HTMLElement>('[data-stock-step]');
     if (!btn || !listEl.contains(btn)) return;
     const row = btn.closest<HTMLElement>('[data-stock-row]');
-    const input = row?.querySelector<HTMLInputElement>('[data-stock-input]');
+    const input = qs<HTMLInputElement>(row, '[data-stock-input]');
     if (!row || !input) return;
     const delta = Number(btn.dataset.stockStep);
     if (!Number.isFinite(delta)) return;
@@ -310,21 +294,21 @@ if (root) {
   function setStale(timestamp: number | null): void {
     if (!staleBox || !staleText) return;
     if (timestamp === null) {
-      staleBox.hidden = true;
+      setHidden(staleBox, true);
       return;
     }
-    const minutos = Math.max(1, Math.round((Date.now() - timestamp) / 60_000));
+    const minutos = minutosDesde(timestamp);
     const texto = `Catálogo actualizado hace ${formatNumero(minutos)} min`;
     const viejo = Date.now() - timestamp >= TTL_CATALOGO_MS;
     if (viejo && staleWarn) {
-      staleText.textContent = '';
-      staleWarn.textContent = texto;
-      staleWarn.hidden = false;
+      setText(staleText, '');
+      setText(staleWarn, texto);
+      setHidden(staleWarn, false);
     } else {
-      if (staleWarn) staleWarn.hidden = true;
-      staleText.textContent = texto;
+      setHidden(staleWarn, true);
+      setText(staleText, texto);
     }
-    staleBox.hidden = false;
+    setHidden(staleBox, false);
   }
 
   async function refreshFromApi(previous: CatalogoCache | null): Promise<void> {
