@@ -1,0 +1,24 @@
+---
+// CajaRow (T3.7 — refactorUI §5): one line of the caja history — fecha,
+// montos (apertura → cierre) and the difference as StatusPill. Tone travels
+// as visibility of the four pills (data-caja-row-diff), never class
+// toggling (§0.4). Rendered from a <template> by islands/caja.ts; the
+// "En curso" pill marks the still-open session.
+import StatusPill from './StatusPill.astro';
+---
+<li class="flex items-center justify-between gap-3 border-b border-border py-3 last:border-b-0">
+	<div class="flex min-w-0 flex-col gap-1">
+		<span data-caja-row-fecha class="text-base font-semibold text-text tabular-nums"></span>
+		<span data-caja-row-montos class="text-base text-text-muted tabular-nums"></span>
+	</div>
+	<div class="flex shrink-0 items-center gap-2">
+		<StatusPill tone="muted" data-caja-row-diff="curso" hidden>En curso</StatusPill>
+		<StatusPill tone="ok" data-caja-row-diff="cuadra" hidden>Cuadra</StatusPill>
+		<StatusPill tone="warn" data-caja-row-diff="faltan" hidden>
+			Faltan <span data-caja-row-faltan-valor class="tabular-nums"></span>
+		</StatusPill>
+		<StatusPill tone="info" data-caja-row-diff="sobran" hidden>
+			Sobran <span data-caja-row-sobran-valor class="tabular-nums"></span>
+		</StatusPill>
+	</div>
+</li>

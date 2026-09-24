@@ -1,33 +1,34 @@
 ---
 import LayoutApp from '../layouts/LayoutApp.astro';
 import CatalogContainer from '../components/smart/CatalogContainer.astro';
-import CartSummary from '../components/smart/CartSummary.astro';
-import CheckoutPanel from '../components/smart/CheckoutPanel.astro';
+import TicketContainer from '../components/smart/TicketContainer.astro';
+import CartBar from '../components/ui/CartBar.astro';
 import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
 import OfflineBanner from '../components/ui/OfflineBanner.astro';
-import Alert from '../components/ui/Alert.astro';
 
 // Pages combine LayoutApp with smart/ containers only — never ui/ directly when
-// a smart equivalent exists (doc/astrobase.md §3.8). OfflineBanner and the
-// caja alert have NO smart equivalent (pure visual, wired by their islands —
-// plan-features Fase 1 / plan-mejoras-2 Fase 2). SyncStatusIndicator rides
-// the header slot — the "ícono discreto en el header" of extras.md §6.
-// LayoutApp adds the sidebar shell + owns <main> (doc/plan-sidebar.md Fase 2).
+// a smart equivalent exists (doc/astrobase.md §3.8). OfflineBanner and CartBar
+// have NO smart equivalent (pure visual, wired by islands). SyncStatusIndicator
+// rides the header slot — the alert + detail modal live under the TopBar.
+// LayoutApp owns <title>, the ONE h1 and <main> (plan-sidebar.md Fase 2).
+//
+// refactorUI §4.2B/C (Fase 2): TWO-column POS grid at ≥lg — catalog (scroll
+// own) + the Ticket modal-root rendered as grid child #2 (its `ticket`
+// variant leaves the fixed-sheet world at ≥lg; one DOM node, §4.2C). The
+// CartBar (+ its in-flow spacer) rides <main> after the grid so it never
+// covers the last row.
 ---
-<LayoutApp>
+<LayoutApp title="Venta">
 	<SyncStatusIndicator slot="header" />
 	<OfflineBanner />
-	<!-- Non-blocking caja reminder (extras.md §6): a banner, never a gate —
-	     the sale proceeds with or without an open caja (plan-mejoras-2 Fase 2). -->
-	<Alert tone="warning" name="aviso-caja" hidden>
-		<span>No hay caja abierta todavía.</span>
-		<a slot="actions" href="/caja" class="btn btn-secondary">Ir a caja</a>
-	</Alert>
-	<CatalogContainer />
-	<CartSummary />
-	<CheckoutPanel />
+	<div class="grid min-w-0 lg:flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden lg:py-6 lg:pr-6">
+		<div class="min-w-0 lg:h-full lg:overflow-y-auto">
+			<CatalogContainer />
+		</div>
+		<TicketContainer />
+	</div>
+	<CartBar />
 </LayoutApp>
 <script>
 	import '../components/islands/offline-banner';
-	import '../components/islands/caja-banner';
 </script>

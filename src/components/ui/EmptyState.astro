@@ -13,7 +13,7 @@
 interface Props {
   mensaje?: string;
   hidden?: boolean;
-  state?: 'empty-catalog' | 'no-results' | 'empty-historial' | 'no-date-results' | 'venta-notfound';
+  state?: 'empty-catalog' | 'no-results' | 'empty-historial' | 'no-date-results' | 'venta-notfound' | 'stock-ok' | 'stock-nodata' | 'empty-productos';
 }
 const { mensaje = 'Todavía no hay productos cargados', hidden = false, state } = Astro.props;
 ---
@@ -33,4 +33,14 @@ const { mensaje = 'Todavía no hay productos cargados', hidden = false, state } 
 		<path d="M3 7.5 12 12l9-4.5M12 12v9"></path>
 	</svg>
 	<p class="text-base text-text-muted">{mensaje}</p>
+	{
+		/* Optional CTA (refactorUI §2.2 — Fase 1): only render the wrapper
+		   when someone passes an action, so classic empty states keep their
+		   exact compact look. */
+		Astro.slots.has('actions') && (
+			<div class="mt-2 flex flex-wrap justify-center gap-3">
+				<slot name="actions" />
+			</div>
+		)
+	}
 </div>

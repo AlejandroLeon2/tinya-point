@@ -1,0 +1,16 @@
+---
+// ChipGroup (refactorUI §2.2 — Fase 1): horizontal, scroll-x container for
+// Chip filters. role="group" + visible label — each Chip carries aria-pressed.
+interface Props {
+  label: string;
+  class?: string;
+}
+const { label, class: cls = '' } = Astro.props;
+---
+<div
+  role="group"
+  aria-label={label}
+  class={`flex items-center gap-2 overflow-x-auto py-1 ${cls}`}
+>
+  <slot />
+</div>

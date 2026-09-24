@@ -1,0 +1,10 @@
+---
+// Skeleton (refactorUI §2.2 — Fase 1): pulsing placeholder while data loads —
+// avoids the blank flash and the premature EmptyState (§2.3). Pure draw;
+// size via class prop (e.g. "aspect-square" for cards, "h-6" for rows).
+interface Props {
+  class?: string;
+}
+const { class: cls = 'h-24' } = Astro.props;
+---
+<div class={`animate-pulse rounded-lg bg-border/60 ${cls}`} aria-hidden="true"></div>

@@ -1,0 +1,61 @@
+---
+// TabBar (refactorUI §3.4 — Fase 1): fixed bottom navigation for <md —
+// Venta | Historial | Caja | Más. Targets ≥56 px (§0.9); z-40 (below
+// sheets/modals z-50, §3.4); safe-area inset so it never covers content.
+// Items: href → anchor (build-time aria-current, same rule as the sidebar);
+// modal → button that opens the given modal key ("Más" → Sheet).
+// ui/ admission rule: props only.
+import Icon from './Icon.astro';
+
+interface TabItem {
+  href?: string;
+  modal?: string;
+  label: string;
+  icon: string;
+}
+interface Props {
+  items: TabItem[];
+  currentPath: string;
+}
+const { items, currentPath } = Astro.props;
+
+const normalize = (path: string) => path.replace(/\/+$/, '') || '/';
+const current = normalize(currentPath);
+const isActive = (href: string) => normalize(href) === current;
+---
+<nav
+  data-tabbar
+  aria-label="Navegación principal"
+  class="fixed inset-x-0 bottom-0 z-40 flex border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+>
+  {
+    items.map((item) =>
+      item.href ? (
+        <a
+          href={item.href}
+          aria-current={isActive(item.href) ? 'page' : undefined}
+          class:list={[
+            'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-base',
+            // Active state: weight + background + aria-current — never color alone (§0.9).
+            isActive(item.href)
+              ? 'bg-bg font-bold text-primary'
+              : 'font-semibold text-text hover:bg-bg/60',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary',
+          ]}
+        >
+          <Icon name={item.icon} class="h-6 w-6" />
+          <span class="truncate">{item.label}</span>
+        </a>
+      ) : (
+        <button
+          type="button"
+          data-modal-open={item.modal}
+          class="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-base font-semibold text-text hover:bg-bg/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+        >
+          <Icon name={item.icon} class="h-6 w-6" />
+          <span>{item.label}</span>
+        </button>
+      ),
+    )
+  }
+</nav>

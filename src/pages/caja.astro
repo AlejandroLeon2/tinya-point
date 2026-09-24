@@ -8,7 +8,7 @@ import CajaContainer from '../components/smart/CajaContainer.astro';
 // historial.astro: LayoutApp owns <main>, route-guard already covers every
 // non-/login route, banner + sync indicator ride every app page (extras §6).
 ---
-<LayoutApp>
+<LayoutApp title="Caja">
 	<SyncStatusIndicator slot="header" />
 	<OfflineBanner />
 	<CajaContainer />

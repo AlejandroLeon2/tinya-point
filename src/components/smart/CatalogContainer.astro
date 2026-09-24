@@ -3,12 +3,15 @@
 // (astrobase.md §3.3) cannot run in frontmatter (no localStorage/build-time
 // network — option A, plan-features Fase 2 2026-09-22): it runs client-side
 // in islands/catalog.ts. This component renders the shell: catalog chrome,
-// the two empty states, and the Card template (astrobase.md §3.3). Draws no
+// the empty states (+CTA) and the Card template (astrobase.md §3.3). Draws no
 // business HTML itself.
+//
+// refactorUI §4.2D (Fase 2): the per-card quantity stepper is GONE — the
+// whole card is the add button (Card template) — so its island and the old
+// card-extension component were deleted with it.
 import Catalog from '../ui/Catalog.astro';
 import Card from '../ui/Card.astro';
 import EmptyState from '../ui/EmptyState.astro';
-import AddToCart from '../ui/AddToCart.astro';
 ---
 <Catalog>
 	<EmptyState
@@ -16,19 +19,19 @@ import AddToCart from '../ui/AddToCart.astro';
 		state="empty-catalog"
 		mensaje="Todavía no hay productos cargados"
 		hidden
-	/>
+	>
+		<!-- CTA (§4.2D / T2.9): straight into the admin that fills it. -->
+		<a slot="actions" href="/productos" class="btn btn-primary">Ir a Productos</a>
+	</EmptyState>
 	<EmptyState
 		slot="empty"
 		state="no-results"
 		mensaje="Sin resultados de búsqueda"
 		hidden
 	/>
-	<Card>
-		<AddToCart slot="extra" />
-	</Card>
+	<Card />
 </Catalog>
 
 <script>
 	import '../islands/catalog';
-	import '../islands/quantity-control';
 </script>

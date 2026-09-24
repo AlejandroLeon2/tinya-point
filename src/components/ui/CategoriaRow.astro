@@ -9,8 +9,15 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
 		data-categoria-row=""
 	>
-		<span data-categoria-nombre class="text-base font-semibold text-text"></span>
-		<span class="flex flex-wrap gap-3">
+		<span class="flex min-w-0 flex-col gap-1">
+			<span data-categoria-nombre class="text-base font-semibold text-text"></span>
+			<!-- T3.9 (refactorUI §8): count derived from catalogo_cache ONLY —
+			     hidden ⇔ there is no cache (the island decides). -->
+			<span data-categoria-count hidden class="text-base text-text-muted"></span>
+		</span>
+		<span class="flex flex-wrap items-center gap-3">
+			<!-- Shown ⇔ local count > 0; travels with the disabled Eliminar. -->
+			<span data-categoria-en-uso hidden class="text-base font-semibold text-warning"></span>
 			<button type="button" class="btn btn-secondary" data-categoria-edit="">Editar</button>
 			<button
 				type="button"

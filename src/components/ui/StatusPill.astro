@@ -1,0 +1,25 @@
+---
+// StatusPill (refactorUI §2.2 — Fase 1): compact estado indicator —
+// ícono + texto + tono, never color alone (§0.9). Pure draw: islands toggle
+// visibility with `hidden`, never classes (§0.4).
+// Tones map to the .pill-* families in styles/global.css.
+interface Props {
+  tone?: 'muted' | 'ok' | 'warn' | 'danger' | 'info';
+  class?: string;
+  // Rest props forward data-* hooks (T3.4: data-hist-sync-state toggles the
+  // three sync pills of a row by visibility, never classes).
+  [key: string]: unknown;
+}
+const { tone = 'muted', class: cls = '', ...rest } = Astro.props;
+const toneClass = {
+  muted: 'pill-muted',
+  ok: 'pill-ok',
+  warn: 'pill-warn',
+  danger: 'pill-danger',
+  info: 'pill-info',
+}[tone];
+---
+<span class:list={[toneClass, cls]} {...rest}>
+  <slot name="icon" />
+  <slot />
+</span>

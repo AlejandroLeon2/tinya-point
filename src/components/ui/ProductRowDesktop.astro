@@ -1,0 +1,68 @@
+---
+// Desktop table row (refactorUI §7 / T3.3) — SINGLE template cloned per
+// product next to the mobile ProductRow card: same data hooks
+// (data-product-row / data-product-id / data-product-*) so ONE paintRow()
+// in islands/product-admin.ts serves both. `hidden md:table-row` = static
+// breakpoint styling (§0.4); runtime state keeps using `hidden`.
+// Numeric columns right-aligned, sticky header lives in ui/DataTable.
+// ui/ draws, never fetches or reads local data (astrobase §1).
+---
+<template data-product-row-desktop-template>
+	<tr class="hidden border-b border-border md:table-row" data-product-row="">
+		<td class="hidden px-4 py-3 lg:table-cell">
+			<!-- Decorative thumb (name beside it carries the meaning).
+			     hidden lg:table-cell mirrors the Miniatura column header
+			     (DataTable hiddenBelowLg=[0]) so md–lg fits beside the
+			     sidebar — T4.4/810px overflow fix. -->
+			<img
+				data-product-img
+				alt=""
+				loading="lazy"
+				class="h-10 w-10 rounded-lg border border-border object-cover opacity-0"
+			/>
+		</td>
+		<td class="px-4 py-3">
+			<span data-product-nombre class="font-semibold text-text"></span>
+			<span data-product-categoria class="block text-base text-text-muted"></span>
+		</td>
+		<td data-product-precio class="px-4 py-3 text-right font-bold text-text tabular-nums">
+		</td>
+		<td class="px-4 py-3 text-right tabular-nums">
+			<!-- Plain number: the column header already says "Stock" (the mobile
+			     card's hook writes the prefixed "Stock: N" instead). -->
+			<span data-product-stock-plain></span>
+			<!-- Tags: text + tone, never color alone (stilesbase §5.2) —
+			     painted by the island from ajustes.stock_alerta_min. -->
+			<span data-product-low hidden class="ml-2 rounded-full bg-warning px-2 py-1 text-base font-semibold text-warning-content">
+				Bajo
+			</span>
+			<span data-product-agotado hidden class="ml-2 rounded-full bg-danger px-2 py-1 text-base font-semibold text-danger-content">
+				Agotado
+			</span>
+		</td>
+		<td class="px-4 py-3">
+			<span
+				data-product-badge
+				class="inline-block rounded-full px-3 py-1 text-base font-semibold"
+			></span>
+		</td>
+		<td class="px-4 py-3">
+			<span class="flex flex-wrap gap-2">
+				<button type="button" class="btn btn-secondary" data-product-edit="">
+					Editar
+				</button>
+				<button
+					type="button"
+					class="btn btn-danger"
+					data-product-deactivate=""
+					data-modal-open="confirmar-desactivar"
+				>
+					Desactivar
+				</button>
+				<button type="button" class="btn btn-secondary" data-product-restore="" hidden>
+					Restaurar
+				</button>
+			</span>
+		</td>
+	</tr>
+</template>

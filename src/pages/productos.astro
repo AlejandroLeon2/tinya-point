@@ -3,13 +3,28 @@ import LayoutApp from '../layouts/LayoutApp.astro';
 import OfflineBanner from '../components/ui/OfflineBanner.astro';
 import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
 import ProductContainer from '../components/smart/ProductContainer.astro';
+import Icon from '../components/ui/Icon.astro';
 
 // Product admin page (doc/plan-mejoras-2.md Fase 1) — same shell contract as
 // historial.astro: LayoutApp owns <main>, route-guard already covers every
 // non-/login route, banner + sync indicator ride every app page (extras §6).
 ---
-<LayoutApp>
+<LayoutApp title="Productos">
 	<SyncStatusIndicator slot="header" />
+	<!-- T3.1 (refactorUI §7): primary action lives in the TopBar header via
+	     the page-actions slot; the island resets the form to "nuevo" on the
+	     same click (modal-controller opens the drawer). -->
+	<button
+		slot="page-actions"
+		type="button"
+		class="btn btn-primary"
+		data-product-new
+		data-modal-open="producto-form"
+		aria-label="Nuevo producto"
+	>
+		<Icon name="plus" class="h-5 w-5" />
+		<span class="hidden sm:inline">Nuevo producto</span>
+	</button>
 	<OfflineBanner />
 	<ProductContainer />
 </LayoutApp>

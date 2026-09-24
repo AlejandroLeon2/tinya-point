@@ -3,32 +3,65 @@
 // api/actions/auth.ts (doc/astrobase.md §3.3). The submit handler lives in
 // islands/login-form.ts (golden rule 4 — reusable client behavior never
 // sits inline in a component).
+//
+// T4.1 (refactorUI §11): centered card (max 400px) with the business name
+// as the page h1 (painted from `ajustes.nombre_local` by the island),
+// password visibility toggle, offline note (visible ⇔ sin red) and the
+// loading/focus states handled in the island.
 import Button from '../ui/Button.astro';
 ---
-<form data-login-form class="flex flex-col gap-3" novalidate>
-	<label class="flex flex-col gap-1 text-base font-semibold">
-		Usuario
-		<input
-			class="input-field"
-			type="text"
-			name="usuario"
-			autocomplete="username"
-			required
-		/>
-	</label>
-	<label class="flex flex-col gap-1 text-base font-semibold">
-		Contraseña
-		<input
-			class="input-field"
-			type="password"
-			name="clave"
-			autocomplete="current-password"
-			required
-		/>
-	</label>
-	<p data-login-error class="text-base text-danger" role="alert" hidden></p>
-	<Button type="submit" variant="primary">Ingresar</Button>
-</form>
+<!-- main (Lighthouse landmark-one-main): LayoutAuth has no LayoutApp
+     landmark, so the login root IS the page's main landmark. -->
+<main data-login-root class="flex min-h-dvh items-center justify-center px-4 py-10">
+	<div class="card flex w-full max-w-[400px] flex-col gap-4 p-6">
+		<div class="flex flex-col items-center gap-1 text-center">
+			<h1 data-login-marca class="text-xl font-bold text-text">Tinya Point</h1>
+		</div>
+
+		<!-- §11: shown ⇔ navigator.onLine is false (island toggles `hidden`). -->
+		<p data-login-offline hidden class="text-base font-semibold text-warning" role="status">
+			Necesitás conexión para iniciar sesión
+		</p>
+
+		<form data-login-form class="flex flex-col gap-3" novalidate>
+			<label class="flex flex-col gap-1 text-base font-semibold">
+				Usuario
+				<input
+					class="input-field"
+					type="text"
+					name="usuario"
+					autocomplete="username"
+					required
+				/>
+			</label>
+			<div class="flex flex-col gap-1">
+				<span class="text-base font-semibold">Contraseña</span>
+				<div class="relative">
+					<input
+						class="input-field pr-24"
+						type="password"
+						name="clave"
+						autocomplete="current-password"
+						aria-label="Contraseña"
+						required
+					/>
+					<!-- Toggle (§11): text + aria-pressed carry the state, never
+					     a class; absolute inside the field, ≥44px target. -->
+					<button
+						type="button"
+						data-login-toggle
+						aria-pressed="false"
+						class="absolute inset-y-0 right-0 min-w-20 px-3 text-base font-semibold text-text-muted"
+					>
+						Mostrar
+					</button>
+				</div>
+			</div>
+			<p data-login-error class="text-base text-danger" role="alert" hidden></p>
+			<Button type="submit" variant="primary" data-login-submit>Ingresar</Button>
+		</form>
+	</div>
+</main>
 
 <script>
 	import '../islands/login-form';

@@ -1,36 +1,18 @@
 ---
 // Sync status indicator + permanent-error modal (doc/extras.md §6 rows 3-4):
-// discreet pending state while cola_sync waits — icon ALWAYS accompanied by
-// text (stilesbase §5.2/§6, never icon-only) — and a danger alert with human
-// Retry/Discard (+ Modal showing the detail) once an item reaches
-// error_permanente. Never silent deletion, never blocks the sale. Data flows
-// from stores/syncQueue via subscribeQueue (mutations, NOT timers); this
-// component only draws.
+// danger alert with human Retry/Discard (+ Modal showing the detail) once an
+// item reaches error_permanente. Never silent deletion, never blocks the
+// sale. Data flows from stores/syncQueue via subscribeQueue (mutations, NOT
+// timers); this component only draws.
+//
+// refactorUI Fase 1: the pending pill moved UP into the LayoutApp TopBar —
+// this component keeps only what belongs in the content area (alert + modal)
+// and its island loads from LayoutApp (one import point for all 8 pages).
 import Alert from '../ui/Alert.astro';
 import Button from '../ui/Button.astro';
 import Modal from '../ui/Modal.astro';
 ---
 <div data-sync-root class="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-2">
-	<p data-sync-pending hidden class="flex items-center gap-2 text-base text-text-muted">
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			stroke-width="1.5"
-			class="h-5 w-5"
-			aria-hidden="true"
-		>
-			<path
-				stroke-linecap="round"
-				stroke-linejoin="round"
-				d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33 4.501 4.501 0 00-.5 8.999z"
-			/>
-			<path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75V14.25m0 4.5l-2.25-2.25M12 14.25l2.25-2.25" />
-		</svg>
-		Sincronizando… (<span data-sync-count>0</span>)
-	</p>
-
 	<Alert name="sync-danger" tone="danger" hidden>
 		Algunas ventas no se pudieron sincronizar.
 		<Button slot="actions" variant="secondary" data-sync-retry>Reintentar</Button>
@@ -45,7 +27,3 @@ import Modal from '../ui/Modal.astro';
 		<Button slot="actions" variant="danger" data-sync-confirm-discard>Sí, descartar</Button>
 	</Modal>
 </div>
-
-<script>
-	import '../islands/sync-status';
-</script>

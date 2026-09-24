@@ -3,21 +3,71 @@
 // IGV configurable) — smart layer composes chrome + ui/ and wires
 // islands/ajustes.ts (astrobase §3.3). Local-only page: zero API, the
 // settings live in the `ajustes` localStorage key (base.md §2.3, 7th key).
+//
+// T3.10 (refactorUI §10): three section cards inside the form, the
+// "Sesión y dispositivo" info card (queue / last attempt / version /
+// logout — local reads only), and the sticky dirty bar whose Guardar
+// button triggers `form.requestSubmit()`; the bar sits above the mobile
+// TabBar (z-40) via safe-area offset and drops to `md:bottom-0`.
 import Alert from '../ui/Alert.astro';
 import AjustesForm from '../ui/AjustesForm.astro';
 ---
 <section data-ajustes-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Ajustes</h1>
-
-	<Alert tone="success" name="ajustes-ok" hidden>
-		<span data-ajustes-ok-text></span>
-	</Alert>
+	<!-- Errors keep the persistent Alert; success goes through the ephemeral
+	     Toast (refactorUI Fase 1) — the h1 lives in the LayoutApp TopBar. -->
 	<Alert tone="danger" name="ajustes-error" hidden>
 		<span data-ajustes-error-text></span>
 	</Alert>
 
-	<div class="card flex flex-col gap-4">
-		<AjustesForm />
+	<AjustesForm />
+
+	<!-- T3.10: Sesión y dispositivo — local reads only (cola_sync, version). -->
+	<section class="card flex flex-col gap-3">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-lg font-bold text-text">Sesión y dispositivo</h2>
+			<p class="text-base text-text-muted">Estado local de sincronización.</p>
+		</div>
+
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="text-base text-text-muted">Cola de sincronización</span>
+			<span data-ajustes-cola class="text-base font-semibold tabular-nums text-text">
+				—
+			</span>
+		</div>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="text-base text-text-muted">Última sincronización</span>
+			<span data-ajustes-ultima-sync class="text-base tabular-nums text-text">—</span>
+		</div>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<span class="text-base text-text-muted">Versión de la app</span>
+			<span data-ajustes-version class="text-base tabular-nums text-text">—</span>
+		</div>
+
+		<div class="mt-1 flex flex-wrap gap-3">
+			<!-- Handled globally by islands/sidebar.ts (data-logout). -->
+			<button type="button" data-logout class="btn btn-secondary">Cerrar sesión</button>
+		</div>
+	</section>
+
+	<!-- T3.10: sticky dirty bar — visible ⇔ cambios sin guardar. The save
+	     button is type=button and hands off to the form (the island calls
+	     requestSubmit()); pending state lives on this button. -->
+	<div
+		data-ajustes-dirty
+		hidden
+		class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface px-4 py-3 md:bottom-0"
+	>
+		<div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
+			<p class="text-base font-semibold text-text">Cambios sin guardar</p>
+			<div class="flex flex-wrap gap-3">
+				<button type="button" data-ajustes-descartar class="btn btn-secondary">
+					Descartar cambios
+				</button>
+				<button type="button" data-ajustes-guardar class="btn btn-primary">
+					Guardar ajustes
+				</button>
+			</div>
+		</div>
 	</div>
 </section>
 

@@ -1,0 +1,23 @@
+---
+// Toast (refactorUI §2.2 — Fase 1): ephemeral success feedback. This markup
+// is the CLONED UNIT: ui/ToastRegion keeps it inside <template
+// data-toast-template>; utils/toast.ts clones one node per message, sets
+// the text via textContent and removes it after 4 s. Never displaces layout
+// (fixed), never steals focus, aria-live on the region.
+---
+<div class="pill-ok shadow-card max-w-xs px-4 py-3" role="status">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class="h-5 w-5 shrink-0"
+    aria-hidden="true"
+  >
+    <path d="m5 12.5 4.5 4.5L19 7.5"></path>
+  </svg>
+  <span data-toast-text class="text-base"></span>
+</div>

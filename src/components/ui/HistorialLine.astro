@@ -5,7 +5,11 @@
 // the static detail page (/historial/venta/?id= — gotcha G1): full-row
 // target, visible focus ring, never color-only (stilesbase §4/a11y). Inside
 // a day group the date lives in the summary, so the row leads with the TIME.
-// ui/ rule: draws, never fetches or reads local data (astrobase §1).
+// Sync state (plan T3.4): three StatusPills behind ONE data-hist-sync hook —
+// exactly one visible at a time, toggled by `hidden` from cola_sync (never
+// color alone, §0.9). ui/ rule: draws, never fetches or reads local data
+// (astrobase §1).
+import StatusPill from './StatusPill.astro';
 ---
 <template data-hist-line-template>
 	<li data-hist-line="">
@@ -19,7 +23,14 @@
 				<span data-hist-metodo class="text-text-muted"></span>
 				<span data-hist-items class="text-text-muted"></span>
 			</span>
-			<span data-hist-total class="font-bold text-text"></span>
+			<span class="flex items-center gap-3">
+				<span data-hist-total class="font-bold text-text tabular-nums"></span>
+				<span data-hist-sync class="flex items-center">
+					<StatusPill tone="ok" data-hist-sync-state="sincronizada">Sincronizada</StatusPill>
+					<StatusPill tone="warn" data-hist-sync-state="pendiente" hidden>Pendiente</StatusPill>
+					<StatusPill tone="danger" data-hist-sync-state="error" hidden>Error</StatusPill>
+				</span>
+			</span>
 		</a>
 	</li>
 </template>

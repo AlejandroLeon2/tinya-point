@@ -2,6 +2,11 @@
 import '../styles/global.css';
 import { pwaInfo } from 'virtual:pwa-info';
 import Sidebar from '../components/ui/Sidebar.astro';
+import PageHeader from '../components/ui/PageHeader.astro';
+import TabBar from '../components/ui/TabBar.astro';
+import Modal from '../components/ui/Modal.astro';
+import ToastRegion from '../components/ui/ToastRegion.astro';
+import Icon from '../components/ui/Icon.astro';
 
 // App shell variant: same document infrastructure as Layout.astro plus the
 // sidebar + content column (doc/astrobase.md §3.1 — variants live in their
@@ -11,23 +16,68 @@ import Sidebar from '../components/ui/Sidebar.astro';
 // <main id="contenido"> is owned HERE so both pages share ONE landmark and the
 // skip link has a stable target — pages must NOT render their own <main>.
 // Route guard mounts on this layout too (same branch as Layout.astro).
+//
+// refactorUI §3 (Fase 1): this layout now owns the chrome —
+//   - `title` prop feeds BOTH <title> and the TopBar h1 (§3.1/§3.4: ONE h1
+//     per page, in the header; containers no longer render their own).
+//   - Sticky TopBar: Menú (<md, same data-sidebar-toggle hook as before) +
+//     PageHeader + status pills (Caja, Sync). z-30 → below the drawer z-45,
+//     sheets/modals/toasts z-50, and the skip-link focus overlay.
+//   - TabBar (<md, §3.4) + the "Más" Sheet it opens (variant="sheet").
+//   - ToastRegion for utils/toast.ts (D9 — success never displaces layout).
+//
+// status islands loaded HERE (all LayoutApp pages, exactly like route-guard):
+//   - sync-status: pill is in this TopBar; alert/modal stay in SyncStatusIndicator.
+//   - caja-status: paints the Caja pill from the local `cajas` key.
 
-// Navigation order = order of use for the cashier (plan-sidebar.md §1.2;
-// Caja sits between Historial and Productos — plan-mejoras-2.md Fase 2;
-// Categorías trails Productos as its admin companion — plan-productos-v2
-// Fase 2, D-C2).
-const navItems = [
-	{ href: '/', label: 'Venta' },
-	{ href: '/historial', label: 'Historial' },
-	{ href: '/caja', label: 'Caja' },
-	{ href: '/productos', label: 'Productos' },
-	{ href: '/categorias', label: 'Categorías' },
-	{ href: '/ajustes', label: 'Ajustes' },
+interface Props {
+	title: string;
+}
+const { title } = Astro.props;
+
+// Navigation groups = §3.2 Operación / Inventario / Sistema, item order =
+// order of use for the cashier (plan-sidebar.md §1.2; Caja between Historial
+// and Productos — plan-mejoras-2 Fase 2; Categorías trails Productos —
+// plan-productos-v2 Fase 2, D-C2; Stock is the inventory follow-up —
+// plan-stock.md Fase 3).
+const navGroups = [
+	{
+		label: 'Operación',
+		items: [
+			{ href: '/', label: 'Venta', icon: 'venta' },
+			{ href: '/historial', label: 'Historial', icon: 'historial' },
+			{ href: '/caja', label: 'Caja', icon: 'caja' },
+		],
+	},
+	{
+		label: 'Inventario',
+		items: [
+			{ href: '/productos', label: 'Productos', icon: 'productos' },
+			{ href: '/categorias', label: 'Categorías', icon: 'categorias' },
+			{ href: '/stock', label: 'Stock', icon: 'stock', badge: 'stock' },
+		],
+	},
+	{
+		label: 'Sistema',
+		items: [{ href: '/ajustes', label: 'Ajustes', icon: 'ajustes' }],
+	},
+];
+
+// TabBar (§3.4): the four mobile destinations; "Más" opens the Sheet below.
+const tabItems = [
+	{ href: '/', label: 'Venta', icon: 'venta' },
+	{ href: '/historial', label: 'Historial', icon: 'historial' },
+	{ href: '/caja', label: 'Caja', icon: 'caja' },
+	{ modal: 'mas', label: 'Más', icon: 'mas' },
 ];
 
 // Build-time active state (output: "static"): each page renders with its own
-// URL; Sidebar normalizes the trailing slash (gotcha G3).
+// URL; Sidebar/TabBar normalize the trailing slash (gotcha G3).
 const currentPath = Astro.url.pathname;
+
+const normalize = (path: string) => path.replace(/\/+$/, '') || '/';
+const current = normalize(currentPath);
+const isActive = (href: string) => normalize(href) === current;
 ---
 <!doctype html>
 <html lang="es">
@@ -39,7 +89,7 @@ const currentPath = Astro.url.pathname;
 		<meta name="generator" content={Astro.generator} />
 		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.woff2" as="font" type="font/woff2" crossorigin>
 		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Bold.woff2" as="font" type="font/woff2" crossorigin>
-		<title>Tinya Point — Punto de venta</title>
+		<title>{title} — Tinya Point</title>
 		<script src="/src/pwa.ts"></script>
 		{pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
 	</head>
@@ -53,7 +103,7 @@ const currentPath = Astro.url.pathname;
 		</a>
 
 		<div class="flex min-h-screen">
-			<Sidebar id="sidebar-principal" items={navItems} currentPath={currentPath}>
+			<Sidebar id="sidebar-principal" groups={navGroups} currentPath={currentPath}>
 				<!-- Logout trigger for islands/sidebar.ts (Fase 3): only the token
 				     is dropped — cart and history survive (stores/session). -->
 				<button slot="footer" type="button" data-logout class="btn btn-secondary w-full">
@@ -61,45 +111,143 @@ const currentPath = Astro.url.pathname;
 				</button>
 			</Sidebar>
 
-			<div class="flex min-w-0 flex-1 flex-col">
-				<!-- Mobile drawer toggle (plan-sidebar.md Fase 2). Behavior lands
-				     with islands/sidebar.ts (Fase 3). z-40: under OfflineBanner
-				     and modals (z-50), over page content — Fase 4 revisits the
-				     banner overlap. pt-16 reserves the band it floats over. -->
-				<button
-					type="button"
-					data-sidebar-toggle
-					aria-expanded="false"
-					aria-controls="sidebar-principal"
-					class="fixed left-3 top-3 z-40 min-h-14 rounded-lg border-2 border-border bg-surface px-4 text-lg font-semibold text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
+			<!-- At lg the COLUMN is the scroll container: it absorbs TopBar +
+			     the header-slot alerts, so `main` gets exactly the REMAINING
+			     height (the POS fixed layout in index.astro relies on this —
+			     no magic topbar subtraction; sticky TopBar sticks here too). -->
+			<div class="flex min-w-0 flex-1 flex-col lg:h-screen lg:min-h-0 lg:overflow-y-auto">
+				<!-- TopBar (refactorUI §3 — Fase 1): sticky chrome row. Menú keeps
+				     the data-sidebar-toggle hook (sidebar.ts unchanged); PageHeader
+				     owns the ONE h1; the pills reflect local runtime state via
+				     `hidden` — islands repaint text/visibility, never classes. -->
+				<header
+					class="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b-2 border-border bg-surface px-3 py-2 sm:flex-nowrap md:px-4"
 				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						class="h-6 w-6"
-						aria-hidden="true"
+					<!-- flex-wrap <sm (T4.4/§15 "nada se corta"): short titles keep the
+					     §3.3 mock's single row (☰ Título ●Caja ⟳); long titles
+					     ("Historial de ventas") push the pills to a second row
+					     instead of starving the ONE h1. ≥sm: nowrap, as before.
+					     PageHeader must be flex-auto (basis = content): flex-1 has
+					     basis 0, so the line never overflows and pills never wrap. -->
+					<button
+						type="button"
+						data-sidebar-toggle
+						aria-expanded="false"
+						aria-controls="sidebar-principal"
+						aria-label="Menú"
+						class="flex min-h-11 items-center gap-2 rounded-lg border-2 border-border bg-surface px-3 text-base font-semibold text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
 					>
-						<path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
-					</svg>
-					Menú
-				</button>
+						<Icon name="menu" class="h-6 w-6" />
+						<span class="hidden sm:inline">Menú</span>
+					</button>
 
-				<div class="pt-16 md:pt-0">
-					<slot name="header" />
-				</div>
-				<main id="contenido" class="flex flex-1 flex-col">
+					<!-- Pages can add ONE action to the TopBar header (refactorUI §7
+					     "+ Nuevo producto" on /productos) via the page-actions slot. -->
+					<PageHeader title={title} class="min-w-0 flex-auto">
+						<slot name="page-actions" slot="actions" />
+					</PageHeader>
+
+					<!-- Status pills: shrink-0, always in Spanish, never color alone.
+					     <sm follows the §3.3 mobile mock (☰ Título ●Caja ⟳): the
+					     "Menú" label and the "Caja " prefix drop so the ONE h1 never
+					     truncates at 360 (T4.4 — the words still carry the state). -->
+					<div class="flex shrink-0 items-center gap-2">
+						<!-- Caja state (caja-status.ts): initial paint = cerrada (default),
+						     abierta starts hidden until the island reads `cajas`. -->
+						<a
+							href="/caja"
+							data-caja-abierta
+							hidden
+							aria-label="Estado de caja: abierta"
+							class="pill-ok"
+						>
+							<span class="sm:hidden">Abierta</span><span class="hidden sm:inline">Caja abierta</span><span class="hidden sm:inline">
+								· desde <span data-caja-hora></span>
+							</span>
+						</a>
+						<a
+							href="/caja"
+							data-caja-cerrada
+							aria-label="Estado de caja: cerrada"
+							class="pill-warn"
+						>
+							<span class="sm:hidden">Cerrada</span><span class="hidden sm:inline">Caja cerrada</span>
+						</a>
+						<!-- cola_sync pending (sync-status.ts paints count via
+						     textContent — plain text, never HTML). The label collapses
+						     to icon+count <sm (refactorUI §3.3 mobile mock: "⟳") — the
+						     full "Sincronizando…" text pushed the TopBar past 390px. -->
+						<span data-sync-pending hidden class="pill-warn" aria-label="Cola de sincronización pendiente">
+							<Icon name="sync" class="h-5 w-5" />
+							<span class="hidden sm:inline">Sincronizando…</span>
+							(<span data-sync-count>0</span>)
+						</span>
+					</div>
+				</header>
+
+				<!-- Alerts (sync-danger, aviso-caja successors) ride the header
+				     slot below the TopBar — pages keep owning their content. -->
+				<slot name="header" />
+				<main
+					id="contenido"
+					class="flex flex-1 flex-col pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0 lg:min-h-0"
+				>
 					<slot />
 				</main>
 				<slot name="footer" />
 			</div>
 		</div>
 
+		<!-- Mobile nav (§3.4): TabBar + the Sheet "Más" it opens. -->
+		<TabBar items={tabItems} currentPath={currentPath} />
+		<Modal modalKey="mas" title="Más" variant="sheet">
+			<nav aria-label="Secciones adicionales" class="flex flex-col">
+				{
+					[
+						{ href: '/productos', label: 'Productos', icon: 'productos' },
+						{ href: '/categorias', label: 'Categorías', icon: 'categorias' },
+						{ href: '/stock', label: 'Stock', icon: 'stock' },
+						{ href: '/ajustes', label: 'Ajustes', icon: 'ajustes' },
+					].map((item) => (
+						<a
+							href={item.href}
+							aria-current={isActive(item.href) ? 'page' : undefined}
+							class:list={[
+								'flex min-h-14 items-center gap-3 rounded-lg px-3 text-lg',
+								isActive(item.href)
+									? 'bg-bg font-bold text-text'
+									: 'font-semibold text-text hover:bg-bg active:bg-border',
+								'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+							]}
+						>
+							<Icon name={item.icon} class="h-6 w-6 shrink-0" />
+							{item.label}
+						</a>
+					))
+				}
+				<!-- Same hook as the sidebar footer — sidebar.ts binds ALL
+				     [data-logout] elements (Fase 1). -->
+				<button type="button" data-logout class="btn btn-secondary mt-3 w-full">
+					Cerrar sesión
+				</button>
+			</nav>
+		</Modal>
+
+		<!-- Success toasts (utils/toast.ts — D9: no layout shift, 4 s, aria-live) -->
+		<ToastRegion />
+
 		<!-- Route guard: everything behind /login (plan-features Fase 1, owner decision 2026-09-22) -->
 		<script>import '../components/islands/route-guard';</script>
-		<!-- Sidebar drawer + logout (plan-sidebar.md Fase 3) -->
+		<!-- Sidebar drawer + brand + collapse + logout (plan-sidebar.md Fase 3, refactorUI §3.2) -->
 		<script>import '../components/islands/sidebar';</script>
+		<!-- Low-stock badge count (plan-stock.md Fase 3) -->
+		<script>import '../components/islands/stock-badge';</script>
+		<!-- Delegated modal open/close (doc/astrobase.md §3.4) — the "Más" Sheet
+		     and every data-modal-open trigger in the app -->
+		<script>import '../components/islands/modal-controller';</script>
+		<!-- cola_sync pill + danger alert + detail modal (extras.md §6 rows 3-4) -->
+		<script>import '../components/islands/sync-status';</script>
+		<!-- Caja pill in the TopBar (refactorUI §3.2, Fase 1) -->
+		<script>import '../components/islands/caja-status';</script>
 	</body>
 </html>

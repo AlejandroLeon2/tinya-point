@@ -1,0 +1,35 @@
+---
+// Desktop (≥md) row of a history sale (plan T3.5, refactorUI §6.1) — SINGLE
+// <tr> template cloned by islands/historial.ts into each day's DataTable
+// tbody. Same data hooks as ui/HistorialLine so the shared paintLine()
+// paints BOTH templates. Display is gated by the DataTable wrapper
+// (hidden md:block) plus the natural table-row display — no hidden attr, so
+// the base [hidden]{display:none!important} rule never traps it (§0.4 gotcha).
+// ui/ draws, never fetches or reads local data (astrobase §1).
+import StatusPill from './StatusPill.astro';
+---
+<template data-hist-line-desktop-template>
+	<tr data-hist-line="" class="border-b border-border">
+		<td class="px-4 py-3">
+			<a
+				data-hist-link
+				href="/historial/venta/"
+				class="font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+			>
+				<span data-hist-hora></span>
+			</a>
+		</td>
+		<td class="px-4 py-3"><span data-hist-metodo class="text-text-muted"></span></td>
+		<td class="px-4 py-3"><span data-hist-items class="text-text-muted"></span></td>
+		<td class="px-4 py-3 text-right">
+			<span data-hist-total class="font-bold tabular-nums"></span>
+		</td>
+		<td class="px-4 py-3">
+			<span data-hist-sync class="flex items-center">
+				<StatusPill tone="ok" data-hist-sync-state="sincronizada">Sincronizada</StatusPill>
+				<StatusPill tone="warn" data-hist-sync-state="pendiente" hidden>Pendiente</StatusPill>
+				<StatusPill tone="danger" data-hist-sync-state="error" hidden>Error</StatusPill>
+			</span>
+		</td>
+	</tr>
+</template>

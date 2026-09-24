@@ -1,33 +1,114 @@
 ---
-// Product admin container (plan-mejoras-2.md Fase 1) — smart layer composes
-// chrome + ui/ parts and wires the islands: every string the cashier reads
-// comes from ui/, all behavior from islands/product-admin.ts (astrobase §3.3).
+// Product admin container (plan-mejoras-2.md Fase 1, refactored by
+// refactorUI Fase 3 §7/T3.1–T3.3) — smart layer composes chrome + ui/ parts
+// and wires the islands: every string the cashier reads comes from ui/, all
+// behavior from islands/product-admin.ts (astrobase §3.3).
+//
+// Fase 3 layout:
+//   - page Alert (list-load errors) stays at the top;
+//   - the ProductForm moved INTO the `producto-form` Drawer/Sheet (T3.1) —
+//     its OWN form error Alert lives inside the modal;
+//   - toolbar: search + estado ChipGroup + categoría select + orden + count
+//     (T3.2, all local, zero network);
+//   - list: mobile cards (ul, md:hidden) + desktop DataTable (T3.3) —
+//     both painted from their templates by the island;
+//   - "Mostrar más" blocks of 50 beyond 100 rows (T3.3).
 // Deactivate is confirmed through the shared ui/Modal + modal-controller
 // contract (stilesbase §5.5). SyncStatusIndicator + OfflineBanner ride along
 // like every app page (extras.md §6 — none of them blocks the sale).
 import Alert from '../ui/Alert.astro';
+import Chip from '../ui/Chip.astro';
+import ChipGroup from '../ui/ChipGroup.astro';
+import DataTable from '../ui/DataTable.astro';
 import EmptyState from '../ui/EmptyState.astro';
 import Modal from '../ui/Modal.astro';
 import ProductForm from '../ui/ProductForm.astro';
 import ProductRow from '../ui/ProductRow.astro';
+import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 ---
 <section data-productos-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Productos</h1>
-
-	<Alert tone="success" name="productos-ok" hidden>
-		<span data-alert-ok-text></span>
-	</Alert>
+	<!-- Page-level errors (list load / toggle ops — the drawer may be closed):
+	     persistent Alert; success goes through the ephemeral Toast (Fase 1). -->
 	<Alert tone="danger" name="productos-error" hidden>
 		<span data-alert-error-text></span>
 	</Alert>
 
-	<div class="card flex flex-col gap-4">
-		<ProductForm />
+	<!-- Toolbar (T3.2): search + estado chips + categoría + orden + counter.
+	     Todos los filtros locales, cero red (appscriptbase §5.3). -->
+	<div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+		<input
+			data-product-search
+			type="search"
+			class="input-field md:max-w-64"
+			placeholder="Buscar por nombre o categoría…"
+			aria-label="Buscar productos"
+			autocomplete="off"
+		/>
+		<div data-product-filter class="min-w-0">
+			<ChipGroup label="Filtrar por estado">
+				<Chip data-filter-value="" aria-pressed="true">Todos</Chip>
+				<Chip data-filter-value="activo">Activos</Chip>
+				<Chip data-filter-value="inactivo">Inactivos</Chip>
+				<Chip data-filter-value="bajo">Stock bajo</Chip>
+				<Chip data-filter-value="agotado">Agotados</Chip>
+			</ChipGroup>
+		</div>
+		<label class="flex items-center gap-2 text-base font-semibold text-text">
+			Categoría
+			<select data-product-catfilter class="input-field md:max-w-48">
+				<option value="">Todas</option>
+			</select>
+		</label>
+		<label class="flex items-center gap-2 text-base font-semibold text-text">
+			Orden
+			<select data-product-sort class="input-field">
+				<option value="nombre">Nombre</option>
+				<option value="precio">Precio</option>
+				<option value="stock">Stock</option>
+			</select>
+		</label>
+		<span data-product-count class="text-base text-text-muted"></span>
 	</div>
 
-	<ul data-product-rows class="flex flex-col gap-3"></ul>
+	<!-- Mobile list (<md) — the island paints BOTH lists from templates. -->
+	<ul data-product-rows class="flex flex-col gap-3 md:hidden"></ul>
+
+	<!-- Desktop table (≥md): sticky header via ui/DataTable; the tbody gets
+	     the desktop-row clones. -->
+	<DataTable columns={['Miniatura', 'Nombre', 'Precio', 'Stock', 'Estado', 'Acciones']} hiddenBelowLg={[0]} />
+
 	<ProductRow />
-	<EmptyState state="empty-productos" mensaje="Todavía no hay productos" hidden />
+	<ProductRowDesktop />
+
+	<!-- >100 rows → blocks of 50 (T3.3) -->
+	<button type="button" data-product-more class="btn btn-secondary self-center" hidden>
+		Mostrar más
+	</button>
+
+	<EmptyState state="empty-productos" mensaje="Todavía no hay productos" hidden>
+		<button
+			slot="actions"
+			type="button"
+			class="btn btn-primary"
+			data-product-new
+			data-modal-open="producto-form"
+		>
+			+ Nuevo producto
+		</button>
+	</EmptyState>
+	<!-- Search empty state (plan-reponer-buscar.md Fase 2): revealed by the
+	     island ONLY when a query matched nothing — the full list above. -->
+	<EmptyState state="no-results" mensaje="Ningún producto coincide con la búsqueda." hidden />
+
+	<!-- T3.1 (refactorUI §7): the form lives in a Drawer ≥md / Sheet <md.
+	     No modal title: the FORM's own h2 (Nuevo/Editar producto) is the
+	     visible heading; the ✕ close comes from Modal. -->
+	<Modal modalKey="producto-form" variant="drawer">
+		<Alert tone="danger" name="productos-form-error" hidden>
+			<span data-product-form-error-text></span>
+		</Alert>
+		<ProductForm />
+	</Modal>
 
 	<Modal modalKey="confirmar-desactivar" title="¿Desactivar producto?">
 		<p>

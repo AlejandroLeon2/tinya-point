@@ -51,6 +51,20 @@
   --color-warning-hover: #874A00;
   --color-warning-content: #FFFFFF;
 
+  /* Información (refactorUI §2.1 — Fase 1) */
+  --color-info: #0B6E99;
+  --color-info-hover: #095A7F;
+  --color-info-content: #FFFFFF;
+
+  /* Superficie alterna (refactorUI §2.1 — Fase 1): fondos sutiles de
+     sección/lista, un paso más oscuro que --color-bg */
+  --color-surface-alt: #F1EEE7;
+
+  /* Elevación: 3 niveles exactos (refactorUI §2.1) — card, drawer, modal */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-drawer: 0 0 24px rgb(0 0 0 / 0.18);
+  --shadow-modal: 0 8px 32px rgb(0 0 0 / 0.25);
+
   /* Fuente única de toda la app */
   --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
 
@@ -78,6 +92,28 @@
   body {
     @apply bg-bg text-text text-base font-sans;
   }
+
+  /* TopBar height = border-b-2 + py-2(16) + row content 44 (min-h-11 pills)
+     — single source for the POS two-column calc (refactorUI §4.2B). */
+  :root {
+    --topbar-h: 62px;
+  }
+}
+
+/* ============================================================
+   Ticket Sheet ⇄ desktop column (refactorUI §4.2C — Fase 2)
+   ONE DOM node: at <lg the `ticket` modal is a bottom sheet driven by the
+   `hidden` attribute; at ≥lg it must ALWAYS render as the sticky right
+   column, even while `hidden` is set (that's the "closed sheet" state).
+   Tailwind preflight marks `[hidden]` as `!important` in the base layer;
+   for important declarations EARLIER layers win — the theme layer beats it.
+   ============================================================ */
+@layer theme {
+  @media (min-width: 1024px) {
+    [data-modal-root="ticket"][hidden] {
+      display: flex !important;
+    }
+  }
 }
 
 /* ============================================================
@@ -99,6 +135,18 @@
          disabled:opacity-50 disabled:pointer-events-none;
 }
 
+/* StatusPill base (refactorUI §2.2 — Fase 1): layout ONLY, no colors —
+   registered with @utility for the SAME reason as .btn above (v4 @apply
+   cannot resolve plain component classes). min-h-11 = 44px (admin target
+   floor, §2.1). Tone classes below add color in @layer components; state
+   is always text + icon + tone, never color alone (§0.9). */
+@utility pill {
+  @apply inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3
+         text-base font-semibold whitespace-nowrap
+         focus-visible:outline focus-visible:outline-2
+         focus-visible:outline-offset-2 focus-visible:outline-primary;
+}
+
 @layer components {
   .btn-primary {
     @apply btn bg-primary text-primary-content active:bg-primary-hover;
@@ -116,6 +164,16 @@
     @apply btn bg-surface text-text border-2 border-border active:bg-bg;
   }
 
+  /* Cancel-sale TRIGGER (refactorUI §4.2G — Fase 2): danger outline sitting
+     in the ticket header — compact, secondary-looking. The confirmation's
+     destructive button inside the modal stays `.btn-danger` (stilesbase §5.5):
+     danger styling only ever appears in the explicit cancel context.
+     Utilities inlined (v4 @apply cannot resolve @layer components classes). */
+  .btn-cancel-sale {
+    @apply btn border-2 border-danger bg-transparent text-danger
+           active:bg-danger/10 min-h-11 px-3 py-2 text-base;
+  }
+
   .input-field {
     @apply w-full rounded-lg border-2 border-border bg-surface
            px-4 py-3 text-lg text-text
@@ -130,5 +188,91 @@
   .badge-warning {
     @apply inline-block rounded-full bg-warning px-3 py-1
            text-base font-semibold text-warning-content;
+  }
+
+  /* StatusPill tones (refactorUI §2.2 — Fase 1): color over the @utility
+     pill layout. Text/icon always carry the state too (§0.9). */
+  .pill-muted { @apply pill border-border bg-bg text-text; }
+  .pill-ok { @apply pill border-success/50 bg-success/10 text-success; }
+  .pill-warn { @apply pill border-warning/50 bg-warning/10 text-warning; }
+  .pill-danger { @apply pill border-danger/50 bg-danger/10 text-danger; }
+  .pill-info { @apply pill border-info/50 bg-info/10 text-info; }
+}
+
+/* ── Comprobante 80 mm (refactorUI §6.2 / plan T3.6) ───────────────────
+   Print shows ONLY the sale receipt: every chrome piece leaves the flow
+   (display:none → no blank-page height), everything else loses its ink
+   (visibility), and [data-venta-root] keeps it. Named colors only — the
+   hex gate keeps @theme as the single color source. */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 5mm;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  /* Chrome out of the document flow (header, sidebar, tabbar, sheet,
+     toasts, banner, skip link, receipt actions). */
+  body > a,
+  header,
+  nav[data-sidebar-root],
+  nav[data-tabbar],
+  [data-modal-root],
+  [data-toast-region],
+  [data-offline-banner],
+  [data-venta-acciones] {
+    display: none !important;
+  }
+
+  /* Ink only inside the receipt. */
+  body * {
+    visibility: hidden;
+  }
+
+  [data-venta-root],
+  [data-venta-root] * {
+    visibility: visible;
+  }
+
+  [data-venta-root] {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Kill the mobile bottom-safe padding — it would tip a short receipt
+     onto a second page. */
+  #contenido {
+    padding: 0 !important;
+  }
+}
+
+/* ── Accesibilidad transversal (refactorUI §12 / plan T4.2) ──────────────
+   focus-visible: anillo de 2 px de alto contraste en TODOS los controles
+   (links, botones "bare" como el toggle de contraseña…) — cinturón sobre
+   las utilidades .btn/.pill/.input-field, que ya lo incluyen. Sin él, el
+   anillo dependiera de cada componente recordando agregar la clase. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* prefers-reduced-motion: anula todo el motion CSS (el badge pop ya está
+     guardado en JS en cart-actions.ts; esto cubre transiciones y keyframes
+     del sitio entero, incluidas las de Sheet/Modal). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

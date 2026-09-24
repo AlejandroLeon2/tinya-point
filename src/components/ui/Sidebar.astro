@@ -1,22 +1,39 @@
 ---
 // Visual sidebar navigation — receives content via props/slots only
 // (doc/astrobase.md §3.2): zero imports from api/, stores/ or
-// utils/storage.ts. The caller (layouts/LayoutApp.astro) decides the items
-// and the current path; this component only draws (doc/plan-sidebar.md Fase 1).
+// utils/storage.ts. The caller (layouts/LayoutApp.astro) decides the groups
+// and the current path; this component only draws.
 //
-// Contract with islands/sidebar.ts (wired in Fase 3):
-//   - root: data-sidebar-root — the toggle target of the mobile drawer.
+// refactorUI §3.2 (Fase 1): GROUPED navigation (Operación / Inventario /
+// Sistema), one icon per item, brand on top, collapse toggle for ≥md.
+// Contract with islands/sidebar.ts:
+//   - root:              data-sidebar-root — the toggle target of the mobile drawer.
+//   - brand:             data-sidebar-brand — island repaints with nombre_local.
+//   - collapse toggle:   data-sidebar-collapse-toggle — island owns aria-pressed.
+//   - collapsed state:   data-sidebar-collapse on the ROOT — the <style> below
+//     owns the rail layout, ONLY inside a min-width:768px media query (the
+//     mobile drawer never collapses).
+import Icon from './Icon.astro';
+
 interface NavItem {
 	href: string;
 	label: string;
+	/** Icon key for ui/Icon.astro — one home for every SVG (§2.2). */
+	icon: string;
+	/** Optional runtime badge key — islands paint the count (plan-stock.md Fase 3). */
+	badge?: string;
+}
+interface NavGroup {
+	label: string;
+	items: NavItem[];
 }
 interface Props {
-	items: NavItem[];
+	groups: NavGroup[];
 	currentPath: string;
 	/** So the mobile toggle can reference this nav via aria-controls (LayoutApp). */
 	id?: string;
 }
-const { items, currentPath, id } = Astro.props;
+const { groups, currentPath, id } = Astro.props;
 
 // Normalize trailing slashes the same way islands/route-guard.ts does, so
 // "/historial/" still marks exactly one item (plan-sidebar.md gotcha G3).
@@ -30,29 +47,60 @@ const isActive = (href: string) => normalize(href) === current;
 	aria-label="Principal"
 	class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-border bg-surface p-4"
 >
-	<ul class="flex flex-col gap-2">
-		{
-			items.map((item) => (
-				<li>
-					<a
-						href={item.href}
-						aria-current={isActive(item.href) ? 'page' : undefined}
-						class:list={[
-							'flex min-h-14 items-center rounded-lg px-4 text-lg',
-							// Active state never relies on color alone (stilesbase.md §5.2):
-							// background + heavier weight + aria-current="page".
-							isActive(item.href)
-								? 'bg-primary font-bold text-primary-content'
-								: 'font-semibold text-text hover:bg-bg active:bg-border',
-							'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-						]}
-					>
-						{item.label}
-					</a>
-				</li>
-			))
-		}
-	</ul>
+	{/* Brand row + collapse toggle (≥md; the toggle is static-hidden <md). */}
+	<div class="flex items-center justify-between gap-2">
+		<span data-sidebar-brand class="sidebar-label truncate text-lg font-bold text-text">
+			Tinya Point
+		</span>
+		<button
+			type="button"
+			data-sidebar-collapse-toggle
+			aria-pressed="false"
+			aria-label="Contraer la barra lateral"
+			class="hidden min-h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-text hover:bg-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:inline-flex"
+		>
+			<Icon name="chevron-left" class="h-5 w-5" />
+		</button>
+	</div>
+
+	{
+		groups.map((group) => (
+			<div class="flex flex-col gap-2">
+				<p class="sidebar-label px-2 text-base font-semibold text-text-muted">{group.label}</p>
+				<ul class="flex flex-col gap-1">
+					{group.items.map((item) => (
+						<li>
+							<a
+								href={item.href}
+								aria-current={isActive(item.href) ? 'page' : undefined}
+								class:list={[
+									'flex min-h-14 items-center gap-3 rounded-lg px-3 text-lg',
+									// Active state never relies on color alone (stilesbase §5.2):
+									// background + heavier weight + aria-current="page".
+									isActive(item.href)
+										? 'bg-primary font-bold text-primary-content'
+										: 'font-semibold text-text hover:bg-bg active:bg-border',
+									'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+								]}
+							>
+								<Icon name={item.icon} class="h-6 w-6 shrink-0" />
+								<span class="sidebar-label truncate">{item.label}</span>
+								{/* Count badge (plan-stock.md Fase 3): ui only — islands/
+								    stock-badge.ts reveals it with the number when > 0.
+								    Hidden by default so zero-stock shows no pill. */}
+								{item.badge && (
+									<span data-nav-badge={item.badge} hidden class="ml-auto rounded-full bg-warning px-2.5 py-0.5 font-bold text-warning-content">
+										<span class="sr-only">productos con stock bajo: </span>
+										<span data-nav-badge-count></span>
+									</span>
+								)}
+							</a>
+						</li>
+					))}
+				</ul>
+			</div>
+		))
+	}
 
 	{/* Bottom block: "Cerrar sesión" arrives via the named slot (LayoutApp). */}
 	<div class="mt-auto flex flex-col gap-2">
@@ -66,9 +114,10 @@ const isActive = (href: string) => normalize(href) === current;
 	   default state needs no JS — no pre-hydration flash, desktop correct
 	   even if the island never loads. islands/sidebar.ts only toggles
 	   data-sidebar-open: below md the drawer overlays the content as a
-	   fixed panel (z-45: above the toggle button z-40, below banner/modals
-	   z-50). Display toggling only — NEVER transform (gotcha G1: a
-	   transformed ancestor breaks fixed descendants like the sync Modal). */
+	   fixed panel (z-45: above the TopBar z-30 and the Menú button, below
+	   sheets/modals/toasts z-50). Display toggling only — NEVER transform
+	   (gotcha G1: a transformed ancestor breaks fixed descendants like the
+	   sync Modal). */
 	@media (max-width: 767.98px) {
 		nav:not([data-sidebar-open]) {
 			display: none;
@@ -80,6 +129,36 @@ const isActive = (href: string) => normalize(href) === current;
 			left: 0;
 			z-index: 45;
 			box-shadow: 0 0 24px rgb(0 0 0 / 0.25);
+		}
+	}
+
+	/* Desktop rail (refactorUI §3.2 — Fase 1): collapsed = 4.5rem, icons
+	   only, centered. Gated at md so the MOBILE drawer never collapses —
+	   the island may set data-sidebar-collapse at any width, but only this
+	   block gives it meaning, and only ≥768px. */
+	@media (min-width: 768px) {
+		nav[data-sidebar-collapse] {
+			width: 4.5rem;
+			padding-left: 0.5rem;
+			padding-right: 0.5rem;
+		}
+		nav[data-sidebar-collapse] .sidebar-label {
+			display: none;
+		}
+		nav[data-sidebar-collapse] [data-nav-badge] {
+			display: none;
+		}
+		nav[data-sidebar-collapse] a[href] {
+			justify-content: center;
+			padding-left: 0;
+			padding-right: 0;
+		}
+		nav[data-sidebar-collapse] [data-sidebar-collapse-toggle] {
+			margin-inline: auto;
+		}
+		/* Chevron flips to point outward when collapsed (expand affordance). */
+		nav[data-sidebar-collapse] [data-sidebar-collapse-toggle] svg {
+			transform: rotate(180deg);
 		}
 	}
 </style>

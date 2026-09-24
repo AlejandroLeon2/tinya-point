@@ -1,0 +1,18 @@
+---
+import LayoutApp from '../layouts/LayoutApp.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import StockContainer from '../components/smart/StockContainer.astro';
+
+// Low-stock panel (plan-stock.md) — same shell contract as ajustes.astro:
+// LayoutApp owns <main>, route-guard covers it, banner + sync indicator
+// ride every app page (extras §6). Read-only over the cached catalog.
+---
+<LayoutApp title="Stock bajo">
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<StockContainer />
+</LayoutApp>
+<script>
+	import '../components/islands/offline-banner';
+</script>

@@ -1,18 +1,20 @@
 ---
-// One product line of the sale detail (plan-mejoras-2.md Fase 3) — SINGLE
-// template cloned per item by islands/venta-detail.ts. Shows nombre,
-// cantidad × precio unitario and the line importe. ui/ draws, never fetches
-// or reads local data (astrobase §1).
+// One product line of the sale detail (plan-mejoras-2.md Fase 3; T3.6 turns
+// the list into a receipt <table>) — SINGLE <tr> template cloned per item by
+// islands/venta-detail.ts into tbody[data-venta-lines]. Shows nombre,
+// cantidad × precio unitario and the line importe (tabular, right-aligned).
+// ui/ draws, never fetches or reads local data (astrobase §1).
 ---
 <template data-venta-line-template>
-	<li
-		data-venta-line=""
-		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
-	>
-		<span class="flex min-w-0 flex-col gap-1">
-			<span data-venta-nombre class="text-base font-semibold text-text"></span>
-			<span data-venta-cantidad class="text-base text-text-muted"></span>
-		</span>
-		<span data-venta-importe class="text-base font-bold text-text"></span>
-	</li>
+	<tr data-venta-line="" class="border-b border-border last:border-b-0">
+		<td class="px-4 py-3 font-semibold text-text">
+			<span data-venta-nombre></span>
+		</td>
+		<td class="px-4 py-3 text-text-muted tabular-nums">
+			<span data-venta-cantidad></span>
+		</td>
+		<td class="px-4 py-3 text-right font-bold text-text tabular-nums">
+			<span data-venta-importe></span>
+		</td>
+	</tr>
 </template>

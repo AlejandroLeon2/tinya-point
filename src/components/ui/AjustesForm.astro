@@ -2,22 +2,37 @@
 // Settings form — ui draws only; islands/ajustes.ts fills the fields from
 // utils/storage getAjustes() and persists via setAjustes (astrobase §3.3/§1).
 // Validation copy is set by the island in simple Spanish, never raw codes.
-import Button from './Button.astro';
+//
+// T3.10 (refactorUI §10): grouped into three section cards (Negocio ·
+// Impuestos · Inventario), each field with contextual help, plus the live
+// preview of the money format. The submit button no longer lives here —
+// AjustesContainer owns the sticky dirty bar and triggers
+// `form.requestSubmit()` (deviation x: Enter's implicit submit still works
+// because the form itself is unchanged).
 ---
 <form data-ajustes-form novalidate class="flex flex-col gap-4">
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
-		Nombre del local
-		<input
-			data-ajustes-nombre
-			type="text"
-			class="input-field"
-			placeholder="Ej: Tienda de la esquina"
-			autocomplete="organization"
-		/>
-	</label>
+	<!-- ── Sección: Negocio ─────────────────────────────────────────── -->
+	<section class="card flex flex-col gap-3">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-lg font-bold text-text">Negocio</h2>
+			<p class="text-base text-text-muted">Nombre y moneda que se muestran en toda la app.</p>
+		</div>
 
-	<div class="flex flex-wrap gap-3">
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Nombre del local
+			<input
+				data-ajustes-nombre
+				type="text"
+				class="input-field"
+				placeholder="Ej: Tienda de la esquina"
+				autocomplete="organization"
+			/>
+			<span class="text-base font-normal text-text-muted">
+				Se muestra en el comprobante y el TopBar.
+			</span>
+		</label>
+
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
 			Moneda (símbolo)
 			<input
 				data-ajustes-moneda
@@ -27,8 +42,20 @@ import Button from './Button.astro';
 				autocomplete="off"
 				maxlength="6"
 			/>
+			<span class="text-base font-normal text-text-muted">
+				Se usa en precios, totales y tickets.
+			</span>
 		</label>
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+	</section>
+
+	<!-- ── Sección: Impuestos ───────────────────────────────────────── -->
+	<section class="card flex flex-col gap-3">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-lg font-bold text-text">Impuestos</h2>
+			<p class="text-base text-text-muted">IGV aplicado a las ventas nuevas.</p>
+		</div>
+
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
 			IGV (%)
 			<input
 				data-ajustes-igv
@@ -39,14 +66,44 @@ import Button from './Button.astro';
 				step="0.5"
 				inputmode="decimal"
 			/>
+			<span class="text-base font-normal text-text-muted">
+				Las ventas antiguas conservan su IGV original.
+			</span>
 		</label>
-	</div>
+
+		<!-- Live preview: typed moneda + tasa, recomputed on input by the
+		     island (never reads storage mid-typing). -->
+		<p data-ajustes-preview class="text-base font-semibold tabular-nums text-text"></p>
+	</section>
+
+	<!-- ── Sección: Inventario ──────────────────────────────────────── -->
+	<section class="card flex flex-col gap-3">
+		<div class="flex flex-col gap-1">
+			<h2 class="text-lg font-bold text-text">Inventario</h2>
+			<p class="text-base text-text-muted">Avisos de stock bajo en el panel de /stock.</p>
+		</div>
+
+		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			Alerta de stock (unidades)
+			<input
+				data-ajustes-stock-alerta
+				type="number"
+				class="input-field"
+				min="0"
+				max="999"
+				step="1"
+				inputmode="numeric"
+				placeholder="5"
+			/>
+			<span class="text-base font-normal text-text-muted">
+				Los productos con menos de estas unidades aparecen como "Bajo".
+			</span>
+		</label>
+	</section>
 
 	<p class="text-base text-text-muted">
 		Los cambios se aplican a precios y totales al guardar.
 	</p>
 
-	<div class="flex flex-wrap gap-3">
-		<Button type="submit" variant="primary" data-ajustes-submit>Guardar ajustes</Button>
-	</div>
+	<!-- Save moved to the sticky dirty bar in AjustesContainer (T3.10). -->
 </form>

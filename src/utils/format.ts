@@ -56,3 +56,33 @@ export function formatDia(fechaDia: string): string {
   if (!anio || !mes || !dia) return fechaDia;
   return `${dia}/${mes}/${anio}`;
 }
+
+// 'YYYY-MM-DD' → 'Mié 23 sep' — legible day-summary heading (refactorUI
+// §6.1, plan T3.5). Manual tables instead of Intl: es-PE short forms vary
+// per runtime ("mié, 23 sept" with a comma) and the spec copy is exact.
+// new Date(y, m-1, d) is device-local, so no UTC day-shift (same rule as
+// localDayKey).
+const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+export function formatDiaResumen(fechaDia: string): string {
+  const [anio, mes, dia] = fechaDia.split('-').map(Number);
+  if (!anio || !mes || !dia) return fechaDia;
+  const date = new Date(anio, mes - 1, dia);
+  // Reject rolled-over dates (e.g. 2026-13-01 → Jan 2027).
+  if (Number.isNaN(date.getTime()) || date.getMonth() !== mes - 1) return fechaDia;
+  return `${DIAS_CORTOS[date.getDay()]} ${dia} ${MESES_CORTOS[mes - 1]}`;
+}
+
+// "3 h 20 min" — elapsed since an ISO timestamp, minute precision
+// (refactorUI §5, plan T3.7: caja header pill "desde 08:12 (hace 3 h 20
+// min)"). Device-local now, clamped at 0 for future timestamps.
+export function formatTranscurrido(iso: string): string {
+  const desde = new Date(iso);
+  if (Number.isNaN(desde.getTime())) return '';
+  const minutos = Math.max(0, Math.floor((Date.now() - desde.getTime()) / 60_000));
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (horas === 0) return `${resto} min`;
+  return `${horas} h ${resto} min`;
+}

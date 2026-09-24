@@ -1,0 +1,15 @@
+---
+// Chip (refactorUI §2.2 — Fase 1): exclusive filter pill (categoría, rango
+// de fechas, estado). Selection state travels as aria-pressed — islands flip
+// it, plus the visual classes at markup time (static selection styles only;
+// runtime visibility still uses `hidden`, §0.4).
+// Rest props forward data-* hooks (data-category-value, data-range-value…).
+const props = Astro.props as Record<string, unknown>;
+---
+<button
+  type="button"
+  class="btn btn-secondary min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
+  {...props}
+>
+  <slot />
+</button>

@@ -11,18 +11,19 @@ import EmptyState from '../ui/EmptyState.astro';
 import Modal from '../ui/Modal.astro';
 ---
 <section data-categorias-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Categorías</h1>
-
-	<Alert tone="success" name="categorias-ok" hidden>
-		<span data-categoria-ok-text></span>
-	</Alert>
+	<!-- Errors keep the persistent Alert; success goes through the ephemeral
+	     Toast (refactorUI Fase 1) — the h1 lives in the LayoutApp TopBar. -->
 	<Alert tone="danger" name="categorias-error" hidden>
 		<span data-categoria-error-text></span>
 	</Alert>
 
-	<div class="card flex flex-col gap-4">
-		<CategoriaForm />
-	</div>
+	<!-- T3.9 (refactorUI §8): alta rápida en UNA fila sobre la lista — sin
+	     card aparte. The offline note mirrors the disabled submit (the
+	     island toggles it with navigator.onLine). -->
+	<CategoriaForm />
+	<p data-categoria-offline hidden class="text-base font-semibold text-warning">
+		Necesitás conexión para modificar categorías
+	</p>
 
 	<ul data-categoria-rows class="flex flex-col gap-3"></ul>
 	<CategoriaRow />

@@ -1,26 +1,49 @@
 ---
-// Caja container (doc/plan-mejoras-2.md Fase 2) — smart layer composes chrome
-// + ui/ parts and wires islands/caja.ts. Apertura form OR open-session
-// summary (mutually exclusive — the island flips them: static output, ONE
-// page for both states, gotcha G1) plus the shared confirmation Modal for
-// the cierre (stilesbase §5.5). Feedback only through ui/Alert.
+// Caja container (doc/plan-mejoras-2.md Fase 2 + refactorUI §5 / plan T3.7)
+// — smart layer composes chrome + ui/ parts and wires islands/caja.ts.
+// Estado como cabecera: StatusPill "Caja abierta desde HH:MM (hace …)"
+// ⇔ "Sin caja abierta" (spec §5). Apertura form OR open-session summary
+// (mutually exclusive — the island flips them: static output, ONE page for
+// both states, gotcha G1) plus the shared confirmation Modal for the cierre
+// (stilesbase §5.5): "Esperado" on top + live difference while typing.
+// caja-aviso (another-day session) carries a direct "Cerrar caja anterior"
+// action that opens the modal. Errors/cierre feedback via ui/Alert; success
+// goes through the ephemeral Toast + the TopBar pill (refactorUI Fase 1) —
+// the h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1).
 import Alert from '../ui/Alert.astro';
 import CajaFormApertura from '../ui/CajaFormApertura.astro';
+import CajaHistorial from '../ui/CajaHistorial.astro';
 import CajaResumen from '../ui/CajaResumen.astro';
+import Icon from '../ui/Icon.astro';
 import Modal from '../ui/Modal.astro';
+import StatusPill from '../ui/StatusPill.astro';
 ---
 <section data-caja-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Caja</h1>
+	<!-- Estado como cabecera (spec §5): the two pills swap via visibility
+	     only (§0.4) — tone never changes at runtime. -->
+	<div class="flex flex-wrap items-center gap-2">
+		<StatusPill tone="ok" data-caja-pill-abierta hidden>
+			<Icon slot="icon" name="clock" class="h-4 w-4" />
+			Caja abierta desde <span data-caja-pill-hora></span>
+			<span data-caja-pill-hace></span>
+		</StatusPill>
+		<StatusPill tone="muted" data-caja-pill-cerrada>
+			<Icon slot="icon" name="caja" class="h-4 w-4" />
+			Sin caja abierta
+		</StatusPill>
+	</div>
 
-	<Alert tone="success" name="caja-ok" hidden>
-		<span data-caja-ok-text></span>
-	</Alert>
 	<Alert tone="danger" name="caja-error" hidden>
 		<span data-caja-error-text></span>
 	</Alert>
-	<!-- render-managed: only while the open session belongs to another day -->
+	<!-- render-managed: only while the open session belongs to another day.
+	     The action opens the cierre modal directly (spec §5) — it clicks the
+	     resumen trigger so the input-reset logic has a single path. -->
 	<Alert tone="warning" name="caja-aviso" hidden>
 		<span data-caja-aviso-text></span>
+		<button slot="actions" type="button" class="btn btn-secondary" data-caja-cerrar-anterior>
+			Cerrar caja anterior
+		</button>
 	</Alert>
 	<!-- close-flow feedback: "Faltan/Sobran" when the counted cash differs -->
 	<Alert tone="warning" name="caja-cierre" hidden>
@@ -29,9 +52,14 @@ import Modal from '../ui/Modal.astro';
 
 	<CajaFormApertura />
 	<CajaResumen />
+	<CajaHistorial />
 
 	<Modal modalKey="cerrar-caja" title="Cerrar caja">
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		<p class="text-base text-text-muted">
+			Esperado:
+			<span data-caja-esperado-modal class="font-semibold text-text tabular-nums"></span>
+		</p>
+		<label class="mt-3 flex flex-col gap-1 text-base font-semibold text-text">
 			Efectivo contado (S/)
 			<input
 				data-caja-conteo
@@ -44,6 +72,17 @@ import Modal from '../ui/Modal.astro';
 		</label>
 		<p class="mt-2 text-base text-text-muted">
 			Contá el efectivo que queda en la caja antes de cerrar.
+		</p>
+		<!-- diferencia en vivo (T3.7): text + tone while typing — three nodes,
+		     visibility only (§0.4): Faltan warning / Sobran info / Cuadra ok -->
+		<p data-caja-diff class="mt-2 text-base font-semibold" hidden>
+			<span data-caja-diff-cuadra class="text-success" hidden>Cuadra</span>
+			<span data-caja-diff-faltan class="text-warning" hidden>
+				Faltan <span data-caja-diff-faltan-valor class="tabular-nums"></span>
+			</span>
+			<span data-caja-diff-sobran class="text-info" hidden>
+				Sobran <span data-caja-diff-sobran-valor class="tabular-nums"></span>
+			</span>
 		</p>
 		<p data-caja-modal-error class="mt-2 text-base font-semibold text-danger" hidden></p>
 		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>

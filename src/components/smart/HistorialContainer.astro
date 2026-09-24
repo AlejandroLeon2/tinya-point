@@ -4,33 +4,78 @@
 // localStorage at build — same option-A pattern as the catalog). This
 // component renders only the filter chrome + shell; every row comes from
 // ui/ (astrobase §3.3) and nothing here ever calls the API (base.md §7
-// "del propio dispositivo"). The extras.md §5 omissions stay out of scope —
-// omitted by explicit user decision).
+// "del propio dispositivo"). T3.4 (refactorUI §6.1): KPI strip + rango
+// chips + búsqueda local; the existing Desde/Hasta inputs are conserved
+// (island shows them in Personalizado <md, always ≥md). Exportar CSV stays
+// out of scope (spec marks it optional, plan has no checkbox). The extras.md
+// §5 omissions stay out of scope — omitted by explicit user decision.
+import Chip from '../ui/Chip.astro';
+import ChipGroup from '../ui/ChipGroup.astro';
 import EmptyState from '../ui/EmptyState.astro';
 import HistorialDay from '../ui/HistorialDay.astro';
 import HistorialLine from '../ui/HistorialLine.astro';
+import HistorialLineDesktop from '../ui/HistorialLineDesktop.astro';
+import StatCard from '../ui/StatCard.astro';
 ---
 <section data-historial-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Historial de ventas</h1>
+	<!-- The h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1). -->
 
-	<!-- Date filter (base.md §7 "filtrable por fecha"): visible labels,
-	     .input-field 18px (stilesbase §5). Island applies it on change. -->
-	<div class="flex flex-wrap items-end gap-3">
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
-			Desde
-			<input data-hist-from type="date" class="input-field" />
+	<!-- KPI strip del período filtrado (T3.4, spec §6.1): recalcula en cada
+	     filtro; revealed by the island ⇔ historial has ventas. -->
+	<div data-hist-kpis class="grid grid-cols-2 gap-3 md:grid-cols-4" hidden>
+		<StatCard etiqueta="Ventas" valor="0" data-hist-kpi="ventas" />
+		<StatCard etiqueta="Total" valor="S/ 0.00" data-hist-kpi="total" />
+		<StatCard etiqueta="Ticket promedio" valor="S/ 0.00" data-hist-kpi="promedio" />
+		<StatCard etiqueta="Método más usado" valor="—" data-hist-kpi="metodo" />
+	</div>
+
+	<div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+		<!-- Atajos de rango (T3.4): exclusive chips; Personalizado is the
+		     default and the only one that shows Desde/Hasta <md (island). -->
+		<div data-hist-range>
+			<ChipGroup label="Rango de fechas">
+				<Chip data-range-value="hoy">Hoy</Chip>
+				<Chip data-range-value="ayer">Ayer</Chip>
+				<Chip data-range-value="7d">7 días</Chip>
+				<Chip data-range-value="mes">Este mes</Chip>
+				<Chip data-range-value="personalizado" aria-pressed="true">Personalizado</Chip>
+			</ChipGroup>
+		</div>
+
+		<!-- Búsqueda local por número/producto/método (T3.4) — visible
+		     label (stilesbase §5), island debounces 200 ms. -->
+		<label class="flex flex-1 flex-col gap-1 text-base font-semibold text-text md:max-w-72">
+			Buscar
+			<input
+				data-hist-search
+				type="search"
+				class="input-field"
+				placeholder="Número, producto o método…"
+				autocomplete="off"
+			/>
 		</label>
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
-			Hasta
-			<input data-hist-to type="date" class="input-field" />
-		</label>
+
+		<!-- Date filter (base.md §7 "filtrable por fecha"): visible labels,
+		     .input-field 18px (stilesbase §5). Island applies it on change. -->
+		<div data-hist-dates class="flex flex-wrap items-end gap-3 md:flex">
+			<label class="flex flex-col gap-1 text-base font-semibold text-text">
+				Desde
+				<input data-hist-from type="date" class="input-field" />
+			</label>
+			<label class="flex flex-col gap-1 text-base font-semibold text-text">
+				Hasta
+				<input data-hist-to type="date" class="input-field" />
+			</label>
+		</div>
 	</div>
 
 	<!-- Day groups (<details>, Fase 3): the island clones a HistorialDay per
-	     localDay, then a HistorialLine per venta inside it. -->
+	     localDay, then a HistorialLine (mobile) + HistorialLineDesktop (≥md)
+	     per venta inside it (T3.5). -->
 	<div data-hist-days class="flex flex-col gap-3"></div>
 	<HistorialDay />
 	<HistorialLine />
+	<HistorialLineDesktop />
 	<EmptyState state="empty-historial" mensaje="Todavía no hay ventas" hidden />
 	<EmptyState state="no-date-results" mensaje="Sin ventas en ese rango de fechas" hidden />
 </section>

@@ -1,0 +1,42 @@
+---
+// DataTable (refactorUI §2.2 — Fase 1): desktop (≥md) table for dense lists
+// (historial, productos). Collapses entirely below md — the mobile card
+// list renders beside it (breakpoint classes = static styling, allowed;
+// runtime state keeps using `hidden`, §0.4). Sticky header, rows arrive via
+// the default slot (islands clone <template> rows into tbody).
+interface Props {
+  columns: string[];
+  class?: string;
+  /** Indices of columns hidden below lg. The md–lg range (768–1023px) sits
+      beside the 240px sidebar with NO scrollport (the LayoutApp column only
+      absorbs overflow at ≥lg) — T4.4 caught /productos overflowing the page
+      by 22px at the 810px tablet. Hide the least critical column(s) there
+      instead of breaking sticky or clipping data. */
+  hiddenBelowLg?: number[];
+}
+const { columns, class: cls = '', hiddenBelowLg = [] } = Astro.props;
+---
+<!-- No overflow-x here on purpose: the wrapper would become the scrollport
+     and kill the sticky header. Horizontal overflow (if any) is absorbed by
+     the LayoutApp column, which is the ≥lg scroll container; below lg the
+     table is kept narrow via hiddenBelowLg (see Props). -->
+<div class={`hidden rounded-xl border border-border bg-surface shadow-card md:block ${cls}`}>
+  <table class="w-full text-base text-text">
+    <!-- top-[62px] = below the sticky TopBar (--topbar-h) in either scrollport. -->
+    <thead class="sticky top-[62px] z-10 bg-surface">
+      <tr class="border-b-2 border-border text-left text-text-muted">
+        {columns.map((column, index) => (
+          <th
+            scope="col"
+            class:list={['px-4 py-3 font-semibold', hiddenBelowLg.includes(index) && 'hidden lg:table-cell']}
+          >
+            {column}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      <slot />
+    </tbody>
+  </table>
+</div>

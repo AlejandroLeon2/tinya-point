@@ -4,7 +4,7 @@ export function closestAncestor<T extends Element>(element: Element, selector: s
   return element.closest(selector) as T | null;
 }
 
-// Used by quantity-control.ts so each script scopes itself to ITS card —
+// Used by the add-to-cart handler so each script scopes itself to ITS card —
 // never a fixed id shared by every card on the page (doc/astrobase.md §3.4).
 export function closestCard(element: Element): HTMLElement | null {
   return closestAncestor<HTMLElement>(element, '.card');

@@ -193,12 +193,19 @@ export interface Ajustes {
   nombre_local: string;
   moneda: string; // symbol prefix shown by formatCurrency
   igv_tasa: number; // 0–100, default 18
+  stock_alerta_min: number; // unidades: stock < umbral aparece en /stock (default 5)
+  // Sidebar rail preference (refactorUI §3.2, Fase 1): lives INSIDE this
+  // existing JSON on purpose — the map caps localStorage at 7 keys, so no
+  // new key is created for a UI preference.
+  sidebar_colapsado: boolean;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
   nombre_local: '',
   moneda: 'S/',
   igv_tasa: 18,
+  stock_alerta_min: 5,
+  sidebar_colapsado: false,
 };
 
 // Field-wise validation: a partially corrupted payload degrades per field
@@ -222,6 +229,17 @@ export function getAjustes(): Ajustes {
       crudo.igv_tasa <= 100
         ? crudo.igv_tasa
         : AJUSTES_DEFAULT.igv_tasa,
+    stock_alerta_min:
+      typeof crudo.stock_alerta_min === 'number' &&
+      Number.isFinite(crudo.stock_alerta_min) &&
+      crudo.stock_alerta_min >= 0 &&
+      crudo.stock_alerta_min <= 999
+        ? Math.round(crudo.stock_alerta_min)
+        : AJUSTES_DEFAULT.stock_alerta_min,
+    sidebar_colapsado:
+      typeof crudo.sidebar_colapsado === 'boolean'
+        ? crudo.sidebar_colapsado
+        : AJUSTES_DEFAULT.sidebar_colapsado,
   };
 }
 

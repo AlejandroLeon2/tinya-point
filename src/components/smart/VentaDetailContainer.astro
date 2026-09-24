@@ -1,11 +1,15 @@
 ---
-// Sale detail container (plan-mejoras-2.md Fase 3, decision D3) — composes
-// chrome + ui/ parts and wires islands/venta-detail.ts: meta card (fecha,
-// hora, método), one VentaLine per item, totals card (subtotal only when the
-// snapshot has it — gotcha G9 —, IGV, total) and the EmptyState for an
-// unknown ?id=. Zero API: everything comes from the local historial
-// (base.md §7 "del propio dispositivo").
+// Sale detail container (plan-mejoras-2.md Fase 3, decision D3; redesigned
+// as COMPROBANTE by plan T3.6 / refactorUI §6.2) — composes chrome + ui/
+// parts and wires islands/venta-detail.ts: receipt header (nombre del local,
+// fecha, hora, método, sync pill), lines as a <table>, totals right-aligned
+// with a highlighted total, the nota discreta for derived-IGV sales, and the
+// EmptyState (with its own "Volver al historial" CTA — T0.1 fix) for an
+// unknown ?id=. Imprimir runs window.print() against an 80 mm @media print
+// sheet that shows ONLY this receipt (global.css). Zero API: everything
+// comes from the local historial (base.md §7 "del propio dispositivo").
 import EmptyState from '../ui/EmptyState.astro';
+import StatusPill from '../ui/StatusPill.astro';
 import VentaLine from '../ui/VentaLine.astro';
 import { etiquetaIgv } from '../../utils/tax';
 
@@ -15,42 +19,81 @@ import { etiquetaIgv } from '../../utils/tax';
 const taxLabel = etiquetaIgv();
 ---
 <section data-venta-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
-	<h1 class="text-xl font-bold text-text">Detalle de venta</h1>
+	<!-- The h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1). -->
 
 	<div data-venta-contenido class="flex flex-col gap-4">
-		<div class="card flex flex-wrap items-center gap-3 text-base">
-			<span data-venta-fecha class="font-semibold text-text"></span>
-			<span data-venta-hora class="text-text-muted"></span>
-			<span data-venta-metodo class="text-text-muted"></span>
+		<!-- Comprobante header (T3.6): local name + fecha/hora + método pill
+		     + sync pill (three states toggled by `hidden`, never color alone). -->
+		<div class="card flex flex-col gap-2 text-base">
+			<div class="flex flex-wrap items-center justify-between gap-3">
+				<span data-venta-local class="text-lg font-bold text-text">Tienda</span>
+				<span data-venta-sync class="flex items-center">
+					<StatusPill tone="ok" data-venta-sync-state="sincronizada">Sincronizada</StatusPill>
+					<StatusPill tone="warn" data-venta-sync-state="pendiente" hidden>Pendiente</StatusPill>
+					<StatusPill tone="danger" data-venta-sync-state="error" hidden>Error</StatusPill>
+				</span>
+			</div>
+			<div class="flex flex-wrap items-center gap-3">
+				<span data-venta-fecha class="font-semibold text-text"></span>
+				<span data-venta-hora class="text-text-muted"></span>
+				<StatusPill tone="info"><span data-venta-metodo></span></StatusPill>
+			</div>
 		</div>
 
-		<ul data-venta-lines class="flex flex-col gap-3"></ul>
+		<!-- Líneas del comprobante en tabla (T3.6): importes tabulares a la
+		     derecha; rows arrive from ui/VentaLine via islands/venta-detail. -->
+		<div class="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+			<table class="w-full text-base text-text">
+				<thead>
+					<tr class="border-b-2 border-border text-left text-text-muted">
+						<th scope="col" class="px-4 py-3 font-semibold">Producto</th>
+						<th scope="col" class="px-4 py-3 font-semibold">Cantidad</th>
+						<th scope="col" class="px-4 py-3 text-right font-semibold">Importe</th>
+					</tr>
+				</thead>
+				<tbody data-venta-lines></tbody>
+			</table>
+		</div>
 		<VentaLine />
 
+		<!-- Totales alineados a la derecha + total destacado (T3.6). -->
 		<div class="card flex flex-col gap-2 text-base">
-			<div data-venta-subtotal-fila class="flex justify-between gap-3" hidden>
+			<div data-venta-subtotal-fila class="flex justify-between gap-3 tabular-nums" hidden>
 				<span class="text-text-muted">Subtotal</span>
 				<span data-venta-subtotal class="font-semibold text-text"></span>
 			</div>
-			<div class="flex justify-between gap-3">
+			<div class="flex justify-between gap-3 tabular-nums">
 				<span data-venta-tax-label class="text-text-muted">{taxLabel}</span>
 				<span data-venta-igv class="font-semibold text-text"></span>
 			</div>
-			<div class="flex justify-between gap-3">
+			<div class="flex items-center justify-between gap-3 border-t border-border pt-2 text-lg tabular-nums">
 				<span class="font-bold text-text">Total</span>
 				<span data-venta-total class="font-bold text-text"></span>
 			</div>
+			<!-- Nota discreta (T3.6): visible ⇔ NO hay snapshot de subtotal
+			     (IGV derivado con la tasa actual — limitación conocida, hoy
+		     silenciosa). Island toggles it. -->
+			<p data-venta-igv-nota class="text-base text-text-muted" hidden>
+				Estimado con la tasa actual
+			</p>
 		</div>
 	</div>
 
 	<!-- Unknown/absent id → revealed by the island (gotcha G1: the route is
-	     static, so "not found" is a runtime state, not a 404 page). -->
+	     static, so "not found" is a runtime state, not a 404 page). The CTA
+	     lives INSIDE the state (T0.1/T3.6); the island hides the standalone
+	     action row when the venta is missing. -->
 	<div data-venta-no-encontrada hidden>
-		<EmptyState state="venta-notfound" mensaje="Venta no encontrada" hidden />
+		<EmptyState state="venta-notfound" mensaje="Venta no encontrada">
+			<Fragment slot="actions">
+				<a href="/historial" class="btn btn-secondary">Volver al historial</a>
+			</Fragment>
+		</EmptyState>
 	</div>
 
-	<div>
+	<div data-venta-acciones class="flex flex-wrap gap-3">
 		<a href="/historial" class="btn btn-secondary">Volver al historial</a>
+		<button type="button" data-venta-print class="btn btn-primary">Imprimir</button>
 	</div>
 </section>
 

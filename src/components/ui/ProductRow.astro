@@ -7,21 +7,22 @@
 // safe and direct. ui/ draws, never fetches or reads local data (astrobase §1).
 ---
 <template data-product-row-template>
+	<!-- md:hidden: ≥md shows the DataTable row (ProductRowDesktop template) -->
 	<li
-		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 md:hidden"
 		data-product-row=""
 	>
 		<span class="flex min-w-0 items-center gap-3">
 			<!-- Admin thumbnail (plan-productos-v2.md Fase 4, D3): decorative
 			     (the name beside it carries the meaning → alt=""), lazy, and
-			     hidden until it loads — a row without a photo (or with a
-			     broken URL) simply renders without the thumbnail. -->
+			     opacity-0 until it loads — same T4.4 fix as Card.astro:
+			     display:none + lazy = la imagen nunca se descarga. Sin foto
+			     (o URL rota) la isla colapsa el nodo con `hidden`. -->
 			<img
 				data-product-img
 				alt=""
 				loading="lazy"
-				hidden
-				class="h-14 w-14 shrink-0 rounded-lg border border-border object-cover"
+				class="h-14 w-14 shrink-0 rounded-lg border border-border object-cover opacity-0"
 			/>
 			<span class="flex min-w-0 flex-col gap-1">
 				<span data-product-nombre class="text-base font-semibold text-text"></span>

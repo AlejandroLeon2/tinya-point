@@ -1,0 +1,27 @@
+---
+// CartBar (refactorUI §4.2C — Fase 2): fixed summary bar sitting right ABOVE
+// the TabBar at <lg — "N ítems · S/ total" + "Ver ticket" (opens the ticket
+// Sheet). Visibility ⇔ cart is NOT empty: islands/cart-badge.ts owns the
+// `hidden` flip of BOTH nodes (bar + spacer), no island of its own (§4.2C).
+// The spacer runs in normal flow at the end of the page content so the bar
+// never covers the last row (T2.7).
+import Icon from './Icon.astro';
+---
+<div
+	data-cart-bar
+	hidden
+	class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 flex min-h-14 items-center justify-between gap-3 border-t-2 border-border bg-surface px-4 lg:hidden"
+>
+	<p class="flex min-w-0 items-center gap-2 text-base font-semibold text-text">
+		<Icon name="carrito" class="h-6 w-6 shrink-0 text-text-muted" />
+		<span class="truncate">
+			<span data-cart-bar-count>0</span>
+			ítems ·
+			<span data-cart-bar-total class="tabular-nums">S/ 0.00</span>
+		</span>
+	</p>
+	<button type="button" data-modal-open="ticket" class="btn btn-primary min-h-11 px-4 py-2 text-base">
+		Ver ticket
+	</button>
+</div>
+<div data-cart-bar-spacer hidden class="h-14 lg:hidden" aria-hidden="true"></div>

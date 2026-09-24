@@ -18,7 +18,13 @@ interface ActiveModal {
 let active: ActiveModal | null = null;
 
 function getFocusable(modal: HTMLElement): HTMLElement[] {
-  return Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+  // Visible-only: `hidden`/display:none controls (e.g. the image "Quitar"
+  // button in ProductForm) match the selector but the browser does NOT
+  // tabulate them — counting them breaks the first/last wrap arithmetic and
+  // lets focus escape (caught by test-a11y, T4.2).
+  return Array.from(modal.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.offsetParent !== null || el.getClientRects().length > 0,
+  );
 }
 
 export function openModal(modal: HTMLElement, trigger?: HTMLElement | null): void {

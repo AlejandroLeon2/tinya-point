@@ -1,17 +1,20 @@
 ---
-// Offline warning bar (doc/extras.md §6): top-fixed, warning color, plain
-// Spanish text, never blocks the sale. ui/ admission rule: props only — no
-// fetch, no localStorage, no api/ imports (doc/astrobase.md §3.2).
+// Offline warning bar (doc/extras.md §6): warning color, plain Spanish text,
+// never blocks the sale. ui/ admission rule: props only — no fetch, no
+// localStorage, no api/ imports (doc/astrobase.md §3.2).
+//
+// IN-FLOW band under the header (refactorUI §3.3 D7, Fase 0): it used to be
+// `fixed top-0 z-50`, which overlapped the mobile menu toggle in the top-left
+// corner. Now it scrolls with the page like any other block.
 //
 // `visible` sets the INITIAL state at render time (SSR output). After load,
 // islands/offline-banner.ts toggles the `hidden` attribute — the same
 // contract utils/modal.ts already uses — so the markup stays owned here and
 // ui/ never learns about the network.
 //
-// pointer-events-none (plan-sidebar.md Fase 4 decision): the bar is pure
-// status text (no interactive content) and spans the full width at top-0 —
-// without it, it would sit on top of the mobile sidebar toggle and swallow
-// its clicks. Literal reading of extras.md §6: the bar NEVER blocks.
+// pointer-events-none kept from plan-sidebar.md Fase 4: the bar is pure
+// status text (no interactive content) and spans the full width — the bar
+// NEVER blocks (extras.md §6 literal reading).
 interface Props {
   visible?: boolean;
 }
@@ -20,7 +23,7 @@ const { visible = false } = Astro.props;
 <div
   data-offline-banner
   hidden={!visible}
-  class="pointer-events-none fixed inset-x-0 top-0 z-50 bg-warning px-4 py-2 text-center text-base text-warning-content"
+  class="pointer-events-none bg-warning px-4 py-2 text-center text-base text-warning-content"
   role="status"
 >
   Sin conexión — puedes seguir vendiendo

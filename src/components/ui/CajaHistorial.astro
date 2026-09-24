@@ -1,0 +1,17 @@
+---
+// Caja history (T3.7 — refactorUI §5): the 10 most recent sessions with
+// fecha, apertura, cierre and a difference pill. Pure markup + <template>
+// — islands/caja.ts paints every row and toggles the wrapper (hidden ⇔ no
+// cajas). It also feeds the [data-hist-caja] line of /historial's day
+// cards: both read the same local `cajas` key, so nothing else to wire.
+import CajaRow from './CajaRow.astro';
+---
+<section data-caja-historial-wrap class="card flex flex-col gap-1" hidden>
+	<h2 class="text-lg font-bold text-text">Cajas anteriores</h2>
+	<ul data-caja-historial class="flex flex-col border-t border-border">
+		<!-- rows cloned from the template below — island-owned -->
+	</ul>
+</section>
+<template data-caja-row>
+	<CajaRow />
+</template>

@@ -1,0 +1,141 @@
+---
+// Low-stock panel container (plan-stock.md + refactorUI §9 / plan T3.8) —
+// smart layer composes chrome + ui/ and wires islands/stock.ts (astrobase
+// §3.3). Read-only over the cached catalog: the restock writes happen in the
+// rows themselves (actualizarProducto inline, plan-reponer-buscar Fase 1).
+// T3.8: StatCard KPIs replace the old stats paragraph, chips
+// filter/sort the list, rows gain batch +5/+10/+24 and a "Bajo" tag, and
+// the freshness stamp sits ALWAYS next to Actualizar (warning when stale).
+import Alert from '../ui/Alert.astro';
+import Chip from '../ui/Chip.astro';
+import ChipGroup from '../ui/ChipGroup.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import StatCard from '../ui/StatCard.astro';
+---
+<section data-stock-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<!-- The h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1). -->
+
+	<!-- reposición fallida: error de API con revert del stepper -->
+	<Alert tone="warning" name="stock-warning" hidden>
+		<span data-stock-warning-text></span>
+	</Alert>
+
+	<!-- KPIs (spec §9): reemplazan el párrafo de stats viejo -->
+	<div data-stock-kpis class="grid grid-cols-2 gap-3 md:grid-cols-3">
+		<StatCard etiqueta="Por reponer" valor="—" data-stock-kpi="reponer" />
+		<StatCard etiqueta="Agotados" valor="—" data-stock-kpi="agotados" />
+		<StatCard
+			etiqueta="Inventario valorizado"
+			valor="—"
+			data-stock-kpi="valorizado"
+			class="col-span-2 md:col-span-1"
+		/>
+	</div>
+	<p data-stock-umbral class="text-base text-text-muted">
+		Mostrando productos con stock menor a 5.
+	</p>
+
+	<div class="flex flex-wrap items-center justify-between gap-3">
+		<h2 class="text-lg font-bold text-text">Productos por reponer</h2>
+		<div class="flex flex-wrap items-center gap-3">
+			<!-- "Actualizado hace N min" SIEMPRE junto a Actualizar (spec §9);
+			     tono warning cuando la caché superó el TTL. Dos nodos porque
+			     el tono viaja como visibilidad, nunca como clases (§0.4). -->
+			<p data-stock-stale hidden class="text-base">
+				<span data-stock-stale-text class="text-text-muted"></span>
+				<span data-stock-stale-warn hidden class="font-semibold text-warning"></span>
+			</p>
+			<button type="button" data-stock-refresh class="btn btn-secondary">
+				Actualizar
+			</button>
+		</div>
+	</div>
+
+	<!-- Filtros (spec §9): el hook vive en el wrapper, los chips llevan el valor -->
+	<div data-stock-filter>
+		<ChipGroup label="Filtros de stock">
+			<Chip data-stock-filter-value="todos" aria-pressed="true">Todos los bajos</Chip>
+			<Chip data-stock-filter-value="agotados" aria-pressed="false">Solo agotados</Chip>
+			<Chip data-stock-filter-value="categoria" aria-pressed="false">Por categoría</Chip>
+		</ChipGroup>
+	</div>
+
+	<template data-stock-row-template>
+		<div
+			data-stock-row
+			class="card flex flex-wrap items-center justify-between gap-3 p-4"
+		>
+			<div class="flex min-w-0 flex-col gap-1">
+				<p data-stock-nombre class="truncate text-lg font-semibold text-text"></p>
+				<p data-stock-categoria class="text-base text-text-muted"></p>
+			</div>
+			<div class="flex flex-wrap items-center justify-end gap-2">
+				<p data-stock-precio class="text-lg font-semibold text-text"></p>
+				<!-- Inline restock stepper (plan-reponer-buscar Fase 1): the input
+				     saves on change (blur/Enter); ±1 plus the batch buttons below
+				     step with the SAME 500 ms debounce (spec §9). Batch sizes are
+				     configured via data-stock-step. -->
+				<div data-stock-stepper class="flex items-center gap-1">
+					<button
+						type="button"
+						data-stock-step="-1"
+						class="btn btn-secondary px-3"
+						aria-label="Restar una unidad"
+					>
+						−
+					</button>
+					<input
+						data-stock-input
+						type="number"
+						min="0"
+						max="9999"
+						step="1"
+						inputmode="numeric"
+						class="input-field w-20 text-center text-lg font-bold"
+					/>
+					<button
+						type="button"
+						data-stock-step="1"
+						class="btn btn-secondary px-3"
+						aria-label="Sumar una unidad"
+					>
+						+
+					</button>
+				</div>
+				<div class="flex items-center gap-1">
+					<button type="button" data-stock-step="5" class="btn btn-secondary px-3" aria-label="Sumar 5 unidades">+5</button>
+					<button type="button" data-stock-step="10" class="btn btn-secondary px-3" aria-label="Sumar 10 unidades">+10</button>
+					<button type="button" data-stock-step="24" class="btn btn-secondary px-3" aria-label="Sumar 24 unidades">+24</button>
+				</div>
+				<!-- Tags: tono por visibilidad (§0.4) — la isla pinta el título
+				     con el umbral configurado en /ajustes. -->
+				<span data-stock-bajo hidden class="font-bold text-warning">Bajo</span>
+				<span data-stock-agotado hidden class="font-bold text-danger">Agotado</span>
+			</div>
+		</div>
+	</template>
+
+	<div data-stock-list class="flex flex-col gap-2"></div>
+
+	<!-- All good: nothing under the threshold (icon comes with EmptyState) -->
+	<EmptyState
+		state="stock-ok"
+		mensaje="Ningún producto bajo el umbral. ¡Todo en orden!"
+		hidden
+	/>
+	<!-- No cache AND fetch failed: never invent numbers — Reintentar is a
+	     second [data-stock-refresh] trigger (the island delegates). -->
+	<EmptyState
+		state="stock-nodata"
+		mensaje="No se pudo cargar el catálogo. Revisá tu conexión."
+		hidden
+	>
+		<button slot="actions" type="button" data-stock-refresh class="btn btn-secondary">
+			Reintentar
+		</button>
+	</EmptyState>
+</section>
+
+<script>
+	import '../islands/stock';
+</script>

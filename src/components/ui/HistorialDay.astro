@@ -1,10 +1,16 @@
 ---
-// Day group for the history (plan-mejoras-2.md Fase 3) — SINGLE template
-// cloned per local day by islands/historial.ts. Native <details>/<summary>:
-// the summary IS the day's purchase recap the owner asked for (fecha + "N
-// ventas" + total + per-method breakdown in TEXT — stilesbase §5.2, never
-// color alone). Only today's group starts open, first paint only (island
-// rule). ui/ draws, never fetches or reads data (astrobase §1).
+// Day group for the history (plan-mejoras-2.md Fase 3, restyled by plan
+// T3.5 / refactorUI §6.1) — SINGLE template cloned per local day by
+// islands/historial.ts. Native <details>/<summary>: the summary IS the day's
+// purchase recap (fecha larga "Mié 23 sep" + "N ventas" + método en pill +
+// per-method breakdown in TEXT + total tabular — stilesbase §5.2, never color
+// alone). ≥md each day lists its ventas in a DataTable (Hora · Método ·
+// Productos · Total · Estado); <md keeps the HistorialLine card list —
+// breakpoint classes are static styling, allowed (§0.4). Only today's group
+// starts open, first paint only (island rule). ui/ draws, never fetches or
+// reads data (astrobase §1).
+import DataTable from './DataTable.astro';
+import StatusPill from './StatusPill.astro';
 ---
 <template data-hist-day-template>
 	<details
@@ -14,14 +20,21 @@
 		<summary
 			class="flex cursor-pointer flex-col gap-1 p-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 		>
-			<span class="flex flex-wrap items-center justify-between gap-3">
+			<span class="flex w-full flex-wrap items-center justify-between gap-3">
 				<span class="flex flex-wrap items-center gap-3">
 					<span data-hist-dia class="font-semibold text-text"></span>
 					<span data-hist-n class="text-text-muted"></span>
+					<!-- Método más usado del día en pill neutro (T3.5) — toggled
+					     by `hidden`, text painted by the island. -->
+					<span data-hist-metodo-pill hidden>
+						<StatusPill tone="muted">
+							<span data-hist-metodo-pill-texto></span>
+						</StatusPill>
+					</span>
 				</span>
 				<span class="flex flex-wrap items-center justify-end gap-3">
 					<span data-hist-desglose class="text-text-muted"></span>
-					<span data-hist-total class="font-bold text-text"></span>
+					<span data-hist-total class="font-bold text-text tabular-nums"></span>
 				</span>
 			</span>
 			<!-- "Productos más vendidos" of the day (base.md §7, plan-cierre
@@ -38,6 +51,18 @@
 		<div data-hist-caja class="border-t border-border p-3 text-base text-text-muted" hidden>
 			<span data-hist-caja-texto></span>
 		</div>
-		<ul data-hist-lines class="flex flex-col gap-3 border-t border-border p-3"></ul>
+		<!-- <md: sale cards. ≥md: this list is replaced by the DataTable
+		     below (both render the same ventas — painted by one shared
+		     paintLine(), §0.4 breakpoint rule). -->
+		<ul data-hist-lines class="flex flex-col gap-3 border-t border-border p-3 md:hidden"></ul>
+		<div class="hidden border-t border-border md:block">
+			<!-- md: variants sort AFTER base utilities in the generated
+			     stylesheet (same pattern as Modal's lg:border-0): the table
+			     drops its own rounded border/shadow inside this day card. -->
+			<DataTable
+				columns={['Hora', 'Método', 'Productos', 'Total', 'Estado']}
+				class="md:rounded-none md:border-0 md:shadow-none"
+			/>
+		</div>
 	</details>
 </template>

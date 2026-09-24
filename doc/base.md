@@ -62,7 +62,7 @@ Esta hoja es **respaldo/reporte**, no la fuente de verdad operativa (esa es loca
 - `carrito_actual`: items en la venta en curso
 - `historial_ventas`: ventas cerradas localmente
 - `cola_sync`: ventas/movimientos de stock pendientes de enviar al Sheet (para modo offline)
-- `ajustes`: datos del negocio (nombre, moneda) + tasa de IGV — **7ma llave**, agregada por `plan-productos-v2.md` Fase 5 (D4); defaults aplicados cuando no existe
+- `ajustes`: datos del negocio (nombre, moneda, tasa de IGV, umbral de alerta de stock) — **7ma llave**, agregada por `plan-productos-v2.md` Fase 5 (D4) y ampliada por `plan-stock.md` Fase 1; defaults aplicados cuando no existe
 
 ### 2.4 Google Sheet — hoja "Cajas" (sesiones de apertura/cierre)
 
@@ -222,6 +222,9 @@ Principio clave: **la venta nunca depende de que el Sheet responda**. El Sheet e
 - Gestión de categorías con CRUD propio (hoja "Categorias") y el form de productos conectado a ella *(D2/D3, `plan-productos-v2.md`)*
 - Foto en las filas del listado admin de `/productos` (thumbnail; el POS ya muestra imagen) *(D3, `plan-productos-v2.md` Fase 4)*
 - Ajustes (`/ajustes`): nombre del local, moneda y IGV configurable *(D4, `plan-productos-v2.md` Fase 5 — el impuesto de §7 "configurable" ahora es dato, no constante)*
+- Panel de stock bajo (`/stock`): productos con stock < umbral (default 5, configurable en `/ajustes`), inventario valorizado, badge con el conteo en el sidebar y **repostock inline** (stepper −/+ con guardado inmediato) *(pedido del dueño + `plan-stock.md` / `plan-reponer-buscar.md`)*
+- Búsqueda por nombre/categoría en `/productos` (admin) — Fuse local, sin red *(mejora UX de `auditoria-ux.md` P2, `plan-reponer-buscar.md`)*
+- UX de formularios: errores **inline bajo cada campo** (`role="alert"` + `aria-invalid`), bloqueo de doble envío con estado "Guardando…/Creando…" en todos los submits, file input bloqueado durante upload y foco de vuelta al cancelar *(auditoría de uso real, `plan-form-ux.md` — patrón base: `login-form.ts`)*
 
 ---
 

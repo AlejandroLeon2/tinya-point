@@ -1,29 +1,48 @@
 ---
-// Caja abierta summary — labels are static, values are filled by
+// Caja abierta summary (T3.7 — refactorUI §5): grid of StatCards over the
+// turn — Apertura · Ventas del día (S/ + N) · Desglose por método ·
+// Efectivo esperado (destacado). Labels static, values filled by
 // islands/caja.ts through data-* hooks (no fixed ids, invariant 5). The
-// "Efectivo esperado" line = monto_apertura + efectivo del día (island math,
-// G4 rounding). "Cerrar caja" opens the shared confirmation Modal (§5.5).
+// per-method breakdown is a custom tile (StatCard is single-value). The
+// "Cerrar caja" button opens the shared confirmation Modal (§5.5).
+import StatCard from './StatCard.astro';
 ---
-<section data-caja-resumen class="card flex flex-col gap-4" hidden>
-	<h2 class="text-lg font-bold text-text">Caja abierta</h2>
-	<ul class="flex flex-col gap-2 text-base">
-		<li class="flex justify-between gap-3">
-			<span class="text-text-muted">Monto de apertura</span>
-			<span data-caja-monto-apertura class="font-semibold text-text"></span>
-		</li>
-		<li class="flex justify-between gap-3">
-			<span class="text-text-muted">Abierta a las</span>
-			<span data-caja-hora-apertura class="font-semibold text-text"></span>
-		</li>
-		<li class="flex justify-between gap-3">
-			<span class="text-text-muted">Ventas del día</span>
-			<span data-caja-n-ventas class="font-semibold text-text"></span>
-		</li>
-		<li class="flex justify-between gap-3">
-			<span class="text-text-muted">Efectivo esperado</span>
-			<span data-caja-esperado class="font-bold text-text"></span>
-		</li>
-	</ul>
+<section data-caja-resumen class="flex flex-col gap-4" hidden>
+	<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+		<StatCard etiqueta="Apertura" valor="—" data-caja-stat-apertura />
+		<StatCard
+			etiqueta="Ventas del día"
+			valor="—"
+			subtexto=""
+			data-caja-stat-ventas
+		/>
+		<!-- Desglose por método (data-caja-metodos): three rows, not a
+		     single value — custom card by necessity, same tile language. -->
+		<div data-caja-metodos class="card flex flex-col gap-2 p-4">
+			<span class="text-base font-semibold text-text-muted">
+				Desglose por método
+			</span>
+			<div class="flex items-center justify-between gap-3 text-base">
+				<span class="text-text-muted">Efectivo</span>
+				<span data-caja-metodo-efectivo class="font-semibold text-text tabular-nums"></span>
+			</div>
+			<div class="flex items-center justify-between gap-3 text-base">
+				<span class="text-text-muted">Tarjeta</span>
+				<span data-caja-metodo-tarjeta class="font-semibold text-text tabular-nums"></span>
+			</div>
+			<div class="flex items-center justify-between gap-3 text-base">
+				<span class="text-text-muted">Yape · Plin</span>
+				<span data-caja-metodo-yape-plin class="font-semibold text-text tabular-nums"></span>
+			</div>
+		</div>
+		<StatCard
+			etiqueta="Efectivo esperado"
+			valor="—"
+			subtexto="Apertura + efectivo del día"
+			data-caja-stat-esperado
+			class="ring-2 ring-primary"
+		/>
+	</div>
 	<div class="flex flex-wrap gap-3">
 		<button type="button" class="btn btn-primary" data-modal-open="cerrar-caja">
 			Cerrar caja

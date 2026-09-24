@@ -2,7 +2,7 @@
 // fetch") on the client, per option A of plan-features Fase 2 (2026-09-22):
 // the shell renders at build time and THIS module paints product cards by
 // cloning the ui/Card <template>>, then wires Fuse.js search, the category
-// filter and the manual refresh.
+// CHIPS, the manual refresh and the POS shortcuts (refactorUI §4.2D).
 //
 // Rules honored here:
 //   - Search NEVER calls the API (appscriptbase.md §5.3, base.md §9): it only
@@ -11,12 +11,16 @@
 //   - Stale cache + no refresh → never blocks: we keep selling from cache
 //     (base.md §6) and reveal the extras.md §6 "actualizado hace X min" notice.
 //   - No fixed ids, no globals; everything scoped to data-attribute hooks.
+//   - Fase 2: the whole card is the add button (aria-label "Agregar X");
+//     the quantity stepper was deleted — quantity lives in the ticket only.
+//     Enter with a UNIQUE result adds it (barcode readers emulate keyboards).
 
 import Fuse from 'fuse.js';
 import { obtenerProductos } from '../../api/actions/productos';
 import { formatCurrency, formatNumero } from '../../utils/format';
 import { resolveImageUrl } from '../../utils/cloudinary';
 import {
+  getAjustes,
   getCatalogoCache,
   setCatalogoCache,
   TTL_CATALOGO_MS,
@@ -27,12 +31,14 @@ import {
 const grid = document.querySelector<HTMLElement>('[data-catalog-grid]');
 const template = document.querySelector<HTMLTemplateElement>('[data-card-template]');
 const searchInput = document.querySelector<HTMLInputElement>('[data-catalog-search]');
-const categorySelect = document.querySelector<HTMLSelectElement>('[data-catalog-category]');
+const categoryGroup = document.querySelector<HTMLElement>('[data-catalog-category]');
+const chipTemplate = document.querySelector<HTMLTemplateElement>('[data-category-chip-template]');
 const staleBox = document.querySelector<HTMLElement>('[data-catalog-stale]');
 const staleText = document.querySelector<HTMLElement>('[data-catalog-stale-text]');
 const refreshBtn = document.querySelector<HTMLButtonElement>('[data-catalog-refresh]');
 const emptyCatalog = document.querySelector<HTMLElement>('[data-empty-state="empty-catalog"]');
 const noResults = document.querySelector<HTMLElement>('[data-empty-state="no-results"]');
+const skeleton = document.querySelector<HTMLElement>('[data-catalog-skeleton]');
 const pagination = document.querySelector<HTMLElement>('[data-catalog-pagination]');
 const rangeText = document.querySelector<HTMLElement>('[data-catalog-range]');
 const prevBtn = document.querySelector<HTMLButtonElement>('[data-catalog-prev]');
@@ -42,76 +48,123 @@ const nextBtn = document.querySelector<HTMLButtonElement>('[data-catalog-next]')
 // already-filtered list. No API, no storage, no server paging.
 const PAGE_SIZE = 50;
 
-if (grid && template && searchInput && categorySelect) {
+// Aliases keep the guard's narrowing inside every closure below (the
+// baseline TS18047s this rewrite eliminates).
+if (grid && template && searchInput && categoryGroup && chipTemplate) {
+  const gridEl = grid;
+  const cardTemplate = template;
+  const searchEl = searchInput;
+  const chipsEl = categoryGroup;
+  const chipTpl = chipTemplate;
+
   let products: Producto[] = [];
   let fuse: Fuse<Producto> | null = null;
   let page = 0;
+  let selectedCategory = '';
+  // Product id → painted card, so Enter-on-unique-result can click the
+  // card's overlay add button (one code path for adding, guards included).
+  const painted = new Map<string, HTMLElement>();
 
   function buildIndex(items: Producto[]): void {
     fuse = new Fuse(items, { keys: ['nombre', 'categoria'], threshold: 0.3 });
   }
 
+  function paintChipSelection(): void {
+    for (const chip of chipsEl.querySelectorAll<HTMLElement>('[data-category-value]')) {
+      const value = chip.getAttribute('data-category-value') ?? '';
+      chip.setAttribute('aria-pressed', String(value === selectedCategory));
+    }
+  }
+
   function populateCategories(items: Producto[]): void {
-    const previous = categorySelect.value;
-    while (categorySelect.options.length > 0) categorySelect.remove(0);
-
-    const all = document.createElement('option');
-    all.value = '';
-    all.textContent = 'Todas las categorías';
-    categorySelect.append(all);
-
+    // Keep the cashier's filter across refreshes; drop the chip if the
+    // category disappeared. The static "Todas" chip (value "") never goes.
     const categories = [...new Set(items.map((p) => p.categoria).filter(Boolean))].sort(
       (a, b) => a.localeCompare(b, 'es'),
     );
-    for (const categoria of categories) {
-      const option = document.createElement('option');
-      option.value = categoria;
-      option.textContent = categoria;
-      categorySelect.append(option);
-    }
+    const hasPrevious = selectedCategory === '' || categories.includes(selectedCategory);
+    if (!hasPrevious) selectedCategory = '';
 
-    // Keep the cashier's filter across refreshes when the category still exists.
-    const hasPrevious = Array.from(categorySelect.options).some((o) => o.value === previous);
-    categorySelect.value = hasPrevious ? previous : '';
+    chipsEl.querySelectorAll<HTMLElement>('[data-category-value]').forEach((chip) => {
+      if ((chip.getAttribute('data-category-value') ?? '') !== '') chip.remove();
+    });
+    for (const categoria of categories) {
+      const first = chipTpl.content.firstElementChild;
+      if (!first) continue;
+      const chip = first.cloneNode(true) as HTMLElement;
+      chip.setAttribute('data-category-value', categoria);
+      const label = chip.querySelector<HTMLElement>('[data-chip-label]');
+      if (label) label.textContent = categoria;
+      chipsEl.append(chip);
+    }
+    paintChipSelection();
+  }
+
+  function setCategory(value: string): void {
+    selectedCategory = value;
+    paintChipSelection();
+    page = 0;
+    render();
   }
 
   function visibleProducts(): Producto[] {
-    const query = searchInput.value.trim();
-    const category = categorySelect.value;
+    const query = searchEl.value.trim();
 
     let base = products;
     if (query && fuse) {
       const matches = new Set(fuse.search(query).map((result) => result.item));
       base = base.filter((p) => matches.has(p));
     }
-    if (category) base = base.filter((p) => p.categoria === category);
+    if (selectedCategory) base = base.filter((p) => p.categoria === selectedCategory);
     return base;
   }
 
   function paintCard(product: Producto): HTMLElement | null {
-    const first = template.content.firstElementChild;
+    const first = cardTemplate.content.firstElementChild;
     if (!first) return null;
     const node = first.cloneNode(true) as HTMLElement;
 
     const name = node.querySelector<HTMLElement>('[data-card-name]');
     const price = node.querySelector<HTMLElement>('[data-card-price]');
     const stock = node.querySelector<HTMLElement>('[data-card-stock]');
+    const low = node.querySelector<HTMLElement>('[data-card-low]');
+    const addBtn = node.querySelector<HTMLButtonElement>('[data-add-to-cart]');
     const img = node.querySelector<HTMLImageElement>('[data-card-img]');
     const placeholder = node.querySelector<HTMLElement>('[data-card-placeholder]');
 
     if (name) name.textContent = product.nombre;
     if (price) price.textContent = formatCurrency(product.precio);
+    // The overlay button carries the accessible name (§4.2D).
+    if (addBtn) addBtn.setAttribute('aria-label', `Agregar ${product.nombre}`);
 
     // Product data for islands/cart-actions ("Agregar") — rides on the card
     // and clones with it; no shared state between islands (astrobase §3.4).
     node.dataset.productId = product.id;
     node.dataset.productName = product.nombre;
     node.dataset.productPrice = String(product.precio);
+    node.dataset.productStock = String(product.stock);
     if (product.imagen_url) node.dataset.productImage = product.imagen_url;
 
     // stock 0 → visible TEXT "Agotado" (template already sets copy + tone);
     // never color alone (stilesbase §5.2).
     if (stock) stock.hidden = product.stock > 0;
+
+    // Low stock (< ajustes.stock_alerta_min, > 0) → warning tag "Quedan N"
+    // (refactorUI §4.2D) — text + tone, painted via textContent.
+    if (low) {
+      const umbral = getAjustes().stock_alerta_min;
+      const showLow = product.stock > 0 && product.stock < umbral;
+      low.hidden = !showLow;
+      if (showLow) low.textContent = `Quedan ${formatNumero(product.stock)}`;
+    }
+
+    // stock 0 → the add overlay is disabled too (refactorUI §4.2D,
+    // plan-refactor-ui T0.2): no click, no focus; the card announces it via
+    // aria-disabled. cart-actions.ts keeps a second guard on the same value.
+    if (product.stock === 0) {
+      node.setAttribute('aria-disabled', 'true');
+      if (addBtn) addBtn.disabled = true;
+    }
 
     if (img && placeholder) {
       img.alt = product.nombre;
@@ -121,11 +174,15 @@ if (grid && template && searchInput && categorySelect) {
       const url = resolveImageUrl(product.imagen_url);
       if (url) {
         // Listeners BEFORE src so cached images still fire (extras.md §4):
-        // any load error falls back to the generic product icon.
+        // any load error falls back to the generic product icon (the img
+        // stays opacity-0 so its alt never bleeds through the placeholder).
+        // T4.4 fix: reveal via CLASS, not the `hidden` property — the img
+        // is hidden-by-opacity now (see Card.astro), and `img.hidden=false`
+        // never touched `class="hidden"` anyway (dead code before this).
         img.addEventListener(
           'error',
           () => {
-            img.hidden = true;
+            img.classList.add('opacity-0');
             placeholder.hidden = false;
           },
           { once: true },
@@ -133,7 +190,7 @@ if (grid && template && searchInput && categorySelect) {
         img.addEventListener(
           'load',
           () => {
-            img.hidden = false;
+            img.classList.remove('opacity-0');
             placeholder.hidden = true;
           },
           { once: true },
@@ -166,12 +223,20 @@ if (grid && template && searchInput && categorySelect) {
     page = Math.min(Math.max(page, 0), totalPages - 1);
 
     // Remove only previously painted cards — template and coexistents stay.
-    grid.querySelectorAll('[data-product-card]').forEach((card) => card.remove());
+    gridEl.querySelectorAll('[data-product-card]').forEach((card) => card.remove());
+    painted.clear();
     const start = page * PAGE_SIZE;
     for (const product of list.slice(start, start + PAGE_SIZE)) {
       const card = paintCard(product);
-      if (card) grid.append(card);
+      if (card) {
+        gridEl.append(card);
+        painted.set(product.id, card);
+      }
     }
+
+    // First real paint done → the loading skeletons have served their purpose
+    // (T2.9: shown from build, never competing with the empty states).
+    if (skeleton) skeleton.hidden = true;
 
     const isEmptyCatalog = products.length === 0;
     if (emptyCatalog) emptyCatalog.hidden = !isEmptyCatalog;
@@ -186,7 +251,7 @@ if (grid && template && searchInput && categorySelect) {
       return;
     }
     const minutes = Math.max(1, Math.round((Date.now() - timestamp) / 60_000));
-    staleText.textContent = `Catálogo actualizado hace ${formatNumero(minutes)} min`;
+    staleText.textContent = `Catálogo de hace ${formatNumero(minutes)} min`;
     staleBox.hidden = false;
   }
 
@@ -220,6 +285,7 @@ if (grid && template && searchInput && categorySelect) {
     // sale (base.md §6). Stale data gets the extras.md §6 notice; no data at
     // all stays on the "Todavía no hay productos cargados" empty state.
     if (previous && previous.productos.length > 0) setStale(previous.timestamp);
+    else if (skeleton) skeleton.hidden = true; // nothing to load → empties own the screen
   }
 
   async function init(): Promise<void> {
@@ -242,16 +308,51 @@ if (grid && template && searchInput && categorySelect) {
   // Search: local-only debounced filter — NO api call in input/key handlers
   // (plan-features Fase 2 gate, appscriptbase.md §5.3).
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  searchInput.addEventListener('input', () => {
+  searchEl.addEventListener('input', () => {
     page = 0;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(render, 200);
   });
 
-  // New filter context → back to the first page (render clamps anyway).
-  categorySelect.addEventListener('change', () => {
-    page = 0;
-    render();
+  // Keyboard/POS (§4.2D): Enter with exactly ONE visible result adds it —
+  // barcode readers type + Enter; Esc clears the query.
+  searchEl.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const only = visibleProducts();
+      if (only.length === 1) {
+        painted
+          .get(only[0].id)
+          ?.querySelector<HTMLButtonElement>('[data-add-to-cart]')
+          ?.click();
+      }
+      return;
+    }
+    if (event.key === 'Escape' && searchEl.value !== '') {
+      event.preventDefault();
+      searchEl.value = '';
+      page = 0;
+      render();
+    }
+  });
+
+  // F2 → focus search (desktop only, §4.2E).
+  const desktop = window.matchMedia('(min-width: 768px)');
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'F2' || !desktop.matches) return;
+    event.preventDefault();
+    searchEl.focus();
+    searchEl.select();
+  });
+
+  // Category chips — one delegated listener (§0.5), same filtering as the
+  // old select, zero network.
+  chipsEl.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const chip = target.closest<HTMLElement>('[data-category-value]');
+    if (!chip || !chipsEl.contains(chip)) return;
+    setCategory(chip.getAttribute('data-category-value') ?? '');
   });
 
   prevBtn?.addEventListener('click', () => {

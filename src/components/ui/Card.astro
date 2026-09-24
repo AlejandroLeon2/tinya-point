@@ -2,23 +2,42 @@
 // Product card — SINGLE source of truth for card markup (option A decision,
 // plan-features Fase 2, 2026-09-22): the markup lives inside a <template>,
 // inert at build time; islands/catalog.ts clones it once per product and
-// fills every [data-card-*] slot. Open/Closed still holds (astrobase §3.2):
-// slot="extra" content travels INSIDE the template, so extensions (quantity
-// control, add-to-cart button) reach every cloned card without editing this
-// file. Never fetches data — ui/ rule (astrobase §1).
+// fills every [data-card-*] slot. Never fetches data — ui/ rule (astrobase §1).
+//
+// refactorUI §4.2D (Fase 2): the WHOLE card is the add trigger — an overlay
+// <button data-add-to-cart> covers it (valid HTML: a <button> cannot contain
+// the <h3>, so the button sits on top with aria-label "Agregar {nombre}",
+// painted by the island). The quantity stepper is GONE (quantity in the
+// ticket only) and stock 0 disables the overlay button.
 ---
 <template data-card-template>
-	<article class="card flex flex-col gap-3" data-product-card>
-		<div class="relative mb-1 aspect-square overflow-hidden rounded-lg bg-bg">
+	<article
+		class="card relative flex flex-col gap-3 overflow-hidden transition-shadow hover:border-primary/60 hover:shadow-card"
+		data-product-card
+	>
+		<button
+			type="button"
+			data-add-to-cart
+			aria-label=""
+			class="absolute inset-0 z-10 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-primary"
+		>
+		</button>
+		<div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-bg">
+			<!-- T4.4 fix: NOT display:none while loading — Chrome never fetches
+			     a loading=lazy image without a rendered box (deadlock: hidden
+			     until `load` + lazy = `load` never fires → placeholder forever).
+			     opacity-0 keeps the box (lazy intersects, no layout shift) and
+			     sits UNDER the placeholder (both absolute, placeholder later in
+			     DOM paints on top) until the island reveals it. -->
 			<img
 				data-card-img
-				class="hidden h-full w-full object-cover"
+				class="absolute inset-0 h-full w-full object-cover opacity-0"
 				loading="lazy"
 				alt=""
 			/>
 			<div
 				data-card-placeholder
-				class="flex h-full w-full items-center justify-center text-text-muted"
+				class="absolute inset-0 flex h-full w-full items-center justify-center text-text-muted"
 			>
 				<!-- Generic product icon (extras.md §4): never a broken-image
 				     icon nor a blank space; decorative (aria-hidden) because
@@ -40,11 +59,11 @@
 				</svg>
 			</div>
 		</div>
-		<h3 data-card-name class="line-clamp-2 text-lg font-semibold text-text"></h3>
-		<p data-card-price class="text-lg font-bold text-text"></p>
-		<!-- stock 0 → TEXT "Agotado", never color alone (stilesbase §5.2);
-		     hidden by the island when stock > 0. -->
+		<h3 data-card-name class="relative line-clamp-2 text-lg font-semibold text-text"></h3>
+		<p data-card-price class="relative text-lg font-bold tabular-nums text-text"></p>
+		<!-- Tags: text + tone, never color alone (stilesbase §5.2). Both
+		     start hidden — the island reveals the matching one. -->
 		<p data-card-stock class="hidden text-base font-semibold text-danger">Agotado</p>
-		<slot name="extra" />
+		<p data-card-low class="badge-warning hidden"></p>
 	</article>
 </template>

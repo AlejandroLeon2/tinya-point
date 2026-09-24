@@ -9,7 +9,7 @@ import VentaDetailContainer from '../../components/smart/VentaDetailContainer.as
 // (gotcha G1). Route-guard covers it (any route ≠ /login). Shell mirrors
 // historial.astro: LayoutApp owns <main>, banner + sync indicator ride along.
 ---
-<LayoutApp>
+<LayoutApp title="Detalle de venta">
 	<SyncStatusIndicator slot="header" />
 	<OfflineBanner />
 	<VentaDetailContainer />

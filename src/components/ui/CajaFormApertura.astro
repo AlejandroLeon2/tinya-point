@@ -1,10 +1,16 @@
 ---
 // Caja apertura form — pure markup: visible label, .input-field (18px),
-// .btn 56px (stilesbase §4/§5). Validation copy is set by islands/caja.ts in
-// simple Spanish (§5.7); ui/ never reads data or runs rules (astrobase §1).
+// .btn 56px (stilesbase §4/§5). T3.7 (refactorUI §5): the card is centered
+// (max-w-md) and carries the suggested opening amount — the LAST monto_
+// apertura, filled/toggled by islands/caja.ts (ui/ never reads data, §1).
+// Validation copy is set by the island in simple Spanish (§5.7).
 import Button from './Button.astro';
 ---
-<form data-caja-form novalidate class="card flex flex-col gap-4">
+<form
+	data-caja-form
+	novalidate
+	class="card mx-auto flex w-full max-w-md flex-col gap-4"
+>
 	<label class="flex flex-col gap-1 text-base font-semibold text-text">
 		Monto de apertura (S/)
 		<input
@@ -16,6 +22,16 @@ import Button from './Button.astro';
 			inputmode="decimal"
 		/>
 	</label>
+	<!-- montos sugeridos = último monto de apertura (spec §5) — island paints
+	     the amount and reveals the block ⇔ there is a previous session. -->
+	<div data-caja-sugerencias class="flex flex-wrap items-center gap-2" hidden>
+		<span class="text-base text-text-muted">Sugerido:</span>
+		<button
+			type="button"
+			data-caja-sugerencia
+			class="btn btn-secondary min-h-11 rounded-full px-4 py-2 tabular-nums"
+		></button>
+	</div>
 	<div class="flex flex-wrap gap-3">
 		<Button type="submit" variant="primary">Abrir caja</Button>
 	</div>

@@ -6,31 +6,92 @@
 //   - root:         data-modal-root="<key>" + hidden + tabindex="-1"
 //   - open trigger: data-modal-open="<key>"
 //   - close button: data-modal-close (inside the modal)
+//
+// Variants (refactorUI §2.2/§4.2C):
+//   - center (default): dialog centered — confirmations, details.
+//   - drawer:           full-height panel docked to the RIGHT edge — admin
+//                       forms (/productos Fase 3).
+//   - sheet:            panel rising from the BOTTOM — mobile navigation
+//                       ("Más").
+//   - ticket:           bottom sheet at <lg AND the always-visible right
+//                       column at ≥lg — ONE node for the mobile sheet and
+//                       the desktop ticket (§4.2C). Skips the built-in
+//                       header (the panel draws its own: badge + cancel);
+//                       global.css forces it visible ≥lg even with `hidden`.
+// `title` is optional: form drawers let the FORM's own heading be the
+// visible title (refactorUI §7 — the panel keeps only the ✕ close).
 interface Props {
 	modalKey: string;
-	title: string;
+	title?: string;
+	variant?: 'center' | 'drawer' | 'sheet' | 'ticket';
 }
-const { modalKey, title } = Astro.props;
+const { modalKey, title, variant = 'center' } = Astro.props;
+const overlayClass = {
+	center: 'items-center justify-center p-4',
+	// Drawer (refactorUI §7): bottom Sheet <md, right-side Drawer ≥md.
+	drawer: 'items-end justify-center p-0 md:items-stretch md:justify-end md:p-0',
+	sheet: 'items-end justify-center p-0',
+	// ≥lg overrides live in rootClass below (grid column, no overlay paint).
+	ticket: 'items-end justify-center p-0',
+}[variant];
+const boxClass = {
+	center: 'max-w-md rounded-xl p-6 shadow-modal',
+	drawer:
+		'max-h-[85vh] w-full overflow-y-auto rounded-t-xl p-6 shadow-modal ' +
+		'md:h-full md:max-h-none md:max-w-md md:overflow-visible md:rounded-none md:shadow-drawer',
+	sheet: 'max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-xl p-6 shadow-modal',
+	ticket:
+		'max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-xl p-6 shadow-modal ' +
+		'lg:flex lg:max-h-none lg:w-full lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none',
+}[variant];
+// Ticket at ≥lg: leaves the fixed-overlay world and becomes grid child #2 —
+// full height of the POS grid, transparent, no z-stacking (§4.2B/C).
+const rootExtra = variant === 'ticket'
+	? ' lg:static lg:inset-auto lg:z-auto lg:flex-col lg:items-stretch lg:justify-start lg:bg-transparent lg:overflow-hidden'
+	: '';
 ---
 <div
 	data-modal-root={modalKey}
 	hidden
 	tabindex="-1"
-	class="fixed inset-0 z-50 flex items-center justify-center bg-text/60 p-4"
+	class={`fixed inset-0 z-50 flex bg-text/60 ${overlayClass}${rootExtra}`}
 >
 	<div
-		class="flex w-full max-w-md flex-col gap-4 rounded-xl border border-border bg-surface p-6"
+		class={`flex w-full flex-col gap-4 border border-border bg-surface ${boxClass}`}
 		role="dialog"
 		aria-modal="true"
-		aria-label={title}
+		aria-label={title ?? 'Panel'}
 	>
-		<div class="flex items-start justify-between gap-3">
-			<h2 class="text-lg font-bold text-text">{title}</h2>
-			<button type="button" class="btn btn-secondary" data-modal-close aria-label="Cerrar">
-				✕
-			</button>
+		{
+			/* ticket skips the built-in chrome — its panel header (badge +
+			   cancel + close) is the visible title (§4.2G). Other variants
+			   always keep the ✕; the <h2> only renders when a title exists
+			   (product drawer: the FORM's h2 is the visible heading). */
+			variant !== 'ticket' && (
+				<div class="flex items-start justify-between gap-3">
+					{title && <h2 class="text-lg font-bold text-text">{title}</h2>}
+					<button
+						type="button"
+						class="btn btn-secondary ml-auto"
+						data-modal-close
+						aria-label="Cerrar"
+					>
+						✕
+					</button>
+				</div>
+			)
+		}
+		<div
+			class={`text-base text-text${variant === 'ticket' ? ' lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}
+		>
+			<slot />
 		</div>
-		<div class="text-base text-text"><slot /></div>
-		<div class="flex flex-wrap justify-end gap-3"><slot name="actions" /></div>
+		{
+			Astro.slots.has('actions') && (
+				<div class="flex flex-wrap justify-end gap-3">
+					<slot name="actions" />
+				</div>
+			)
+		}
 	</div>
 </div>
