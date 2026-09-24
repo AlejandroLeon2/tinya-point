@@ -8,17 +8,18 @@
 
 import { formatHora } from '../../utils/format';
 import { getCajas } from '../../utils/storage';
+import { qs, setText, setHidden } from '../../utils/dom';
 
-const abiertaEl = document.querySelector<HTMLElement>('[data-caja-abierta]');
-const horaEl = document.querySelector<HTMLElement>('[data-caja-hora]');
-const cerradaEl = document.querySelector<HTMLElement>('[data-caja-cerrada]');
+const abiertaEl = qs<HTMLElement>(document, '[data-caja-abierta]');
+const horaEl = qs<HTMLElement>(document, '[data-caja-hora]');
+const cerradaEl = qs<HTMLElement>(document, '[data-caja-cerrada]');
 
 if (abiertaEl || cerradaEl) {
   const pintar = (): void => {
     const abierta = getCajas().find((caja) => caja.estado === 'abierta') ?? null;
-    if (abiertaEl) abiertaEl.hidden = abierta === null;
-    if (cerradaEl) cerradaEl.hidden = abierta !== null;
-    if (horaEl && abierta) horaEl.textContent = formatHora(abierta.fecha_hora_apertura);
+    setHidden(abiertaEl, abierta === null);
+    setHidden(cerradaEl, abierta !== null);
+    if (abierta) setText(horaEl, formatHora(abierta.fecha_hora_apertura));
   };
 
   pintar(); // first paint from the local key
