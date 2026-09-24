@@ -7,6 +7,7 @@
 // No fixed ids: keys are data-driven from the triggering markup.
 
 import { openModal, closeModal } from '../../utils/modal';
+import { qs } from '../../utils/dom';
 
 document.addEventListener('click', (event) => {
   const target = event.target;
@@ -15,7 +16,7 @@ document.addEventListener('click', (event) => {
   const opener = target.closest<HTMLElement>('[data-modal-open]');
   if (opener) {
     const key = opener.getAttribute('data-modal-open');
-    const modal = key ? document.querySelector<HTMLElement>(`[data-modal-root="${key}"]`) : null;
+    const modal = key ? qs<HTMLElement>(document, `[data-modal-root="${key}"]`) : null;
     if (modal) openModal(modal, opener);
     return;
   }
