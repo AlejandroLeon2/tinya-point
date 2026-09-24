@@ -22,19 +22,21 @@
 
 import { logout } from '../../stores/session';
 import { getAjustes, setAjustes } from '../../utils/storage';
+import { qs, qsa, setText } from '../../utils/dom';
+import { esDesktop, enCambioDesktop } from '../../utils/media';
 
-const root = document.querySelector<HTMLElement>('[data-sidebar-root]');
-const toggle = document.querySelector<HTMLElement>('[data-sidebar-toggle]');
+const root = qs<HTMLElement>(document, '[data-sidebar-root]');
+const toggle = qs<HTMLElement>(document, '[data-sidebar-toggle]');
 
 // Brand (refactorUI §3.2): default copy is the build-time fallback; when the
 // cashier set a local name in Ajustes, repaint it. textContent only (§0.3).
-const brand = document.querySelector<HTMLElement>('[data-sidebar-brand]');
+const brand = qs<HTMLElement>(document, '[data-sidebar-brand]');
 const nombreLocal = getAjustes().nombre_local.trim();
-if (brand && nombreLocal) brand.textContent = nombreLocal;
+if (nombreLocal) setText(brand, nombreLocal);
 
 // Desktop collapse rail (refactorUI §3.2 Fase 1): preference lives inside
 // the existing `ajustes` JSON — NO new localStorage key (the map caps 7).
-const collapseToggle = document.querySelector<HTMLElement>('[data-sidebar-collapse-toggle]');
+const collapseToggle = qs<HTMLElement>(document, '[data-sidebar-collapse-toggle]');
 if (root && collapseToggle) {
   const setCollapsed = (collapsed: boolean): void => {
     root.toggleAttribute('data-sidebar-collapse', collapsed);
@@ -63,7 +65,7 @@ if (root && toggle) {
 		// toggle in DOM order, so Tab alone would skip it); closing with focus
 		// inside returns it to the toggle.
 		if (open) {
-			root.querySelector<HTMLElement>('a[href]')?.focus();
+			qs<HTMLElement>(root, 'a[href]')?.focus();
 		} else if (root.contains(document.activeElement)) {
 			toggle.focus();
 		}
@@ -101,18 +103,17 @@ if (root && toggle) {
 
 	// Crossing to >= md: CSS already shows the drawer; clear the stale open
 	// state so shrinking back to mobile doesn't pop it open unrequested.
-	const desktop = window.matchMedia('(min-width: 768px)');
-	desktop.addEventListener('change', (event) => {
-		if (event.matches) setOpen(false);
+	enCambioDesktop((matches) => {
+		if (matches) setOpen(false);
 	});
 }
 
 // Logout: drops ONLY the token — cart and history survive
 // (stores/session contract) — and lands on /login with replace(), same
 // criterion as islands/route-guard.ts (Back never returns to a protected
-// page). querySelectorALL (Fase 1): the sidebar footer AND the "Más" Sheet
-// both expose a [data-logout] button.
-document.querySelectorAll<HTMLElement>('[data-logout]').forEach((logoutButton) => {
+// page). qsa (Fase 1): the sidebar footer AND the "Más" Sheet both expose
+// a [data-logout] button.
+qsa<HTMLElement>(document, '[data-logout]').forEach((logoutButton) => {
 	logoutButton.addEventListener('click', () => {
 		logout();
 		window.location.replace('/login');
