@@ -28,49 +28,38 @@ import {
 } from '../../utils/form-errors';
 import { getCatalogoCache } from '../../utils/storage';
 import { isNonEmpty } from '../../utils/validators';
-import { mostrarToast } from '../../utils/toast';
+import { qs, setText, setHidden, cloneTemplate } from '../../utils/dom';
+import { crearFeedback } from '../../utils/feedback';
 
-const root = document.querySelector<HTMLElement>('[data-categorias-root]');
+const root = qs<HTMLElement>(document, '[data-categorias-root]');
 
 if (root) {
-  const rowsEl = root.querySelector<HTMLElement>('[data-categoria-rows]');
-  const template = root.querySelector<HTMLTemplateElement>('[data-categoria-row-template]');
-  const form = root.querySelector<HTMLFormElement>('[data-categoria-form]');
-  const formTitle = root.querySelector<HTMLElement>('[data-categoria-form-title]');
-  const nombreInput = root.querySelector<HTMLInputElement>('[data-categoria-nombre]');
-  const submitBtn = root.querySelector<HTMLButtonElement>('[data-categoria-submit]');
-  const cancelBtn = root.querySelector<HTMLButtonElement>('[data-categoria-cancel]');
-  const confirmDeleteBtn = root.querySelector<HTMLButtonElement>(
+  const rowsEl = qs<HTMLElement>(root, '[data-categoria-rows]');
+  const template = qs<HTMLTemplateElement>(root, '[data-categoria-row-template]');
+  const form = qs<HTMLFormElement>(root, '[data-categoria-form]');
+  const formTitle = qs<HTMLElement>(root, '[data-categoria-form-title]');
+  const nombreInput = qs<HTMLInputElement>(root, '[data-categoria-nombre]');
+  const submitBtn = qs<HTMLButtonElement>(root, '[data-categoria-submit]');
+  const cancelBtn = qs<HTMLButtonElement>(root, '[data-categoria-cancel]');
+  const confirmDeleteBtn = qs<HTMLButtonElement>(
+    root,
     '[data-categoria-confirm-delete]',
   );
-  const errorAlert = root.querySelector<HTMLElement>('[data-alert="categorias-error"]');
-  const errorText = root.querySelector<HTMLElement>('[data-categoria-error-text]');
-  const emptyState = root.querySelector<HTMLElement>('[data-empty-state="empty-categorias"]');
-  const offlineNote = root.querySelector<HTMLElement>('[data-categoria-offline]');
+  const errorAlert = qs<HTMLElement>(root, '[data-alert="categorias-error"]');
+  const errorText = qs<HTMLElement>(root, '[data-categoria-error-text]');
+  const emptyState = qs<HTMLElement>(root, '[data-empty-state="empty-categorias"]');
+  const offlineNote = qs<HTMLElement>(root, '[data-categoria-offline]');
 
   let categorias: CategoriaApi[] = [];
   let editingId: string | null = null;
   let pendingDeleteId: string | null = null;
-  // P0 re-entry guards (plan-form-ux.md Fase 1): pending state on the
-  // submit button stops pointer double-clicks; the flags also cover
-  // Enter-key submission and a double confirm on the delete modal.
   let enviando = false;
   let enviandoDelete = false;
 
-  function mostrarOk(mensaje: string): void {
-    // Success = ephemeral toast (refactorUI §2.3 D9 — never shifts layout);
-    // errors keep the persistent Alert right below.
-    mostrarToast(mensaje);
-    if (errorAlert) errorAlert.hidden = true;
-  }
-
-  function mostrarError(mensaje: string): void {
-    if (errorText) errorText.textContent = mensaje;
-    if (errorAlert) errorAlert.hidden = false;
-  }
+  const feedback = crearFeedback(errorAlert, errorText);
 
   function ocultarAlertas(): void {
-    if (errorAlert) errorAlert.hidden = true;
+    feedback.ocultar();
     // Inline field errors die with the alerts: edit/new mode starts clean.
     if (form) limpiarErroresForm(form);
   }
@@ -100,7 +89,7 @@ if (root) {
       return;
     }
     render();
-    mostrarError(
+    feedback.error(
       res.status === 'network_failure'
         ? 'No hay conexión y no se pudieron cargar las categorías.'
         : mensajeDeError(res.error),
@@ -109,7 +98,7 @@ if (root) {
 
   function render(): void {
     if (!rowsEl || !template) return;
-    rowsEl.querySelectorAll('[data-categoria-row]').forEach((row) => row.remove());
+    qsa(rowsEl, '[data-categoria-row]').forEach((row) => row.remove());
 
     // Local product tally per category NAME — cache-only, zero network
     // (refactorUI §8). null = no cache → counts omitted, delete stays
@@ -123,26 +112,25 @@ if (root) {
     }
 
     for (const categoria of categorias) {
-      const first = template.content.firstElementChild;
-      if (!first) continue;
-      const row = first.cloneNode(true) as HTMLElement;
+      const row = cloneTemplate(template);
+      if (!row) continue;
       row.setAttribute('data-categoria-id', categoria.id);
 
-      const nombre = row.querySelector<HTMLElement>('[data-categoria-nombre]');
-      if (nombre) nombre.textContent = categoria.nombre;
+      const nombre = qs<HTMLElement>(row, '[data-categoria-nombre]');
+      setText(nombre, categoria.nombre);
 
       const enUso = cached ? (porNombre.get(categoria.nombre) ?? 0) : null;
-      const countEl = row.querySelector<HTMLElement>('[data-categoria-count]');
+      const countEl = qs<HTMLElement>(row, '[data-categoria-count]');
       if (countEl && enUso !== null) {
-        countEl.textContent = `${enUso} producto${enUso === 1 ? '' : 's'}`;
-        countEl.hidden = false;
+        setText(countEl, `${enUso} producto${enUso === 1 ? '' : 's'}`);
+        setHidden(countEl, false);
       }
-      const enUsoEl = row.querySelector<HTMLElement>('[data-categoria-en-uso]');
+      const enUsoEl = qs<HTMLElement>(row, '[data-categoria-en-uso]');
       if (enUsoEl && enUso !== null && enUso > 0) {
-        enUsoEl.textContent = `En uso por ${enUso} producto${enUso === 1 ? '' : 's'}`;
-        enUsoEl.hidden = false;
+        setText(enUsoEl, `En uso por ${enUso} producto${enUso === 1 ? '' : 's'}`);
+        setHidden(enUsoEl, false);
       }
-      const deleteBtn = row.querySelector<HTMLButtonElement>('[data-categoria-delete]');
+      const deleteBtn = qs<HTMLButtonElement>(row, '[data-categoria-delete]');
       if (deleteBtn && enUso !== null) {
         // Local pre-guard; the backend keeps validating (categoria_en_uso).
         // A disabled button never fires click → modal won't open either.
@@ -152,16 +140,16 @@ if (root) {
       rowsEl.append(row);
     }
 
-    if (emptyState) emptyState.hidden = categorias.length > 0;
+    setHidden(emptyState, categorias.length > 0);
   }
 
   function editarCategoria(id: string): void {
     const categoria = categorias.find((c) => c.id === id);
     if (!categoria) return;
     editingId = id;
-    if (formTitle) formTitle.textContent = 'Renombrar categoría';
-    if (submitBtn) submitBtn.textContent = 'Guardar cambios';
-    if (cancelBtn) cancelBtn.hidden = false;
+    setText(formTitle, 'Renombrar categoría');
+    setText(submitBtn, 'Guardar cambios');
+    setHidden(cancelBtn, false);
     if (nombreInput) nombreInput.value = categoria.nombre;
     ocultarAlertas();
     nombreInput?.focus();
@@ -170,9 +158,9 @@ if (root) {
   function modoNuevo(): void {
     editingId = null;
     form?.reset();
-    if (formTitle) formTitle.textContent = 'Nueva categoría';
-    if (submitBtn) submitBtn.textContent = 'Guardar categoría';
-    if (cancelBtn) cancelBtn.hidden = true;
+    setText(formTitle, 'Nueva categoría');
+    setText(submitBtn, 'Guardar categoría');
+    setHidden(cancelBtn, true);
     ocultarAlertas();
   }
 
@@ -188,7 +176,7 @@ if (root) {
     const textoOriginal = esAlta ? 'Guardar categoría' : 'Guardar cambios';
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = esAlta ? 'Creando…' : 'Guardando…';
+      setText(submitBtn, esAlta ? 'Creando…' : 'Guardando…');
     }
 
     try {
@@ -197,7 +185,7 @@ if (root) {
         : await actualizarCategoria({ id: idEditando, nombre });
 
       if (resultado.status === 'success') {
-        mostrarOk(
+        feedback.ok(
           esAlta
             ? 'Categoría creada.'
             : 'Categoría renombrada — los productos que la usan quedaron actualizados.',
@@ -208,21 +196,21 @@ if (root) {
         return;
       }
       if (resultado.status === 'network_failure') {
-        mostrarError('Sin conexión — no se pudo guardar la categoría.');
+        feedback.error('Sin conexión — no se pudo guardar la categoría.');
         return;
       }
-      mostrarError(mensajeDeError(resultado.error));
+      feedback.error(mensajeDeError(resultado.error));
     } finally {
       enviando = false;
       if (submitBtn) {
         // Offline keeps the button disabled after ANY round trip ends
         // (the note + disabled state travel together).
         submitBtn.disabled = !navigator.onLine;
-        submitBtn.textContent = textoOriginal;
+        setText(submitBtn, textoOriginal);
       }
       // modoNuevo() already reset the label on success; restore the right
       // one for the mode we are actually in after an error.
-      if (editingId !== null && submitBtn) submitBtn.textContent = 'Guardar cambios';
+      if (editingId !== null && submitBtn) setText(submitBtn, 'Guardar cambios');
     }
   }
 
@@ -234,15 +222,15 @@ if (root) {
     try {
       const resultado = await borrarCategoria({ id });
       if (resultado.status === 'success') {
-        mostrarOk('Categoría eliminada.');
+        feedback.ok('Categoría eliminada.');
         await cargar();
         return;
       }
       if (resultado.status === 'network_failure') {
-        mostrarError('Sin conexión — no se pudo eliminar la categoría.');
+        feedback.error('Sin conexión — no se pudo eliminar la categoría.');
         return;
       }
-      mostrarError(mensajeDeError(resultado.error));
+      feedback.error(mensajeDeError(resultado.error));
     } finally {
       enviandoDelete = false;
     }
@@ -251,7 +239,7 @@ if (root) {
   // ── Offline pre-guard (refactorUI §8): fail BEFORE the round trip ──
   function actualizarOnline(): void {
     const offline = !navigator.onLine;
-    if (offlineNote) offlineNote.hidden = !offline;
+    setHidden(offlineNote, !offline);
     if (submitBtn && !enviando) submitBtn.disabled = offline;
   }
   window.addEventListener('online', actualizarOnline);
