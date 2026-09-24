@@ -22,31 +22,32 @@
 import { formatCurrency, formatFecha, formatHora } from '../../utils/format';
 import { getAjustes, getColaSync, getHistorialVentas } from '../../utils/storage';
 import { calcTax, etiquetaIgv, getTaxRate } from '../../utils/tax';
+import { qs, setText, setHidden, cloneTemplate, setPillState } from '../../utils/dom';
 
-const root = document.querySelector<HTMLElement>('[data-venta-root]');
+const root = qs<HTMLElement>(document, '[data-venta-root]');
 
 if (root) {
-  const contenido = root.querySelector<HTMLElement>('[data-venta-contenido]');
-  const noEncontrada = root.querySelector<HTMLElement>('[data-venta-no-encontrada]');
-  const acciones = root.querySelector<HTMLElement>('[data-venta-acciones]');
-  const printBtn = root.querySelector<HTMLButtonElement>('[data-venta-print]');
-  const localEl = root.querySelector<HTMLElement>('[data-venta-local]');
-  const syncWrap = root.querySelector<HTMLElement>('[data-venta-sync]');
-  const fechaEl = root.querySelector<HTMLElement>('[data-venta-fecha]');
-  const horaEl = root.querySelector<HTMLElement>('[data-venta-hora]');
-  const metodoEl = root.querySelector<HTMLElement>('[data-venta-metodo]');
-  const linesEl = root.querySelector<HTMLElement>('[data-venta-lines]');
-  const template = root.querySelector<HTMLTemplateElement>('[data-venta-line-template]');
-  const subtotalFila = root.querySelector<HTMLElement>('[data-venta-subtotal-fila]');
-  const subtotalEl = root.querySelector<HTMLElement>('[data-venta-subtotal]');
-  const taxLabelEl = root.querySelector<HTMLElement>('[data-venta-tax-label]');
-  const igvEl = root.querySelector<HTMLElement>('[data-venta-igv]');
-  const totalEl = root.querySelector<HTMLElement>('[data-venta-total]');
-  const igvNota = root.querySelector<HTMLElement>('[data-venta-igv-nota]');
+  const contenido = qs<HTMLElement>(root, '[data-venta-contenido]');
+  const noEncontrada = qs<HTMLElement>(root, '[data-venta-no-encontrada]');
+  const acciones = qs<HTMLElement>(root, '[data-venta-acciones]');
+  const printBtn = qs<HTMLButtonElement>(root, '[data-venta-print]');
+  const localEl = qs<HTMLElement>(root, '[data-venta-local]');
+  const syncWrap = qs<HTMLElement>(root, '[data-venta-sync]');
+  const fechaEl = qs<HTMLElement>(root, '[data-venta-fecha]');
+  const horaEl = qs<HTMLElement>(root, '[data-venta-hora]');
+  const metodoEl = qs<HTMLElement>(root, '[data-venta-metodo]');
+  const linesEl = qs<HTMLElement>(root, '[data-venta-lines]');
+  const template = qs<HTMLTemplateElement>(root, '[data-venta-line-template]');
+  const subtotalFila = qs<HTMLElement>(root, '[data-venta-subtotal-fila]');
+  const subtotalEl = qs<HTMLElement>(root, '[data-venta-subtotal]');
+  const taxLabelEl = qs<HTMLElement>(root, '[data-venta-tax-label]');
+  const igvEl = qs<HTMLElement>(root, '[data-venta-igv]');
+  const totalEl = qs<HTMLElement>(root, '[data-venta-total]');
+  const igvNota = qs<HTMLElement>(root, '[data-venta-igv-nota]');
   // Configured IGV overwrites the build-time default label (Fase 5).
-  if (taxLabelEl) taxLabelEl.textContent = etiquetaIgv();
+  setText(taxLabelEl, etiquetaIgv());
   // Receipt header: nombre del local (T3.6) — empty ajustes keeps "Tienda".
-  if (localEl) localEl.textContent = getAjustes().nombre_local || 'Tienda';
+  setText(localEl, getAjustes().nombre_local || 'Tienda');
 
   // Spanish labels for the wire values of base.md §2.2.
   const METODO_LABEL: Record<string, string> = {
@@ -61,13 +62,13 @@ if (root) {
   if (!venta) {
     // Missing or unknown id: hide the detail + its actions, reveal the empty
     // state (which carries its own "Volver al historial" CTA).
-    if (contenido) contenido.hidden = true;
-    if (acciones) acciones.hidden = true;
-    if (noEncontrada) noEncontrada.hidden = false;
+    setHidden(contenido, true);
+    setHidden(acciones, true);
+    setHidden(noEncontrada, false);
   } else {
-    if (fechaEl) fechaEl.textContent = formatFecha(venta.fecha_hora);
-    if (horaEl) horaEl.textContent = formatHora(venta.fecha_hora);
-    if (metodoEl) metodoEl.textContent = METODO_LABEL[venta.metodo_pago] ?? venta.metodo_pago;
+    setText(fechaEl, formatFecha(venta.fecha_hora));
+    setText(horaEl, formatHora(venta.fecha_hora));
+    setText(metodoEl, METODO_LABEL[venta.metodo_pago] ?? venta.metodo_pago);
 
     // Sync pill (T3.6): strongest estado from cola_sync for this id_venta —
     // absent from the queue means the sale already left the device.
@@ -82,22 +83,19 @@ if (root) {
           : item.estado === 'sincronizado'
             ? 'sincronizada'
             : 'pendiente';
-      for (const pill of syncWrap.querySelectorAll<HTMLElement>('[data-venta-sync-state]')) {
-        pill.hidden = pill.getAttribute('data-venta-sync-state') !== estado;
-      }
+      setPillState(syncWrap, 'data-venta-sync-state', estado);
     }
 
     if (linesEl && template) {
       for (const item of venta.items) {
-        const first = template.content.firstElementChild;
-        if (!first) continue;
-        const linea = first.cloneNode(true) as HTMLElement;
-        const nombre = linea.querySelector<HTMLElement>('[data-venta-nombre]');
-        const cantidad = linea.querySelector<HTMLElement>('[data-venta-cantidad]');
-        const importe = linea.querySelector<HTMLElement>('[data-venta-importe]');
-        if (nombre) nombre.textContent = item.nombre;
-        if (cantidad) cantidad.textContent = `${item.cantidad} × ${formatCurrency(item.precio)}`;
-        if (importe) importe.textContent = formatCurrency(item.precio * item.cantidad);
+        const linea = cloneTemplate(template);
+        if (!linea) continue;
+        const nombre = qs<HTMLElement>(linea, '[data-venta-nombre]');
+        const cantidad = qs<HTMLElement>(linea, '[data-venta-cantidad]');
+        const importe = qs<HTMLElement>(linea, '[data-venta-importe]');
+        setText(nombre, item.nombre);
+        setText(cantidad, `${item.cantidad} × ${formatCurrency(item.precio)}`);
+        setText(importe, formatCurrency(item.precio * item.cantidad));
         linesEl.append(linea);
       }
     }
@@ -105,14 +103,14 @@ if (root) {
     // Totals — G9: subtotal only when the snapshot has it (no assertion
     // noise: narrow once into a local const).
     const subtotal = typeof venta.subtotal === 'number' ? venta.subtotal : null;
-    if (subtotalFila) subtotalFila.hidden = subtotal === null;
-    if (subtotalEl && subtotal !== null) subtotalEl.textContent = formatCurrency(subtotal);
-    if (igvNota) igvNota.hidden = subtotal !== null; // nota ⇔ IGV derivado (T3.6)
+    setHidden(subtotalFila, subtotal === null);
+    if (subtotal !== null) setText(subtotalEl, formatCurrency(subtotal));
+    setHidden(igvNota, subtotal !== null); // nota ⇔ IGV derivado (T3.6)
     if (igvEl) {
       const igv = subtotal !== null ? calcTax(subtotal) : venta.total - venta.total / (1 + getTaxRate());
-      igvEl.textContent = formatCurrency(igv);
+      setText(igvEl, formatCurrency(igv));
     }
-    if (totalEl) totalEl.textContent = formatCurrency(venta.total);
+    setText(totalEl, formatCurrency(venta.total));
   }
 
   // Imprimir (T3.6): the @media print sheet in global.css isolates this
