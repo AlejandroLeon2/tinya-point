@@ -20,7 +20,7 @@ import {
   subscribeCart,
   updateCartQuantity,
 } from '../../stores/cart';
-import { closestCard } from '../../utils/dom';
+import { closestAncestor, closestCard, qs, qsa, setText, setHidden, cloneTemplate } from '../../utils/dom';
 import { formatCurrency } from '../../utils/format';
 import { closeModal } from '../../utils/modal';
 import type { ItemCarrito } from '../../utils/storage';
@@ -28,19 +28,18 @@ import { calcTax, calcTotal, etiquetaIgv } from '../../utils/tax';
 
 // Scoped to the single ticket node (Fase 2): lines, totals, cancel trigger
 // and checkout all share it — there is no second totals block anymore.
-const ticket = document.querySelector<HTMLElement>('[data-ticket]');
-const linesEl = ticket?.querySelector<HTMLElement>('[data-cart-lines]') ?? null;
-const lineTemplate = document.querySelector<HTMLTemplateElement>('[data-cart-line-template]');
-const subtotalEl = ticket?.querySelector<HTMLElement>('[data-cart-subtotal]') ?? null;
-const taxEl = ticket?.querySelector<HTMLElement>('[data-cart-impuesto]') ?? null;
-const totalEl = ticket?.querySelector<HTMLElement>('[data-cart-total]') ?? null;
-const taxLabelEl = ticket?.querySelector<HTMLElement>('[data-cart-tax-label]') ?? null;
+const ticket = qs<HTMLElement>(document, '[data-ticket]');
+const linesEl = qs<HTMLElement>(ticket, '[data-cart-lines]');
+const lineTemplate = qs<HTMLTemplateElement>(document, '[data-cart-line-template]');
+const subtotalEl = qs<HTMLElement>(ticket, '[data-cart-subtotal]');
+const taxEl = qs<HTMLElement>(ticket, '[data-cart-impuesto]');
+const totalEl = qs<HTMLElement>(ticket, '[data-cart-total]');
+const taxLabelEl = qs<HTMLElement>(ticket, '[data-cart-tax-label]');
 // Configured IGV overwrites the build-time default label (Fase 5) — once at
 // startup: the rate only changes via /ajustes, which reloads the page.
-if (taxLabelEl) taxLabelEl.textContent = etiquetaIgv();
+setText(taxLabelEl, etiquetaIgv());
 // Modal key lives in ui/CancelSale.astro — single cancel-sale instance.
-const cancelTrigger =
-  ticket?.querySelector<HTMLElement>('[data-modal-open="cancel-sale"]') ?? null;
+const cancelTrigger = qs<HTMLElement>(ticket, '[data-modal-open="cancel-sale"]');
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -48,7 +47,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 // element.animate, no CSS class churn, anula'd by reduced-motion.
 function popBadges(): void {
   if (reduceMotion.matches) return;
-  for (const badge of document.querySelectorAll<HTMLElement>('[data-cart-badge]')) {
+  for (const badge of qsa<HTMLElement>(document, '[data-cart-badge]')) {
     badge.animate(
       [
         { transform: 'scale(1)' },
@@ -65,40 +64,39 @@ function paint(items: ItemCarrito[]): void {
     linesEl.querySelectorAll('[data-cart-line]').forEach((row) => row.remove());
 
     for (const item of items) {
-      const first = lineTemplate.content.firstElementChild;
-      if (!first) continue;
-      const row = first.cloneNode(true) as HTMLElement;
+      const row = cloneTemplate(lineTemplate);
+      if (!row) continue;
       row.dataset.cartLine = item.id;
 
-      const name = row.querySelector<HTMLElement>('[data-line-name]');
-      const unit = row.querySelector<HTMLElement>('[data-line-unit]');
-      const qty = row.querySelector<HTMLElement>('[data-line-qty]');
-      const importe = row.querySelector<HTMLElement>('[data-line-importe]');
+      const name = qs<HTMLElement>(row, '[data-line-name]');
+      const unit = qs<HTMLElement>(row, '[data-line-unit]');
+      const qty = qs<HTMLElement>(row, '[data-line-qty]');
+      const importe = qs<HTMLElement>(row, '[data-line-importe]');
 
-      if (name) name.textContent = item.nombre;
-      if (unit) unit.textContent = `${formatCurrency(item.precio)} c/u`;
-      if (qty) qty.textContent = String(item.cantidad);
-      if (importe) importe.textContent = formatCurrency(item.precio * item.cantidad);
+      setText(name, item.nombre);
+      setText(unit, `${formatCurrency(item.precio)} c/u`);
+      setText(qty, String(item.cantidad));
+      setText(importe, formatCurrency(item.precio * item.cantidad));
 
       // Buttons are generic in the template — the label names the product.
-      for (const step of row.querySelectorAll<HTMLElement>('[data-cart-qty-step]')) {
+      for (const step of qsa<HTMLElement>(row, '[data-cart-qty-step]')) {
         const verb = step.getAttribute('data-cart-qty-step') === 'up' ? 'Sumar' : 'Restar';
         step.setAttribute('aria-label', `${verb} una unidad de ${item.nombre}`);
       }
-      const remove = row.querySelector<HTMLElement>('[data-cart-remove]');
+      const remove = qs<HTMLElement>(row, '[data-cart-remove]');
       if (remove) remove.setAttribute('aria-label', `Quitar ${item.nombre} del carrito`);
 
       linesEl.append(row);
     }
 
     const subtotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
-    if (taxEl) taxEl.textContent = formatCurrency(calcTax(subtotal));
-    if (totalEl) totalEl.textContent = formatCurrency(calcTotal(subtotal));
+    setText(subtotalEl, formatCurrency(subtotal));
+    setText(taxEl, formatCurrency(calcTax(subtotal)));
+    setText(totalEl, formatCurrency(calcTotal(subtotal)));
   }
 
   // An empty cart has nothing to cancel.
-  if (cancelTrigger) cancelTrigger.hidden = items.length === 0;
+  setHidden(cancelTrigger, items.length === 0);
 }
 
 document.addEventListener('click', (event) => {
@@ -136,7 +134,7 @@ document.addEventListener('click', (event) => {
   if (step) {
     const row = step.closest<HTMLElement>('[data-cart-line]');
     const id = row?.dataset.cartLine;
-    const qty = row?.querySelector<HTMLElement>('[data-line-qty]');
+    const qty = qs<HTMLElement>(row, '[data-line-qty]');
     if (!id || !qty) return;
     const current = Number(qty.textContent);
     if (!Number.isFinite(current)) return;
@@ -157,7 +155,7 @@ document.addEventListener('click', (event) => {
   const confirm = target.closest<HTMLElement>('[data-cart-cancel-confirm]');
   if (confirm) {
     clearCart();
-    const root = confirm.closest<HTMLElement>('[data-modal-root]');
+    const root = closestAncestor<HTMLElement>(confirm, '[data-modal-root]');
     if (root) closeModal(root);
   }
 });
