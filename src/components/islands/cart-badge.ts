@@ -11,26 +11,27 @@
 import { subscribeCart } from '../../stores/cart';
 import { formatCurrency } from '../../utils/format';
 import { calcTotal } from '../../utils/tax';
+import { qs, qsa, setText, setHidden } from '../../utils/dom';
 
-const bar = document.querySelector<HTMLElement>('[data-cart-bar]');
-const spacer = document.querySelector<HTMLElement>('[data-cart-bar-spacer]');
-const barCount = document.querySelector<HTMLElement>('[data-cart-bar-count]');
-const barTotal = document.querySelector<HTMLElement>('[data-cart-bar-total]');
+const bar = qs<HTMLElement>(document, '[data-cart-bar]');
+const spacer = qs<HTMLElement>(document, '[data-cart-bar-spacer]');
+const barCount = qs<HTMLElement>(document, '[data-cart-bar-count]');
+const barTotal = qs<HTMLElement>(document, '[data-cart-bar-total]');
 
 // Total = sum of quantities (a line of 6 counts as 6); money total follows
 // base.md math (calcTotal = subtotal + tax) so it matches the ticket.
 subscribeCart((items) => {
   const count = items.reduce((sum, item) => sum + item.cantidad, 0);
-  for (const badge of document.querySelectorAll<HTMLElement>('[data-cart-badge]')) {
-    badge.textContent = String(count);
+  for (const badge of qsa<HTMLElement>(document, '[data-cart-badge]')) {
+    setText(badge, String(count));
   }
 
   const isEmpty = items.length === 0;
-  if (bar) bar.hidden = isEmpty;
-  if (spacer) spacer.hidden = isEmpty;
-  if (barCount) barCount.textContent = String(count);
+  setHidden(bar, isEmpty);
+  setHidden(spacer, isEmpty);
+  setText(barCount, String(count));
   if (barTotal) {
     const subtotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    barTotal.textContent = formatCurrency(calcTotal(subtotal));
+    setText(barTotal, formatCurrency(calcTotal(subtotal)));
   }
 });
