@@ -10,9 +10,10 @@
 
 import { formatNumero } from '../../utils/format';
 import { getAjustes, getCatalogoCache } from '../../utils/storage';
+import { qs, setText, setHidden } from '../../utils/dom';
 
-const badge = document.querySelector<HTMLElement>('[data-nav-badge="stock"]');
-const countEl = badge?.querySelector<HTMLElement>('[data-nav-badge-count]');
+const badge = qs<HTMLElement>(document, '[data-nav-badge="stock"]');
+const countEl = qs<HTMLElement>(badge, '[data-nav-badge-count]');
 
 if (badge && countEl) {
   const cached = getCatalogoCache();
@@ -20,8 +21,8 @@ if (badge && countEl) {
     const umbral = getAjustes().stock_alerta_min;
     const bajos = cached.productos.filter((p) => p.stock < umbral).length;
     if (bajos > 0) {
-      countEl.textContent = formatNumero(bajos);
-      badge.hidden = false;
+      setText(countEl, formatNumero(bajos));
+      setHidden(badge, false);
     }
   }
 }
