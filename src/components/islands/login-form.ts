@@ -18,35 +18,35 @@ import { login } from '../../api/actions/auth';
 import { saveSession } from '../../stores/session';
 import { getAjustes } from '../../utils/storage';
 import { hasLoginFields } from '../../utils/validators';
+import { qs, setText, setHidden } from '../../utils/dom';
+import { crearPendingButton } from '../../utils/pending-button';
 
-const root = document.querySelector<HTMLElement>('[data-login-root]');
-const form = document.querySelector<HTMLFormElement>('[data-login-form]');
+const root = qs<HTMLElement>(document, '[data-login-root]');
+const form = qs<HTMLFormElement>(document, '[data-login-form]');
 
 if (form && root) {
-  const error = form.querySelector<HTMLElement>('[data-login-error]');
-  const submit = form.querySelector<HTMLButtonElement>('[data-login-submit]');
-  const usuarioInput = form.querySelector<HTMLInputElement>('input[name="usuario"]');
-  const claveInput = form.querySelector<HTMLInputElement>('input[name="clave"]');
-  const toggle = form.querySelector<HTMLButtonElement>('[data-login-toggle]');
-  const marca = root.querySelector<HTMLElement>('[data-login-marca]');
-  const offlineNote = root.querySelector<HTMLElement>('[data-login-offline]');
+  const error = qs<HTMLElement>(form, '[data-login-error]');
+  const submit = qs<HTMLButtonElement>(form, '[data-login-submit]');
+  const usuarioInput = qs<HTMLInputElement>(form, 'input[name="usuario"]');
+  const claveInput = qs<HTMLInputElement>(form, 'input[name="clave"]');
+  const toggle = qs<HTMLButtonElement>(form, '[data-login-toggle]');
+  const marca = qs<HTMLElement>(root, '[data-login-marca]');
+  const offlineNote = qs<HTMLElement>(root, '[data-login-offline]');
 
   // The business name is a LOCAL preference — painted at boot, no network.
   const nombreLocal = getAjustes().nombre_local.trim();
-  if (marca && nombreLocal) marca.textContent = nombreLocal;
+  if (nombreLocal) setText(marca, nombreLocal);
 
   const showError = (message: string): void => {
-    if (error) {
-      error.textContent = message;
-      error.hidden = false;
-    }
+    setText(error, message);
+    setHidden(error, false);
     // §11: after an error the next attempt starts at the user field.
     usuarioInput?.focus();
   };
 
   // §11: the offline note travels with navigator.onLine — no polling.
   const pintarOnline = (): void => {
-    if (offlineNote) offlineNote.hidden = navigator.onLine;
+    setHidden(offlineNote, navigator.onLine);
   };
   window.addEventListener('online', pintarOnline);
   window.addEventListener('offline', pintarOnline);
@@ -63,11 +63,11 @@ if (form && root) {
     toggle.setAttribute('aria-pressed', String(mostrando));
   });
 
-  const textoOriginal = submit?.textContent ?? 'Ingresar';
+  const pendingBtn = crearPendingButton(submit, 'Ingresando…');
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (error) error.hidden = true;
+    setHidden(error, true);
 
     const data = new FormData(form);
     const usuario = String(data.get('usuario') ?? '');
@@ -79,10 +79,7 @@ if (form && root) {
     }
 
     // P0 anti double-submit (§11): pending state covers pointer AND Enter.
-    if (submit) {
-      submit.disabled = true;
-      submit.textContent = 'Ingresando…';
-    }
+    if (!pendingBtn.iniciar()) return;
     const result = await login(usuario, clave);
 
     if (result.status === 'success') {
@@ -92,10 +89,7 @@ if (form && root) {
       return; // navigation owns the pending state from here
     }
 
-    if (submit) {
-      submit.disabled = false;
-      submit.textContent = textoOriginal;
-    }
+    pendingBtn.finalizar();
 
     if (result.status === 'network_failure') {
       // Login is not a sale — nothing gets queued (plan-features Fase 1).
