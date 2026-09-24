@@ -8,7 +8,7 @@
 // Pathname decides the branch, stores/session decides auth — no fixed ids,
 // no globals (golden rule 4).
 
-import { isAuthenticated } from '../../stores/session';
+import { isAuthenticated } from '../../../stores/session';
 
 const path = window.location.pathname.replace(/\/+$/, '') || '/';
 

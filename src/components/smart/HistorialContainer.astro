@@ -1,6 +1,6 @@
 ---
 // Sales-history container — 100% local: reads historial_ventas via
-// utils/storage.ts inside islands/historial.ts (SSG cannot touch
+// utils/storage.ts inside islands/historial/historial.ts (SSG cannot touch
 // localStorage at build — same option-A pattern as the catalog). This
 // component renders only the filter chrome + shell; every row comes from
 // ui/ (astrobase §3.3) and nothing here ever calls the API (base.md §7
@@ -81,5 +81,5 @@ import StatCard from '../ui/StatCard.astro';
 </section>
 
 <script>
-	import '../islands/historial';
+	import '../islands/historial/historial';
 </script>

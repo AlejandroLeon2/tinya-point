@@ -1,7 +1,7 @@
 ---
 // Sale detail container (plan-mejoras-2.md Fase 3, decision D3; redesigned
 // as COMPROBANTE by plan T3.6 / refactorUI §6.2) — composes chrome + ui/
-// parts and wires islands/venta-detail.ts: receipt header (nombre del local,
+// parts and wires islands/historial/venta-detail.ts: receipt header (nombre del local,
 // fecha, hora, método, sync pill), lines as a <table>, totals right-aligned
 // with a highlighted total, the nota discreta for derived-IGV sales, and the
 // EmptyState (with its own "Volver al historial" CTA — T0.1 fix) for an
@@ -14,7 +14,7 @@ import VentaLine from '../ui/VentaLine.astro';
 import { etiquetaIgv } from '../../utils/tax';
 
 // Single source of truth for the rate (utils/tax.ts). Build-time default
-// (no localStorage → 18%); islands/venta-detail.ts overwrites it with the
+// (no localStorage → 18%); islands/historial/venta-detail.ts overwrites it with the
 // configured rate at runtime (plan-productos-v2 Fase 5).
 const taxLabel = etiquetaIgv();
 ---
@@ -98,5 +98,5 @@ const taxLabel = etiquetaIgv();
 </section>
 
 <script>
-	import '../islands/venta-detail';
+	import '../islands/historial/venta-detail';
 </script>

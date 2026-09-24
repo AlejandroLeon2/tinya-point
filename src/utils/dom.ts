@@ -28,7 +28,7 @@ export function setText(el: HTMLElement | null | undefined, text: string): void 
 }
 
 // Safe hidden setter — no-op if el is null (eliminates `if (el) el.hidden = …`).
-export function setHidden(el: Element | null | undefined, hidden: boolean): void {
+export function setHidden(el: HTMLElement | null | undefined, hidden: boolean): void {
   if (el) el.hidden = hidden;
 }
 
@@ -83,3 +83,32 @@ export function debounce<T extends (...args: never[]) => void>(fn: T, ms: number
     timeoutId = setTimeout(() => fn(...args), ms);
   };
 }
+
+// Declarative event delegation dispatcher (plan-islands-patrones.md Fase 1).
+export type ActionHandler<T extends HTMLElement = HTMLElement> = (
+  el: T,
+  dataset: DOMStringMap,
+  event: Event,
+) => void | Promise<void>;
+
+export function delegateAction(
+  container: ParentNode | null | undefined,
+  eventName: string,
+  actionAttr: string,
+  handlers: Record<string, ActionHandler>,
+): void {
+  if (!container) return;
+  container.addEventListener(eventName, (event) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const trigger = target.closest<HTMLElement>(`[${actionAttr}]`);
+    if (!trigger || !container.contains(trigger)) return;
+    const actionKey = trigger.getAttribute(actionAttr);
+    if (!actionKey) return;
+    const handler = handlers[actionKey];
+    if (handler) {
+      void handler(trigger, trigger.dataset, event);
+    }
+  });
+}
+

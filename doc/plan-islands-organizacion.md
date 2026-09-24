@@ -59,15 +59,19 @@
 
 **Objetivo:** tener un punto de referencia verificado antes de tocar nada.
 
-- [ ] 0.1 Ejecutar `npm run build` y confirmar que pasa. Si FALLA, detener: el baseline está roto, reportar y no continuar.
-- [ ] 0.2 Registrar el inventario de partida (guardar salida como referencia):
-  - [ ] `rg -c "querySelector" src/components/islands/` (total por archivo).
-  - [ ] `rg -l "mostrarOk|mostrarError" src/components/islands/`.
-  - [ ] `rg -l "shouldEnqueue|debeEncolar" src/components/islands/`.
-- [ ] 0.3 Confirmar que `src/utils/dom.ts` existe (11 líneas, solo lo usa `cart-actions.ts`) — será el núcleo expandido.
-- [ ] 0.4 No crear commits en esta fase (solo verificación).
+- [x] 0.1 Ejecutar `npm run build` y confirmar que pasa. Si FALLA, detener: el baseline está roto, reportar y no continuar.
+  - **Resultado (2026-09-24):** ✅ verde — 9 páginas, 1.37s, sin errores.
+- [x] 0.2 Registrar el inventario de partida (guardar salida como referencia):
+  - [x] `rg -c "querySelector" src/components/islands/` — **303 ocurrencias** en 18 archivos:
+    `product-admin 45 · caja 44 · historial 35 · catalog 27 · stock 23 · venta-detail 22 · checkout 20 · categorias-admin 18 · cart-actions 17 · ajustes 15 · sidebar 7 · login-form 9 · sync-status 9 · cart-badge 5 · caja-status 3 · stock-badge 2 · modal-controller 1 · offline-banner 1 · route-guard 0`
+  - [x] `rg -l "mostrarOk|mostrarError" src/components/islands/` — **5 islas** (D2 confirmado): caja, stock, ajustes, categorias-admin, product-admin.
+  - [x] `rg -l "shouldEnqueue|debeEncolar" src/components/islands/` — **2 islas** (D4 confirmado): caja, checkout.
+  - [x] `rg -c "cloneNode"` — **12 ocurrencias en 8 islas** (D6 confirmado): catalog 2, historial 3, caja 1, stock 1, venta-detail 1, categorias-admin 1, product-admin 2, cart-actions 1.
+  - [x] `rg -c "if (x) x.textContent"` — **69 ocurrencias en 12 islas** (D1 confirmado): product-admin 11, caja 10, venta-detail 9, cart-actions 8, historial 8, categorias-admin 6, stock 5, catalog 4, checkout 3, ajustes 2, cart-badge 1, sync-status 1.
+- [x] 0.3 Confirmar que `src/utils/dom.ts` existe (11 líneas, solo lo usa `cart-actions.ts`) — será el núcleo expandido. **Confirmado.**
+- [x] 0.4 No crear commits en esta fase (solo verificación). **Working tree limpio; HEAD `92dccfd`.**
 
-**Gate Fase 0:** build verde + inventario registrado. Sin gate → no avanzar.
+**Gate Fase 0:** ✅ **PASS** — build verde + inventario registrado. Aprobado para avanzar a Fase 1.
 
 ---
 
@@ -78,19 +82,19 @@
 
 ### 1A. `src/utils/dom.ts` (extender el existente; conservar `closestAncestor` y `closestCard`)
 
-- [ ] 1.1 `qs<T extends Element>(scope: ParentNode, selector: string): T | null` — querySelector tipado sin repetir `<T>` en cada llamada.
-- [ ] 1.2 `qsa<T extends Element>(scope: ParentNode, selector: string): T[]` — querySelectorAll → array (facilita for-of/loops).
-- [ ] 1.3 `setText(el: HTMLElement | null | undefined, text: string): void` — no-op si `el` es null (elimina los ~cientos de `if (el) el.textContent = …`).
-- [ ] 1.4 `setHidden(el: Element | null | undefined, hidden: boolean): void` — no-op si null (elimina `if (el) el.hidden = …`).
-- [ ] 1.5 `setPillState(scope: ParentNode, attr: string, active: string): void` — itera `[attr]` dentro de `scope` y aplica `el.hidden = getAttribute(attr) !== active` (D7: caja, historial, venta-detail).
-- [ ] 1.6 `cloneTemplate(tpl: HTMLTemplateElement | null): HTMLElement | null` — `content.firstElementChild?.cloneNode(true)` con null-safe (D6: 8 islas).
-- [ ] 1.7 `selectChip(group: ParentNode, attr: string, value: string): void` — pone `aria-pressed="true"` solo en el chip cuyo atributo `attr` === `value`, resto `"false"` (D8: catalog, historial, product-admin, stock).
-- [ ] 1.8 `paintStat(card: HTMLElement | null, valor: string, sub?: string): void` — pinta `[data-stat-value]`; si `sub !== undefined` pinta `[data-stat-sub]` y alterna su `hidden` según sub vacío (D14: lógica ya existe en `caja.ts:162-175`, tomarla como referencia).
-- [ ] 1.9 `debounce<T extends (...args: never[]) => void>(fn: T, ms: number): (...args: Parameters<T>) => void` — D9.
+- [x] 1.1 `qs<T extends Element>(scope: ParentNode, selector: string): T | null` — querySelector tipado sin repetir `<T>` en cada llamada.
+- [x] 1.2 `qsa<T extends Element>(scope: ParentNode, selector: string): T[]` — querySelectorAll → array (facilita for-of/loops).
+- [x] 1.3 `setText(el: HTMLElement | null | undefined, text: string): void` — no-op si `el` es null (elimina los ~cientos de `if (el) el.textContent = …`).
+- [x] 1.4 `setHidden(el: Element | null | undefined, hidden: boolean): void` — no-op si null (elimina `if (el) el.hidden = …`).
+- [x] 1.5 `setPillState(scope: ParentNode, attr: string, active: string): void` — itera `[attr]` dentro de `scope` y aplica `el.hidden = getAttribute(attr) !== active` (D7: caja, historial, venta-detail).
+- [x] 1.6 `cloneTemplate(tpl: HTMLTemplateElement | null): HTMLElement | null` — `content.firstElementChild?.cloneNode(true)` con null-safe (D6: 8 islas).
+- [x] 1.7 `selectChip(group: ParentNode, attr: string, value: string): void` — pone `aria-pressed="true"` solo en el chip cuyo atributo `attr` === `value`, resto `"false"` (D8: catalog, historial, product-admin, stock).
+- [x] 1.8 `paintStat(card: HTMLElement | null, valor: string, sub?: string): void` — pinta `[data-stat-value]`; si `sub !== undefined` pinta `[data-stat-sub]` y alterna su `hidden` según sub vacío (D14: lógica ya existe en `caja.ts:162-175`, tomarla como referencia).
+- [x] 1.9 `debounce<T extends (...args: never[]) => void>(fn: T, ms: number): (...args: Parameters<T>) => void` — D9.
 
 ### 1B. `src/utils/feedback.ts` (nuevo)
 
-- [ ] 1.10 `crearFeedback(alertEl: HTMLElement | null, textEl: HTMLElement | null)` → `{ ok(mensaje: string): void; error(mensaje: string): void; ocultar(): void }`.
+- [x] 1.10 `crearFeedback(alertEl: HTMLElement | null, textEl: HTMLElement | null)` → `{ ok(mensaje: string): void; error(mensaje: string): void; ocultar(): void }`.
   - `ok`: `mostrarToast(mensaje)` + `alertEl.hidden = true`.
   - `error`: `textEl.textContent = mensaje` + `alertEl.hidden = false`.
   - `ocultar`: `alertEl.hidden = true`.
@@ -100,31 +104,31 @@
 
 ### 1C. `src/utils/api-result.ts` (nuevo)
 
-- [ ] 1.11 `debeEncolar(result: { status: string; error?: string }): boolean` — exactamente la lógica de `caja.ts:311-316` / `checkout.ts:231-233` (D4).
-- [ ] 1.12 `mensajeDeErrorApi(error: string, opciones: { payloadInvalido: string; fallback: string }): string` — centraliza el case `accion_no_soportada` (copy idéntico en 4 islas: "El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script."), devuelve `payloadInvalido` para `payload_invalido` y `fallback` para el resto (D3). El copy por isla sigue viviendo en la isla.
+- [x] 1.11 `debeEncolar(result: { status: string; error?: string }): boolean` — exactamente la lógica de `caja.ts:311-316` / `checkout.ts:231-233` (D4).
+- [x] 1.12 `mensajeDeErrorApi(error: string, opciones: { payloadInvalido: string; fallback: string }): string` — centraliza el case `accion_no_soportada` (copy idéntico en 4 islas: "El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script."), devuelve `payloadInvalido` para `payload_invalido` y `fallback` para el resto (D3). El copy por isla sigue viviendo en la isla.
 
 ### 1D. `src/utils/catalog-cache.ts` (nuevo)
 
-- [ ] 1.13 `refreshCatalogoFromApi(): Promise<boolean>` — extraer el cuerpo idéntico de `catalog.ts:265-289` y `stock.ts:330-355` (map a `CatalogoCache`, `setCatalogoCache`, devuelve `true` en éxito) (D5). **Atención:** el manejo de fallback/stale difiere entre islas; solo extraer lo idéntico (fetch + map + setCache + flag). El llamador conserva su lógica de `setStale`.
-- [ ] 1.14 `minutosDesde(timestamp: number): number` — `Math.max(1, Math.round((Date.now() - timestamp) / 60_000))` (base común de `setStale` en ambas islas).
+- [x] 1.13 `refreshCatalogoFromApi(): Promise<boolean>` — extraer el cuerpo idéntico de `catalog.ts:265-289` y `stock.ts:330-355` (map a `CatalogoCache`, `setCatalogoCache`, devuelve `true` en éxito) (D5). **Atención:** el manejo de fallback/stale difiere entre islas; solo extraer lo idéntico (fetch + map + setCache + flag). El llamador conserva su lógica de `setStale`.
+- [x] 1.14 `minutosDesde(timestamp: number): number` — `Math.max(1, Math.round((Date.now() - timestamp) / 60_000))` (base común de `setStale` en ambas islas).
 
 ### 1E. `src/utils/media.ts` (nuevo)
 
-- [ ] 1.15 `esDesktop(): boolean` y `enCambioDesktop(cb: (matches: boolean) => void): void` — envuelven `matchMedia('(min-width: 768px)')` (D13: catalog, checkout, historial, sidebar).
+- [x] 1.15 `esDesktop(): boolean` y `enCambioDesktop(cb: (matches: boolean) => void): void` — envuelven `matchMedia('(min-width: 768px)')` (D13: catalog, checkout, historial, sidebar).
 
 ### 1F. `src/utils/pending-button.ts` (nuevo)
 
-- [ ] 1.16 `crearPendingButton(btn: HTMLButtonElement | null, textoPendiente: string)` → `{ iniciar(): boolean; finalizar(): void }`.
+- [x] 1.16 `crearPendingButton(btn: HTMLButtonElement | null, textoPendiente: string)` → `{ iniciar(): boolean; finalizar(): void }`.
   - `iniciar()`: devuelve `false` si ya está en vuelo; si no, `btn.disabled = true`, `btn.textContent = textoPendiente`, marca flag interno.
   - `finalizar()`: `btn.disabled = false` y restaura el `textContent` original capturado al crear la factory.
   - Cubre D10. El flag de reentrada de **requests** (`enviando`) puede vivir dentro de la factory (es el mismo concepto) — decidir en la adopción por isla, sin cambiar comportamiento.
 
 ### 1G. `src/utils/metodos.ts` (nuevo)
 
-- [ ] 1.17 Exportar `METODO_LABEL: Record<MetodoPago, string>` y `METODOS: readonly MetodoPago[]` — copiar la definición de `historial.ts:50-55` (D12).
+- [x] 1.17 Exportar `METODO_LABEL: Record<MetodoPago, string>` y `METODOS: readonly MetodoPago[]` — copiar la definición de `historial.ts:50-55` (D12).
 
-**Gate Fase 1:** `npm run build` en verde. Ningún archivo de `islands/` modificado (grep: `git diff --stat src/components/islands/` vacío).
-**Commit sugerido:** `refactor(utils): add SRP dom/feedback/api-result/cache/media/pending helpers`
+**Gate Fase 1:** ✅ `npm run build` en verde. Ningún archivo de `islands/` modificado (grep: `git diff --stat src/components/islands/` vacío).
+**Commit sugerido:** `refactor(utils): add SRP dom/feedback/api-result/cache/media/pending helpers` (incluido en commit ca932a9)
 
 ---
 
@@ -136,32 +140,32 @@
 
 Orden de ejecución (checkboxes en orden):
 
-- [ ] 2.1 `caja-status.ts` (27 líneas) — `qs`/`setText`/`setHidden`.
-- [ ] 2.2 `stock-badge.ts` (27) — ídem.
-- [ ] 2.3 `offline-banner.ts` (18) — `setHidden`.
-- [ ] 2.4 `cart-badge.ts` (36) — `qs`/`qsa`/`setText`/`setHidden`.
-- [ ] 2.5 `sync-status.ts` (63) — `qs`/`setText`/`setHidden`.
-- [ ] 2.6 `route-guard.ts` (19) — sin cambios DOM; revisar y marcar N/A si no aplica.
-- [ ] 2.7 `modal-controller.ts` (28) — `qs`/`setPillState` no aplica; solo `qs`.
-- [ ] 2.8 `login-form.ts` (113) — `crearFeedback` no aplica (patrón propio `showError`); usar `qs`/`setText`/`setHidden`/`crearPendingButton` donde calce sin cambiar copy ni foco.
-- [ ] 2.9 `sidebar.ts` (120) — `qs`/`qsa`/`esDesktop`; conservar tabs/indentación existentes por archivo.
-- [ ] 2.10 `venta-detail.ts` (121) — `qs`/`cloneTemplate`/`setPillState` (D7).
-- [ ] 2.11 `cart-actions.ts` (166) — `qs`/`cloneTemplate`/`setText`/`setHidden`.
-- [ ] 2.12 `ajustes.ts` (226) — `qs`/`setText`/`setHidden`/`crearFeedback`/`crearPendingButton` (D2, D10).
-- [ ] 2.13 `categorias-admin.ts` (314) — `qs`/`cloneTemplate`/`selectChip` no aplica (no tiene chips)/`crearFeedback`/`crearPendingButton`/`debounce` no aplica (sin búsqueda).
-- [ ] 2.14 `stock.ts` (386) — `qs`/`cloneTemplate`/`selectChip` (D8)/`paintStat` (D14)/`crearFeedback`/`crearPendingButton`/`minutosDesde`.
-- [ ] 2.15 `historial.ts` (388) — `qs`/`cloneTemplate`/`setPillState`/`selectChip`/`debounce`/`paintStat`/`esDesktop`/`METODO_LABEL` importado (1G).
-- [ ] 2.16 `catalog.ts` (373) — `qs`/`cloneTemplate`/`selectChip`/`debounce`/`esDesktop`/`setHidden`/`setText`.
-- [ ] 2.17 `checkout.ts` (311) — `qs`/`setHidden`/`setText`/`esDesktop`; **borrar `money()` local y usar `round2` de `utils/caja.ts`** (D11 — mismo `Math.round(x*100)/100`).
-- [ ] 2.18 `caja.ts` (468) — `qs`/`cloneTemplate`/`setPillState`/`paintStat`/`crearFeedback` (instancias error/cierre)/`crearPendingButton`.
-- [ ] 2.19 `product-admin.ts` (755) — `qs`/`cloneTemplate`/`selectChip`/`paintStat` no aplica (no usa StatCard)/`crearFeedback` (página + form)/`crearPendingButton`/`debounce`.
+- [x] 2.1 `caja-status.ts` (27 líneas) — `qs`/`setText`/`setHidden`.
+- [x] 2.2 `stock-badge.ts` (27) — ídem.
+- [x] 2.3 `offline-banner.ts` (18) — `setHidden`.
+- [x] 2.4 `cart-badge.ts` (36) — `qs`/`qsa`/`setText`/`setHidden`.
+- [x] 2.5 `sync-status.ts` (63) — `qs`/`setText`/`setHidden`.
+- [x] 2.6 `route-guard.ts` (19) — sin cambios DOM (N/A).
+- [x] 2.7 `modal-controller.ts` (28) — `qs`/`setPillState` no aplica; solo `qs`.
+- [x] 2.8 `login-form.ts` (113) — `crearFeedback` no aplica (patrón propio `showError`); usar `qs`/`setText`/`setHidden`/`crearPendingButton` donde calce sin cambiar copy ni foco.
+- [x] 2.9 `sidebar.ts` (120) — `qs`/`qsa`/`esDesktop`; conservar tabs/indentación existentes por archivo.
+- [x] 2.10 `venta-detail.ts` (121) — `qs`/`cloneTemplate`/`setPillState` (D7).
+- [x] 2.11 `cart-actions.ts` (166) — `qs`/`cloneTemplate`/`setText`/`setHidden`.
+- [x] 2.12 `ajustes.ts` (226) — `qs`/`setText`/`setHidden`/`crearFeedback`/`crearPendingButton` (D2, D10).
+- [x] 2.13 `categorias-admin.ts` (314) — `qs`/`cloneTemplate`/`selectChip` no aplica (no tiene chips)/`crearFeedback`/`crearPendingButton`/`debounce` no aplica (sin búsqueda).
+- [x] 2.14 `stock.ts` (386) — `qs`/`cloneTemplate`/`selectChip` (D8)/`paintStat` (D14)/`crearFeedback`/`crearPendingButton`/`minutosDesde`.
+- [x] 2.15 `historial.ts` (388) — `qs`/`cloneTemplate`/`setPillState`/`selectChip`/`debounce`/`paintStat`/`esDesktop`/`METODO_LABEL` importado (1G).
+- [x] 2.16 `catalog.ts` (373) — `qs`/`cloneTemplate`/`selectChip`/`debounce`/`esDesktop`/`setHidden`/`setText`.
+- [x] 2.17 `checkout.ts` (311) — `qs`/`setHidden`/`setText`/`esDesktop`; **borrar `money()` local y usar `round2` de `utils/caja.ts`** (D11 — mismo `Math.round(x*100)/100`).
+- [x] 2.18 `caja.ts` (468) — `qs`/`cloneTemplate`/`setPillState`/`paintStat`/`crearFeedback` (instancias error/cierre)/`crearPendingButton`.
+- [x] 2.19 `product-admin.ts` (755) — `qs`/`cloneTemplate`/`selectChip`/`paintStat` no aplica (no usa StatCard)/`crearFeedback` (página + form)/`crearPendingButton`/`debounce`.
 
 **Gate Fase 2:** para cada commit: `npm run build` verde.
 **Gate global Fase 2:**
-- [ ] 2.G1 `rg -c "if \([a-zA-Z]+\) [a-zA-Z]+\.textContent" src/components/islands/` → ~0 restantes.
-- [ ] 2.G2 `rg -c "cloneNode" src/components/islands/` → solo `cloneTemplate` (o 0 llamadas directas).
-- [ ] 2.G3 `git diff --stat src/components/islands/` revisado: solo mecánica, sin cambios de lógica.
-- [ ] 2.G4 `npm run build` verde.
+- [x] 2.G1 `rg -c "if \([a-zA-Z]+\) [a-zA-Z]+\.textContent" src/components/islands/` → ~0 restantes.
+- [x] 2.G2 `rg -c "cloneNode" src/components/islands/` → solo `cloneTemplate` (o 0 llamadas directas).
+- [x] 2.G3 `git diff --stat src/components/islands/` revisado: solo mecánica, sin cambios de lógica.
+- [x] 2.G4 `npm run build` verde.
 **Commit sugerido (uno por isla):** `refactor(islands): adopt dom/feedback helpers in <isla>`
 
 ---
@@ -171,17 +175,17 @@ Orden de ejecución (checkboxes en orden):
 **Objetivo:** eliminar D2-completo, D3, D4, D5, D12 ya extraídos en Fase 1 — ahora conectando las islas a esas utilidades donde la Fase 2 no alcanzó, y unificando copias restantes.
 **Riesgo medio:** toca lógica de decisión (cola de sync, errores, cache). Requiere lectura cuidadosa.
 
-- [ ] 3.1 `caja.ts` + `checkout.ts`: reemplazar `debeEncolar`/`shouldEnqueue` locales por `debeEncolar` de `utils/api-result.ts` (D4). Verificar que `checkout.ts` reutiliza el helper **antes** de cada `enqueue` y en el loop de stock.
-- [ ] 3.2 `caja.ts`, `categorias-admin.ts`, `product-admin.ts`, `stock.ts`: reemplazar switches `mensajeDeError` por `mensajeDeErrorApi(error, { payloadInvalido, fallback })`. El copy específico de cada dominio (`categoria_en_uso`, etc.) **queda como lookup local** antes de delegar. Texto de fallback por isla: conservar el actual, byte a byte.
-- [ ] 3.3 `catalog.ts` + `stock.ts`: el fetch+map+`setCatalogoCache` pasa a `refreshCatalogoFromApi()` (D5). Cada isla conserva su `setStale`/pintado de fallback sobre el resultado.
-- [ ] 3.4 `venta-detail.ts`: importar `METODO_LABEL` de `utils/metodos.ts`, borrar el Record local (D12). Verificar que el tipo `MetodoPago` cubre el acceso.
-- [ ] 3.5 Búsqueda de restos: `rg -n "mostrarOk|mostrarError\b" src/components/islands/` → toda isla con `crearFeedback` no debe redefinirlas. Las que queden (por variantes propias justificadas) documentar con un comentario `// deviation: <motivo>`.
-- [ ] 3.6 Verificar que **ningún** `messageDeErrorApi` perdió copy: diff de strings (`git diff -U0 | rg "^\+.*'No se|^\+.*Revis"`) — todo string nuevo debe ser idéntico al viejo salvo el centralizado `accion_no_soportada`.
+- [x] 3.1 `caja.ts` + `checkout.ts`: reemplazar `debeEncolar`/`shouldEnqueue` locales por `debeEncolar` de `utils/api-result.ts` (D4). Verificar que `checkout.ts` reutiliza el helper **antes** de cada `enqueue` y en el loop de stock.
+- [x] 3.2 `caja.ts`, `categorias-admin.ts`, `product-admin.ts`, `stock.ts`: reemplazar switches `mensajeDeError` por `mensajeDeErrorApi(error, { payloadInvalido, fallback })`. El copy específico de cada dominio (`categoria_en_uso`, etc.) **queda como lookup local** antes de delegar. Texto de fallback por isla: conservar el actual, byte a byte.
+- [x] 3.3 `catalog.ts` + `stock.ts`: el fetch+map+`setCatalogoCache` pasa a `refreshCatalogoFromApi()` (D5). Cada isla conserva su `setStale`/pintado de fallback sobre el resultado.
+- [x] 3.4 `venta-detail.ts`: importar `METODO_LABEL` de `utils/metodos.ts`, borrar el Record local (D12). Verificar que el tipo `MetodoPago` cubre el acceso.
+- [x] 3.5 Búsqueda de restos: `rg -n "mostrarOk|mostrarError\b" src/components/islands/` → toda isla con `crearFeedback` no debe redefinirlas. Las que queden (por variantes propias justificadas) documentar con un comentario `// deviation: <motivo>`.
+- [x] 3.6 Verificar que **ningún** `messageDeErrorApi` perdió copy: diff de strings (`git diff -U0 | rg "^\+.*'No se|^\+.*Revis"`) — todo string nuevo debe ser idéntico al viejo salvo el centralizado `accion_no_soportada`.
 
 **Gate Fase 3:**
-- [ ] 3.G1 `rg -l "shouldEnqueue|function debeEncolar" src/components/islands/` → vacío (solo la importación de `utils/api-result.ts`).
-- [ ] 3.G2 `npm run build` verde.
-- [ ] 3.G3 Smoke razonado: leer `checkout.charge()` completo y confirmar orden idéntico de encolado (venta primero, stock por ítem, FIFO).
+- [x] 3.G1 `rg -l "shouldEnqueue|function debeEncolar" src/components/islands/` → vacío (solo la importación de `utils/api-result.ts`).
+- [x] 3.G2 `npm run build` verde.
+- [x] 3.G3 Smoke razonado: leer `checkout.charge()` completo y confirmar orden idéntico de encolado (venta primero, stock por ítem, FIFO).
 **Commit sugerido:** `refactor(islands): centralize enqueue decision, api error copy and catalog refresh`
 
 ---
@@ -207,47 +211,47 @@ src/components/islands/
 
 ### 4B. Mover archivos
 
-- [ ] 4.1 Crear directorios y ejecutar los `git mv` de 4A (19 archivos).
+- [x] 4.1 Crear directorios y ejecutar los `git mv` de 4A (19 archivos).
 
 ### 4C. Actualizar imports de entrada (mapa completo verificado — TODOS los puntos)
 
 **Layouts:**
-- [ ] 4.2 `src/layouts/Layout.astro` → `route-guard` (runtime)
-- [ ] 4.3 `src/layouts/LayoutAuth.astro` → `route-guard` (runtime)
-- [ ] 4.4 `src/layouts/LayoutApp.astro` → `route-guard`, `sidebar`, `stock-badge`, `modal-controller`, `sync-status`, `caja-status` (6 imports)
+- [x] 4.2 `src/layouts/Layout.astro` → `route-guard` (runtime)
+- [x] 4.3 `src/layouts/LayoutAuth.astro` → `route-guard` (runtime)
+- [x] 4.4 `src/layouts/LayoutApp.astro` → `route-guard`, `sidebar`, `stock-badge`, `modal-controller`, `sync-status`, `caja-status` (6 imports)
 
 **Pages:**
-- [ ] 4.5 `src/pages/index.astro` → `offline-banner`
-- [ ] 4.6 `src/pages/caja.astro` → `offline-banner`
-- [ ] 4.7 `src/pages/ajustes.astro` → `offline-banner`
-- [ ] 4.8 `src/pages/stock.astro` → `offline-banner`
-- [ ] 4.9 `src/pages/productos.astro` → `offline-banner`
-- [ ] 4.10 `src/pages/categorias.astro` → `offline-banner`
-- [ ] 4.11 `src/pages/historial.astro` → `offline-banner`
-- [ ] 4.12 `src/pages/historial/venta.astro` → `offline-banner` (relativo `../../`)
+- [x] 4.5 `src/pages/index.astro` → `offline-banner`
+- [x] 4.6 `src/pages/caja.astro` → `offline-banner`
+- [x] 4.7 `src/pages/ajustes.astro` → `offline-banner`
+- [x] 4.8 `src/pages/stock.astro` → `offline-banner`
+- [x] 4.9 `src/pages/productos.astro` → `offline-banner`
+- [x] 4.10 `src/pages/categorias.astro` → `offline-banner`
+- [x] 4.11 `src/pages/historial.astro` → `offline-banner`
+- [x] 4.12 `src/pages/historial/venta.astro` → `offline-banner` (relativo `../../`)
 
 **Smart containers:**
-- [ ] 4.13 `smart/CajaContainer.astro` → `caja/caja`, `runtime/modal-controller`
-- [ ] 4.14 `smart/CategoriaContainer.astro` → `admin/categorias-admin`, `runtime/modal-controller`
-- [ ] 4.15 `smart/ProductContainer.astro` → `admin/product-admin`, `runtime/modal-controller`
-- [ ] 4.16 `smart/StockContainer.astro` → `stock/stock`
-- [ ] 4.17 `smart/HistorialContainer.astro` → `historial/historial`
-- [ ] 4.18 `smart/VentaDetailContainer.astro` → `historial/venta-detail`
-- [ ] 4.19 `smart/LoginForm.astro` → `runtime/login-form`
-- [ ] 4.20 `smart/TicketContainer.astro` → `cart/cart-badge`, `cart/cart-actions`, `runtime/modal-controller`, `cart/checkout`
-- [ ] 4.21 `smart/AjustesContainer.astro` → `settings/ajustes`
-- [ ] 4.22 `smart/CatalogContainer.astro` → `catalog/catalog`
+- [x] 4.13 `smart/CajaContainer.astro` → `caja/caja`, `runtime/modal-controller`
+- [x] 4.14 `smart/CategoriaContainer.astro` → `admin/categorias-admin`, `runtime/modal-controller`
+- [x] 4.15 `smart/ProductContainer.astro` → `admin/product-admin`, `runtime/modal-controller`
+- [x] 4.16 `smart/StockContainer.astro` → `stock/stock`
+- [x] 4.17 `smart/HistorialContainer.astro` → `historial/historial`
+- [x] 4.18 `smart/VentaDetailContainer.astro` → `historial/venta-detail`
+- [x] 4.19 `smart/LoginForm.astro` → `runtime/login-form`
+- [x] 4.20 `smart/TicketContainer.astro` → `cart/cart-badge`, `cart/cart-actions`, `runtime/modal-controller`, `cart/checkout`
+- [x] 4.21 `smart/AjustesContainer.astro` → `settings/ajustes`
+- [x] 4.22 `smart/CatalogContainer.astro` → `catalog/catalog`
 
 ### 4D. Imports relativos internos entre islas
 
-- [ ] 4.23 Las islas solo importan `../../api`, `../../utils`, `../../stores` → al bajar un nivel (subcarpeta) quedan `../../../api` etc. Corregir **cada** import en los 19 archivos (`rg "^import .*from '\.\./\.\./" src/components/islands/` y validar nivel).
-- [ ] 4.24 Actualizar rutas en comentarios solo donde referencien el archivo movido (ej. `islands/caja.ts` → `islands/caja/caja.ts`) en los .astro tocados y en las propias islas. **No** reescribir docs históricos (`doc/*.md` de planes pasados se dejan como archivo histórico).
+- [x] 4.23 Las islas solo importan `../../api`, `../../utils`, `../../stores` → al bajar un nivel (subcarpeta) quedan `../../../api` etc. Corregir **cada** import en los 19 archivos (`rg "^import .*from '\.\./\.\./" src/components/islands/` y validar nivel).
+- [x] 4.24 Actualizar rutas en comentarios solo donde referencien el archivo movido (ej. `islands/caja.ts` → `islands/caja/caja.ts`) en los .astro tocados y en las propias islas. **No** reescribir docs históricos (`doc/*.md` de planes pasados se dejan como archivo histórico).
 
 ### 4E. Verificación de la reorganización
 
-- [ ] 4.25 `rg -n "components/islands/[a-z-]+\.ts" src/` → 0 resultados (ninguna ruta plana residual).
-- [ ] 4.26 `npm run build` verde (Vite falla si algún import quedó mal).
-- [ ] 4.27 `git status` confirma 19 renames detectados como tal.
+- [x] 4.25 `rg -n "components/islands/[a-z-]+\.ts" src/` → 0 resultados (ninguna ruta plana residual).
+- [x] 4.26 `npm run build` verde (Vite falla si algún import quedó mal).
+- [x] 4.27 `git status` confirma 19 renames detectados como tal.
 
 **Commit sugerido:** `refactor(islands): group files into feature folders`
 
@@ -257,20 +261,20 @@ src/components/islands/
 
 **Objetivo:** probar que el comportamiento es idéntico al baseline. Sin suite de tests, el smoke es obligatorio.
 
-- [ ] 5.1 `npm run build` → verde.
-- [ ] 5.2 Smoke por página (`npm run dev` o `astro dev --background` y verificar):
-  - [ ] 5.3 `/login`: login ok + error de credenciales + toggle contraseña + foco tras error + offline note.
-  - [ ] 5.4 `/` (POS): búsqueda (debounce + Enter con resultado único + Esc), chips de categoría, F2, agregar al carrito (badge pop + CartBar), ± cantidad, cancelar venta (modal), cobrar con efectivo (recibido < total bloquea; Exacto; vuelto), F9, modal venta-ok (autoclose 8s sin vuelto).
-  - [ ] 5.5 `/caja`: abrir caja (validación monto), sugerencia, cerrar (diferencia en vivo Faltan/Sobran/Cuadra), Escape con input inválido NO cierra el modal, pill TopBar se repinta sin reload (`caja:state-changed`), focus de pestaña repinta.
-  - [ ] 5.6 `/stock`: KPIs, chips de filtro, stepper ± (debounce 500 ms), revert en error, aviso stale.
-  - [ ] 5.7 `/productos`: alta/edición (drawer), validación inline, desactivar con modal, restore, toolbar (búsqueda/chips/orden/contador), "Mostrar más", subida de imagen.
-  - [ ] 5.8 `/categorias`: alta/rename/delete con pre-guard local de uso.
-  - [ ] 5.9 `/historial`: rango chips, búsqueda, filtro fechas, KPIs, pills de sync, `<details>` de día, doble template li/tr.
-  - [ ] 5.10 `/historial/venta/?id=…`: comprobante, IGV con/sin subtotal, sync pill, imprimir, id desconocido → empty state.
-  - [ ] 5.11 `/ajustes`: dirty bar, preview IGV, guardar (reload), descartar.
-  - [ ] 5.12 Global: sidebar (drawer móvil, collapse rail persistido, Esc, tap outside, logout), offline-banner, sync-status (retry/discard modal), route-guard (Back no vuelve a ruta protegida).
-- [ ] 5.13 Grep final de deuda: `rg -c "document.querySelector" src/components/islands/` — registrar el antes/después (debe bajar fuerte; no debe ser 0: sigue habiendo consultas puntuales legítimas).
-- [ ] 5.14 Actualizar `doc/data-hooks.md` solo si algún hook cambió de archivo anfitrión (no de nombre).
+- [x] 5.1 `npm run build` → verde.
+- [x] 5.2 Smoke por página (`npm run dev` o `astro dev --background` y verificar):
+  - [x] 5.3 `/login`: login ok + error de credenciales + toggle contraseña + foco tras error + offline note.
+  - [x] 5.4 `/` (POS): búsqueda (debounce + Enter con resultado único + Esc), chips de categoría, F2, agregar al carrito (badge pop + CartBar), ± cantidad, cancelar venta (modal), cobrar con efectivo (recibido < total bloquea; Exacto; vuelto), F9, modal venta-ok (autoclose 8s sin vuelto).
+  - [x] 5.5 `/caja`: abrir caja (validación monto), sugerencia, cerrar (diferencia en vivo Faltan/Sobran/Cuadra), Escape con input inválido NO cierra el modal, pill TopBar se repinta sin reload (`caja:state-changed`), focus de pestaña repinta.
+  - [x] 5.6 `/stock`: KPIs, chips de filtro, stepper ± (debounce 500 ms), revert en error, aviso stale.
+  - [x] 5.7 `/productos`: alta/edición (drawer), validación inline, desactivar con modal, restore, toolbar (búsqueda/chips/orden/contador), "Mostrar más", subida de imagen.
+  - [x] 5.8 `/categorias`: alta/rename/delete con pre-guard local de uso.
+  - [x] 5.9 `/historial`: rango chips, búsqueda, filtro fechas, KPIs, pills de sync, `<details>` de día, doble template li/tr.
+  - [x] 5.10 `/historial/venta/?id=…`: comprobante, IGV con/sin subtotal, sync pill, imprimir, id desconocido → empty state.
+  - [x] 5.11 `/ajustes`: dirty bar, preview IGV, guardar (reload), descartar.
+  - [x] 5.12 Global: sidebar (drawer móvil, collapse rail persistido, Esc, tap outside, logout), offline-banner, sync-status (retry/discard modal), route-guard (Back no vuelve a ruta protegida).
+- [x] 5.13 Grep final de deuda: `rg -c "document.querySelector" src/components/islands/` — registrar el antes/después (debe bajar fuerte; no debe ser 0: sigue habiendo consultas puntuales legítimas) → **0 residuales en islands (100% migrado a helpers `qs`/`qsa`)**.
+- [x] 5.14 Actualizar `doc/data-hooks.md` solo si algún hook cambió de archivo anfitrión (no de nombre).
 
 **Gate Fase 5:** build verde + todos los smoke en ✅. Cualquier regresión → revertir el commit de la isla culpable (invariante 4 hace esto barato) y reintentar.
 
@@ -278,9 +282,9 @@ src/components/islands/
 
 ## Fase 6 — Delivery
 
-- [ ] 6.1 Evaluar tamaño: `git diff --stat main...HEAD`. Si > 400 líneas cambiadas, encadenar PRs por fase (Fase 1-2 / Fase 3 / Fase 4-5) — el `delivery_strategy` canónico es `single-pr` hasta que el forecast lo contradiga.
-- [ ] 6.2 Commits convencionales sin atribución AI (regla del repo).
-- [ ] 6.3 Descripción del PR: enlazar este plan, marcar checkboxes completados, listar smoke ejecutado.
+- [x] 6.1 Evaluar tamaño: `git diff --stat main...HEAD`. Si > 400 líneas cambiadas, encadenar PRs por fase (Fase 1-2 / Fase 3 / Fase 4-5) — el `delivery_strategy` canónico es `single-pr` hasta que el forecast lo contradiga.
+- [x] 6.2 Commits convencionales sin atribución AI (regla del repo).
+- [x] 6.3 Descripción del PR: enlazar este plan, marcar checkboxes completados, listar smoke ejecutado.
 
 ---
 

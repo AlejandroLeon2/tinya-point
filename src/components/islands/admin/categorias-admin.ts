@@ -19,17 +19,14 @@ import {
   borrarCategoria,
   crearCategoria,
   getCategorias,
-} from '../../api/actions/categorias';
-import type { CategoriaApi } from '../../api/types';
-import {
-  limpiarErroresForm,
-  mostrarErrorCampo,
-  observarCampo,
-} from '../../utils/form-errors';
-import { getCatalogoCache } from '../../utils/storage';
-import { isNonEmpty } from '../../utils/validators';
-import { qs, setText, setHidden, cloneTemplate } from '../../utils/dom';
-import { crearFeedback } from '../../utils/feedback';
+} from '../../../api/actions/categorias';
+import type { CategoriaApi } from '../../../api/types';
+import { isNonEmpty } from '../../../utils/validators';
+import { qs, qsa, setText, setHidden, cloneTemplate, delegateAction } from '../../../utils/dom';
+import { getCatalogoCache } from '../../../utils/storage';
+import { crearFeedback } from '../../../utils/feedback';
+import { mensajeDeErrorApi } from '../../../utils/api-result';
+import { createFormManager } from '../../../utils/form-manager';
 
 const root = qs<HTMLElement>(document, '[data-categorias-root]');
 
@@ -60,25 +57,19 @@ if (root) {
 
   function ocultarAlertas(): void {
     feedback.ocultar();
-    // Inline field errors die with the alerts: edit/new mode starts clean.
-    if (form) limpiarErroresForm(form);
   }
 
   // Spanish copy per transport outcome / §4.5 code — the code itself never
   // reaches the cashier's eyes (stilesbase §5.7).
+  // Domain-specific errors resolved locally; fallback delegates to the shared helper (D3).
   function mensajeDeError(error: string): string {
-    switch (error) {
-      case 'categoria_duplicada':
-        return 'Ya existe una categoría con ese nombre.';
-      case 'categoria_en_uso':
-        return 'Hay productos usando esta categoría — cambialos o desactivalos antes de borrarla.';
-      case 'payload_invalido':
-        return 'Revisá el nombre de la categoría.';
-      case 'accion_no_soportada':
-        return 'El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.';
-      default:
-        return 'No se pudo guardar. Intentá de nuevo.';
-    }
+    if (error === 'categoria_duplicada') return 'Ya existe una categoría con ese nombre.';
+    if (error === 'categoria_en_uso')
+      return 'Hay productos usando esta categoría — cambialos o desactivalos antes de borrarla.';
+    return mensajeDeErrorApi(error, {
+      payloadInvalido: 'Revisá el nombre de la categoría.',
+      fallback: 'No se pudo guardar. Intentá de nuevo.',
+    });
   }
 
   async function cargar(): Promise<void> {
@@ -245,24 +236,25 @@ if (root) {
   window.addEventListener('online', actualizarOnline);
   window.addEventListener('offline', actualizarOnline);
 
-  form?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    // Implicit Enter submission bypasses a disabled button in some
-    // browsers — guard here too (never fire a doomed request).
-    if (!navigator.onLine) {
-      actualizarOnline();
-      return;
-    }
-    // Fresh attempt: drop stale inline errors before validating again.
-    limpiarErroresForm(form);
-    const nombre = nombreInput?.value.trim() ?? '';
-    if (!isNonEmpty(nombre)) {
-      // P1 (plan-form-ux.md): the message lives under the field.
-      if (nombreInput) mostrarErrorCampo(nombreInput, 'Ingresá el nombre de la categoría.');
-      nombreInput?.focus();
-      return;
-    }
-    void guardar(nombre);
+  const formManager = createFormManager<{ nombre: string }>({
+    form,
+    submitBtn,
+    schema: {
+      nombre: {
+        el: nombreInput,
+        validate: isNonEmpty,
+        error: 'Ingresá el nombre de la categoría.',
+      },
+    },
+    onSubmit: async (datos) => {
+      // Implicit Enter submission bypasses a disabled button in some
+      // browsers — guard here too (never fire a doomed request).
+      if (!navigator.onLine) {
+        actualizarOnline();
+        return;
+      }
+      await guardar(datos.nombre);
+    },
   });
 
   cancelBtn?.addEventListener('click', () => {
@@ -270,23 +262,17 @@ if (root) {
     nombreInput?.focus(); // back where a new category would start
   });
 
-  rowsEl?.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const row = target.closest<HTMLElement>('[data-categoria-row]');
-    if (!row) return;
-    const id = row.getAttribute('data-categoria-id');
-    if (!id) return;
-
-    if (target.closest('[data-categoria-edit]')) {
-      editarCategoria(id);
-      return;
-    }
-    if (target.closest('[data-categoria-delete]')) {
+  delegateAction(rowsEl, 'click', 'data-categoria-action', {
+    edit: (trigger) => {
+      const id = trigger.closest<HTMLElement>('[data-categoria-row]')?.getAttribute('data-categoria-id');
+      if (id) editarCategoria(id);
+    },
+    delete: (trigger) => {
       // The modal itself opens via modal-controller (data-modal-open on the
       // button); remember which category the confirmation applies to.
-      pendingDeleteId = id;
-    }
+      const id = trigger.closest<HTMLElement>('[data-categoria-row]')?.getAttribute('data-categoria-id');
+      if (id) pendingDeleteId = id;
+    },
   });
 
   confirmDeleteBtn?.addEventListener('click', () => {
@@ -294,8 +280,8 @@ if (root) {
     pendingDeleteId = null;
   });
 
-  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1).
-  if (nombreInput) observarCampo(nombreInput);
+  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1)
+  // — handled by createFormManager's auto-wiring (observarCampo per schema key).
 
   actualizarOnline(); // initial offline state
   void cargar(); // first paint from the public read

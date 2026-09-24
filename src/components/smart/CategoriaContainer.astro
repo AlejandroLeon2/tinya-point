@@ -1,7 +1,7 @@
 ---
 // Categories admin container (plan-productos-v2.md Fase 2, D-C2: página
 // /categorias) — smart layer composes chrome + ui/ parts and wires the
-// islands: copy from ui/, behavior from islands/categorias-admin.ts
+// islands: copy from ui/, behavior from islands/admin/categorias-admin.ts
 // (astrobase §3.3). Delete is confirmed through the shared ui/Modal +
 // modal-controller contract (stilesbase §5.5).
 import Alert from '../ui/Alert.astro';
@@ -50,6 +50,6 @@ import Modal from '../ui/Modal.astro';
 </section>
 
 <script>
-	import '../islands/categorias-admin';
-	import '../islands/modal-controller';
+	import '../islands/admin/categorias-admin';
+	import '../islands/runtime/modal-controller';
 </script>

@@ -1,7 +1,7 @@
 ---
 // Settings container (plan-productos-v2.md Fase 5, D4: datos del negocio +
 // IGV configurable) — smart layer composes chrome + ui/ and wires
-// islands/ajustes.ts (astrobase §3.3). Local-only page: zero API, the
+// islands/settings/ajustes.ts (astrobase §3.3). Local-only page: zero API, the
 // settings live in the `ajustes` localStorage key (base.md §2.3, 7th key).
 //
 // T3.10 (refactorUI §10): three section cards inside the form, the
@@ -44,7 +44,7 @@ import AjustesForm from '../ui/AjustesForm.astro';
 		</div>
 
 		<div class="mt-1 flex flex-wrap gap-3">
-			<!-- Handled globally by islands/sidebar.ts (data-logout). -->
+			<!-- Handled globally by islands/runtime/sidebar.ts (data-logout). -->
 			<button type="button" data-logout class="btn btn-secondary">Cerrar sesión</button>
 		</div>
 	</section>
@@ -72,5 +72,5 @@ import AjustesForm from '../ui/AjustesForm.astro';
 </section>
 
 <script>
-	import '../islands/ajustes';
+	import '../islands/settings/ajustes';
 </script>

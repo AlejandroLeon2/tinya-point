@@ -13,7 +13,7 @@ Un hook `data-*` es un **atributo HTML neutro que el JavaScript usa para encontr
 2. **El island lo busca** con `querySelector` y lo opera:
 
    ```ts
-   // src/components/islands/catalog.ts
+   // src/components/islands/catalog/catalog.ts
    const img = node.querySelector<HTMLImageElement>('[data-card-img]');
    if (img) img.alt = product.nombre;
    ```
@@ -21,7 +21,7 @@ Un hook `data-*` es un **atributo HTML neutro que el JavaScript usa para encontr
 3. **En listas** se clona un `<template>` por cada ítem y la interacción se resuelve con **delegación de eventos**: un solo listener en el contenedor que sube desde el clic hasta el hook más cercano con `closest()`:
 
    ```ts
-   // src/components/islands/product-admin.ts
+   // src/components/islands/admin/product-admin.ts
    rowsEl.addEventListener('click', (event) => {
      const row = event.target.closest('[data-product-row]');
      if (!row) return;

@@ -14,12 +14,13 @@
 // (visible ⇔ sin red), "Ingresando…" pending state, and focus back to the
 // user field after ANY error (validation or auth).
 
-import { login } from '../../api/actions/auth';
-import { saveSession } from '../../stores/session';
-import { getAjustes } from '../../utils/storage';
-import { hasLoginFields } from '../../utils/validators';
-import { qs, setText, setHidden } from '../../utils/dom';
-import { crearPendingButton } from '../../utils/pending-button';
+import { login } from '../../../api/actions/auth';
+import { saveSession } from '../../../stores/session';
+import { getAjustes } from '../../../utils/storage';
+import { hasLoginFields } from '../../../utils/validators';
+import { qs, setText, setHidden } from '../../../utils/dom';
+import { crearPendingButton } from '../../../utils/pending-button';
+import { createFormManager, type SubmitResult } from '../../../utils/form-manager';
 
 const root = qs<HTMLElement>(document, '[data-login-root]');
 const form = qs<HTMLFormElement>(document, '[data-login-form]');
@@ -65,43 +66,50 @@ if (form && root) {
 
   const pendingBtn = crearPendingButton(submit, 'Ingresando…');
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    setHidden(error, true);
+  // Schema without validators — the login form uses its own block-level
+  // error (data-login-error) with hasLoginFields; the Astro template has no
+  // inline error support per field.  createFormManager still provides:
+  // submit interception, anti-double-submit, observarCampo auto-wiring, and
+  // the 'keep-pending' sentinel for the navigation case.
+  createFormManager<{ usuario: string; clave: string }>({
+    form,
+    pendingBtn,
+    schema: {
+      usuario: { el: usuarioInput },
+      clave: { el: claveInput },
+    },
+    onSubmit: async (datos): Promise<SubmitResult> => {
+      setHidden(error, true);
 
-    const data = new FormData(form);
-    const usuario = String(data.get('usuario') ?? '');
-    const clave = String(data.get('clave') ?? '');
+      if (!hasLoginFields(datos.usuario, datos.clave)) {
+        showError('Completa usuario y contraseña.');
+        return;
+      }
 
-    if (!hasLoginFields(usuario, clave)) {
-      showError('Completa usuario y contraseña.');
-      return;
-    }
+      const result = await login(datos.usuario, datos.clave);
 
-    // P0 anti double-submit (§11): pending state covers pointer AND Enter.
-    if (!pendingBtn.iniciar()) return;
-    const result = await login(usuario, clave);
+      if (result.status === 'success') {
+        saveSession(result.body.token);
+        form.reset();
+        window.location.assign('/');
+        return 'keep-pending'; // navigation owns the pending state from here
+      }
 
-    if (result.status === 'success') {
-      saveSession(result.body.token);
-      form.reset();
-      window.location.assign('/');
-      return; // navigation owns the pending state from here
-    }
+      // Errors finalize normally (form-manager handles pendingBtn.finalizar).
 
-    pendingBtn.finalizar();
+      if (result.status === 'network_failure') {
+        // Login is not a sale — nothing gets queued (plan-features Fase 1).
+        showError('No se pudo conectar, revisa tu conexión.');
+        return;
+      }
 
-    if (result.status === 'network_failure') {
-      // Login is not a sale — nothing gets queued (plan-features Fase 1).
-      showError('No se pudo conectar, revisa tu conexión.');
-      return;
-    }
+      if (result.error === 'credenciales_invalidas') {
+        showError('Usuario o contraseña incorrectos.');
+        return;
+      }
 
-    if (result.error === 'credenciales_invalidas') {
-      showError('Usuario o contraseña incorrectos.');
-      return;
-    }
-
-    showError('No se pudo iniciar sesión, intenta de nuevo.');
+      showError('No se pudo iniciar sesión, intenta de nuevo.');
+    },
   });
 }
+

@@ -25,13 +25,13 @@
 // Template cloning like catalog/cart: no fixed ids, everything scoped to
 // data-attribute hooks inside [data-historial-root].
 
-import { round2, totalesDelDia } from '../../utils/caja';
-import { formatCurrency, formatDiaResumen, formatHora, localDayKey } from '../../utils/format';
-import { topProductosDelDia } from '../../utils/reportes';
-import { getCajas, getColaSync, getHistorialVentas, type CajaLocal, type MetodoPago, type VentaLocal } from '../../utils/storage';
-import { qs, qsa, setText, setHidden, cloneTemplate, setPillState, selectChip, paintStat, debounce } from '../../utils/dom';
-import { esDesktop, enCambioDesktop } from '../../utils/media';
-import { METODO_LABEL, METODOS } from '../../utils/metodos';
+import { round2, totalesDelDia } from '../../../utils/caja';
+import { formatCurrency, formatDiaResumen, formatHora, localDayKey } from '../../../utils/format';
+import { topProductosDelDia } from '../../../utils/reportes';
+import { getCajas, getColaSync, getHistorialVentas, type CajaLocal, type MetodoPago, type VentaLocal } from '../../../utils/storage';
+import { qs, qsa, setText, setHidden, cloneTemplate, setPillState, selectChip, paintStat, debounce, delegateAction } from '../../../utils/dom';
+import { esDesktop, enCambioDesktop } from '../../../utils/media';
+import { METODO_LABEL, METODOS } from '../../../utils/metodos';
 
 const root = qs<HTMLElement>(document, '[data-historial-root]');
 
@@ -319,11 +319,8 @@ if (root) {
     primeraVez = false;
   }
 
-  // ── Events (T3.4) ───────────────────────────────────────────────────
-  rangeGroup?.addEventListener('click', (evento) => {
-    const chip = (evento.target as HTMLElement).closest<HTMLElement>('[data-range-value]');
-    if (!chip) return;
-    rango = (chip.getAttribute('data-range-value') as Rango) ?? 'personalizado';
+  function seleccionarRango(nuevoRango: Rango): void {
+    rango = nuevoRango;
     if (rango === 'personalizado') {
       // The preset's Desde/Hasta no longer describe the range: clear them so
       // Personalizado means "todo el historial" + inputs libres para elegir.
@@ -335,6 +332,15 @@ if (root) {
     pintarChips();
     aplicarRango();
     render();
+  }
+
+  // ── Events (T3.4) ───────────────────────────────────────────────────
+  delegateAction(rangeGroup, 'click', 'data-range-value', {
+    hoy: () => seleccionarRango('hoy'),
+    ayer: () => seleccionarRango('ayer'),
+    '7d': () => seleccionarRango('7d'),
+    mes: () => seleccionarRango('mes'),
+    personalizado: () => seleccionarRango('personalizado'),
   });
 
   searchInput?.addEventListener(

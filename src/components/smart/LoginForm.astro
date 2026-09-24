@@ -1,7 +1,7 @@
 ---
 // Login form container — visual form from ui/, real login call via
 // api/actions/auth.ts (doc/astrobase.md §3.3). The submit handler lives in
-// islands/login-form.ts (golden rule 4 — reusable client behavior never
+// islands/runtime/login-form.ts (golden rule 4 — reusable client behavior never
 // sits inline in a component).
 //
 // T4.1 (refactorUI §11): centered card (max 400px) with the business name
@@ -64,5 +64,5 @@ import Button from '../ui/Button.astro';
 </main>
 
 <script>
-	import '../islands/login-form';
+	import '../islands/runtime/login-form';
 </script>

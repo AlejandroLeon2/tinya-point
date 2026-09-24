@@ -25,73 +25,80 @@
 //     api_error → simple Spanish alert, never raw codes (§5.7), no retries.
 // Hooks are data-* scoped to [data-caja-root]; feedback via ui/Alert + Toast.
 
-import { abrirCaja, cerrarCaja } from '../../api/actions/caja';
-import type { DatosAbrirCaja, DatosCerrarCaja } from '../../api/types';
-import { round2, totalesDelDia } from '../../utils/caja';
+import { abrirCaja, cerrarCaja } from '../../../api/actions/caja';
+import type { DatosAbrirCaja, DatosCerrarCaja } from '../../../api/types';
+import { round2, totalesDelDia } from '../../../utils/caja';
 import {
   formatCurrency,
   formatDia,
   formatHora,
   formatTranscurrido,
   localDayKey,
-} from '../../utils/format';
+} from '../../../utils/format';
 import {
   limpiarErrorCampo,
   limpiarErroresForm,
   mostrarErrorCampo,
   observarCampo,
-} from '../../utils/form-errors';
-import { closeModal } from '../../utils/modal';
-import { getCajas, setCajas, type CajaLocal } from '../../utils/storage';
-import { mostrarToast } from '../../utils/toast';
-import { enqueue } from '../../stores/syncQueue';
+} from '../../../utils/form-errors';
+import { closeModal } from '../../../utils/modal';
+import { getCajas, setCajas, type CajaLocal } from '../../../utils/storage';
+import { mostrarToast } from '../../../utils/toast';
+import { enqueue } from '../../../stores/syncQueue';
+import { qs, setText, setHidden, cloneTemplate, setPillState, paintStat } from '../../../utils/dom';
+import { crearFeedback } from '../../../utils/feedback';
+import { debeEncolar, mensajeDeErrorApi } from '../../../utils/api-result';
+import { createFormManager } from '../../../utils/form-manager';
 
-const root = document.querySelector<HTMLElement>('[data-caja-root]');
+const root = qs<HTMLElement>(document, '[data-caja-root]');
 
 if (root) {
-  const formApertura = root.querySelector<HTMLFormElement>('[data-caja-form]');
-  const montoInput = root.querySelector<HTMLInputElement>('[data-caja-monto]');
-  const sugWrap = root.querySelector<HTMLElement>('[data-caja-sugerencias]');
-  const sugBtn = root.querySelector<HTMLButtonElement>('[data-caja-sugerencia]');
+  const formApertura = qs<HTMLFormElement>(root, '[data-caja-form]');
+  const montoInput = qs<HTMLInputElement>(root, '[data-caja-monto]');
+  const sugWrap = qs<HTMLElement>(root, '[data-caja-sugerencias]');
+  const sugBtn = qs<HTMLButtonElement>(root, '[data-caja-sugerencia]');
 
   // header pill (estado como cabecera — spec §5)
-  const pillAbierta = root.querySelector<HTMLElement>('[data-caja-pill-abierta]');
-  const pillCerrada = root.querySelector<HTMLElement>('[data-caja-pill-cerrada]');
-  const pillHora = root.querySelector<HTMLElement>('[data-caja-pill-hora]');
-  const pillHace = root.querySelector<HTMLElement>('[data-caja-pill-hace]');
+  const pillAbierta = qs<HTMLElement>(root, '[data-caja-pill-abierta]');
+  const pillCerrada = qs<HTMLElement>(root, '[data-caja-pill-cerrada]');
+  const pillHora = qs<HTMLElement>(root, '[data-caja-pill-hora]');
+  const pillHace = qs<HTMLElement>(root, '[data-caja-pill-hace]');
 
-  const resumen = root.querySelector<HTMLElement>('[data-caja-resumen]');
-  const statApertura = root.querySelector<HTMLElement>('[data-caja-stat-apertura]');
-  const statVentas = root.querySelector<HTMLElement>('[data-caja-stat-ventas]');
-  const statEsperado = root.querySelector<HTMLElement>('[data-caja-stat-esperado]');
-  const metodoEfectivo = root.querySelector<HTMLElement>('[data-caja-metodo-efectivo]');
-  const metodoTarjeta = root.querySelector<HTMLElement>('[data-caja-metodo-tarjeta]');
-  const metodoYapePlin = root.querySelector<HTMLElement>('[data-caja-metodo-yape-plin]');
+  const resumen = qs<HTMLElement>(root, '[data-caja-resumen]');
+  const statApertura = qs<HTMLElement>(root, '[data-caja-stat-apertura]');
+  const statVentas = qs<HTMLElement>(root, '[data-caja-stat-ventas]');
+  const statEsperado = qs<HTMLElement>(root, '[data-caja-stat-esperado]');
+  const metodoEfectivo = qs<HTMLElement>(root, '[data-caja-metodo-efectivo]');
+  const metodoTarjeta = qs<HTMLElement>(root, '[data-caja-metodo-tarjeta]');
+  const metodoYapePlin = qs<HTMLElement>(root, '[data-caja-metodo-yape-plin]');
 
-  const histWrap = root.querySelector<HTMLElement>('[data-caja-historial-wrap]');
-  const histList = root.querySelector<HTMLElement>('[data-caja-historial]');
-  const plantillaRow = root.querySelector<HTMLTemplateElement>('[data-caja-row]');
+  const histWrap = qs<HTMLElement>(root, '[data-caja-historial-wrap]');
+  const histList = qs<HTMLElement>(root, '[data-caja-historial]');
+  const plantillaRow = qs<HTMLTemplateElement>(root, '[data-caja-row]');
 
-  const modalRoot = root.querySelector<HTMLElement>('[data-modal-root="cerrar-caja"]');
-  const abrirModalBtn = root.querySelector<HTMLElement>('[data-modal-open="cerrar-caja"]');
-  const esperadoModal = root.querySelector<HTMLElement>('[data-caja-esperado-modal]');
-  const conteoInput = root.querySelector<HTMLInputElement>('[data-caja-conteo]');
-  const diffBox = root.querySelector<HTMLElement>('[data-caja-diff]');
-  const diffCuadra = root.querySelector<HTMLElement>('[data-caja-diff-cuadra]');
-  const diffFaltan = root.querySelector<HTMLElement>('[data-caja-diff-faltan]');
-  const diffFaltanValor = root.querySelector<HTMLElement>('[data-caja-diff-faltan-valor]');
-  const diffSobran = root.querySelector<HTMLElement>('[data-caja-diff-sobran]');
-  const diffSobranValor = root.querySelector<HTMLElement>('[data-caja-diff-sobran-valor]');
-  const modalError = root.querySelector<HTMLElement>('[data-caja-modal-error]');
-  const confirmarBtn = root.querySelector<HTMLButtonElement>('[data-caja-confirmar]');
+  const modalRoot = qs<HTMLElement>(root, '[data-modal-root="cerrar-caja"]');
+  const abrirModalBtn = qs<HTMLElement>(root, '[data-modal-open="cerrar-caja"]');
+  const esperadoModal = qs<HTMLElement>(root, '[data-caja-esperado-modal]');
+  const conteoInput = qs<HTMLInputElement>(root, '[data-caja-conteo]');
+  const diffBox = qs<HTMLElement>(root, '[data-caja-diff]');
+  const diffCuadra = qs<HTMLElement>(root, '[data-caja-diff-cuadra]');
+  const diffFaltan = qs<HTMLElement>(root, '[data-caja-diff-faltan]');
+  const diffFaltanValor = qs<HTMLElement>(root, '[data-caja-diff-faltan-valor]');
+  const diffSobran = qs<HTMLElement>(root, '[data-caja-diff-sobran]');
+  const diffSobranValor = qs<HTMLElement>(root, '[data-caja-diff-sobran-valor]');
+  const modalError = qs<HTMLElement>(root, '[data-caja-modal-error]');
+  const confirmarBtn = qs<HTMLButtonElement>(root, '[data-caja-confirmar]');
 
-  const errorAlert = root.querySelector<HTMLElement>('[data-alert="caja-error"]');
-  const errorText = root.querySelector<HTMLElement>('[data-caja-error-text]');
-  const avisoAlert = root.querySelector<HTMLElement>('[data-alert="caja-aviso"]');
-  const avisoText = root.querySelector<HTMLElement>('[data-caja-aviso-text]');
-  const btnCerrarAnterior = root.querySelector<HTMLButtonElement>('[data-caja-cerrar-anterior]');
-  const cierreAlert = root.querySelector<HTMLElement>('[data-alert="caja-cierre"]');
-  const cierreText = root.querySelector<HTMLElement>('[data-caja-cierre-text]');
+  const errorAlert = qs<HTMLElement>(root, '[data-alert="caja-error"]');
+  const errorText = qs<HTMLElement>(root, '[data-caja-error-text]');
+  const avisoAlert = qs<HTMLElement>(root, '[data-alert="caja-aviso"]');
+  const avisoText = qs<HTMLElement>(root, '[data-caja-aviso-text]');
+  const btnCerrarAnterior = qs<HTMLButtonElement>(root, '[data-caja-cerrar-anterior]');
+  const cierreAlert = qs<HTMLElement>(root, '[data-alert="caja-cierre"]');
+  const cierreText = qs<HTMLElement>(root, '[data-caja-cierre-text]');
+
+  const feedbackError = crearFeedback(errorAlert, errorText);
+  const feedbackCierre = crearFeedback(cierreAlert, cierreText);
 
   // §12 / T4.2 — Esc cierra cualquier modal, PERO cerrar-caja con input
   // inválido es la excepción (misma regla que el botón "Sí, cerrar": solo
@@ -123,55 +130,34 @@ if (root) {
     return round2(caja.monto_apertura + totales.efectivo_ventas);
   }
 
+  // deviation: combina ocultar feedbackCierre + mostrar toast + emitir evento custom 'caja:state-changed'
   function mostrarOk(texto: string): void {
     // Success = ephemeral toast (refactorUI §2.3 D9 — no layout shift) and
     // an announcement for the TopBar pill to repaint without a reload.
-    if (errorAlert) errorAlert.hidden = true;
-    if (cierreAlert) cierreAlert.hidden = true;
+    feedbackError.ocultar();
+    feedbackCierre.ocultar();
     mostrarToast(texto);
     document.dispatchEvent(new CustomEvent('caja:state-changed'));
   }
 
+  // deviation: coordina dos instancias de feedback (oculta feedbackCierre antes de activar feedbackError)
   function mostrarError(texto: string): void {
-    if (cierreAlert) cierreAlert.hidden = true;
-    if (errorText) errorText.textContent = texto;
-    if (errorAlert) errorAlert.hidden = false;
+    feedbackCierre.ocultar();
+    feedbackError.error(texto);
   }
 
   function mostrarCierre(texto: string): void {
-    if (errorAlert) errorAlert.hidden = true;
-    if (cierreText) cierreText.textContent = texto;
-    if (cierreAlert) cierreAlert.hidden = false;
+    feedbackError.ocultar();
+    feedbackCierre.error(texto);
     // The close result still updates the TopBar pill (closed state).
     document.dispatchEvent(new CustomEvent('caja:state-changed'));
   }
 
   function mensajeDeError(error: string): string {
-    switch (error) {
-      case 'payload_invalido':
-        return 'Revisá los datos de la caja.';
-      case 'accion_no_soportada':
-        return 'El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.';
-      default:
-        return 'No se pudo guardar la caja. Intentá de nuevo.';
-    }
-  }
-
-  // StatCard repaint: value always; subtext ONLY when the caller passes it
-  // (undefined = leave the static subtexto prop alone — T3.7).
-  function pintarStat(card: HTMLElement | null, valor: string, sub?: string): void {
-    if (!card) return;
-    const v = card.querySelector<HTMLElement>('[data-stat-value]');
-    if (v) v.textContent = valor;
-    if (sub === undefined) return;
-    const s = card.querySelector<HTMLElement>('[data-stat-sub]');
-    if (!s) return;
-    if (sub) {
-      s.textContent = sub;
-      s.hidden = false;
-    } else {
-      s.hidden = true;
-    }
+    return mensajeDeErrorApi(error, {
+      payloadInvalido: 'Revisá los datos de la caja.',
+      fallback: 'No se pudo guardar la caja. Intentá de nuevo.',
+    });
   }
 
   // Sugerido = último monto de apertura (spec §5) — visible only while the
@@ -183,9 +169,9 @@ if (root) {
         new Date(b.fecha_hora_apertura).getTime() - new Date(a.fecha_hora_apertura).getTime(),
     )[0];
     const mostrar = cajaAbierta() === null && anterior !== undefined;
-    sugWrap.hidden = !mostrar;
+    setHidden(sugWrap, !mostrar);
     if (anterior) {
-      sugBtn.textContent = formatCurrency(anterior.monto_apertura);
+      setText(sugBtn, formatCurrency(anterior.monto_apertura));
       sugBtn.dataset.monto = String(anterior.monto_apertura);
     }
   }
@@ -204,16 +190,19 @@ if (root) {
       .slice(0, 10);
     histList.replaceChildren();
     for (const caja of cajas) {
-      const fila = plantillaRow.content.cloneNode(true) as DocumentFragment;
-      const fechaEl = fila.querySelector<HTMLElement>('[data-caja-row-fecha]');
-      if (fechaEl) fechaEl.textContent = formatDia(caja.fecha_dia);
-      const montosEl = fila.querySelector<HTMLElement>('[data-caja-row-montos]');
+      const fila = cloneTemplate(plantillaRow);
+      if (!fila) continue;
+      const fechaEl = qs<HTMLElement>(fila, '[data-caja-row-fecha]');
+      setText(fechaEl, formatDia(caja.fecha_dia));
+      const montosEl = qs<HTMLElement>(fila, '[data-caja-row-montos]');
       if (montosEl) {
         const apertura = formatCurrency(caja.monto_apertura);
-        montosEl.textContent =
+        setText(
+          montosEl,
           caja.estado === 'abierta'
             ? `Apertura ${apertura}`
-            : `Apertura ${apertura} · Cierre ${formatCurrency(caja.conteo_cierre ?? 0)}`;
+            : `Apertura ${apertura} · Cierre ${formatCurrency(caja.conteo_cierre ?? 0)}`,
+        );
       }
       const estado =
         caja.estado === 'abierta'
@@ -225,18 +214,17 @@ if (root) {
                 ? 'faltan'
                 : 'sobran'
             : null;
-      fila.querySelectorAll<HTMLElement>('[data-caja-row-diff]').forEach((el) => {
-        el.hidden = el.getAttribute('data-caja-row-diff') !== estado;
-      });
+      setPillState(fila, 'data-caja-row-diff', estado ?? '');
       if ((estado === 'faltan' || estado === 'sobran') && typeof caja.diferencia === 'number') {
-        const valorEl = fila.querySelector<HTMLElement>(
+        const valorEl = qs<HTMLElement>(
+          fila,
           estado === 'faltan' ? '[data-caja-row-faltan-valor]' : '[data-caja-row-sobran-valor]',
         );
-        if (valorEl) valorEl.textContent = formatCurrency(Math.abs(caja.diferencia));
+        setText(valorEl, formatCurrency(Math.abs(caja.diferencia)));
       }
       histList.append(fila);
     }
-    histWrap.hidden = cajas.length === 0;
+    setHidden(histWrap, cajas.length === 0);
   }
 
   // Live difference inside the cierre modal (spec §5): recomputed on every
@@ -247,73 +235,66 @@ if (root) {
     const valido = raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0;
     if (!diffBox) return;
     if (!abierta || !valido) {
-      diffBox.hidden = true;
+      setHidden(diffBox, true);
       return;
     }
     const diferencia = round2(Number(raw) - esperadoDe(abierta));
-    diffBox.hidden = false;
-    if (diffCuadra) diffCuadra.hidden = diferencia !== 0;
-    if (diffFaltan) diffFaltan.hidden = diferencia >= 0;
-    if (diffSobran) diffSobran.hidden = diferencia <= 0;
+    setHidden(diffBox, false);
+    setHidden(diffCuadra, diferencia !== 0);
+    setHidden(diffFaltan, diferencia >= 0);
+    setHidden(diffSobran, diferencia <= 0);
     if (diferencia < 0 && diffFaltanValor) {
-      diffFaltanValor.textContent = formatCurrency(Math.abs(diferencia));
+      setText(diffFaltanValor, formatCurrency(Math.abs(diferencia)));
     }
     if (diferencia > 0 && diffSobranValor) {
-      diffSobranValor.textContent = formatCurrency(diferencia);
+      setText(diffSobranValor, formatCurrency(diferencia));
     }
   }
 
   function render(): void {
     const abierta = cajaAbierta();
-    if (formApertura) formApertura.hidden = abierta !== null;
-    if (resumen) resumen.hidden = abierta === null;
-    if (pillAbierta) pillAbierta.hidden = abierta === null;
-    if (pillCerrada) pillCerrada.hidden = abierta !== null;
+    setHidden(formApertura, abierta !== null);
+    setHidden(resumen, abierta === null);
+    setHidden(pillAbierta, abierta === null);
+    setHidden(pillCerrada, abierta !== null);
     pintarSugerencia();
     pintarHistorial();
 
     if (!abierta) {
-      if (avisoAlert) avisoAlert.hidden = true;
+      setHidden(avisoAlert, true);
       return;
     }
 
     // Header pill: desde HH:MM + transcurrido (repainted on focus — no
     // polling, same rule as the "ventas del día en vivo" below).
-    if (pillHora) pillHora.textContent = formatHora(abierta.fecha_hora_apertura);
+    setText(pillHora, formatHora(abierta.fecha_hora_apertura));
     if (pillHace) {
-      pillHace.textContent = `(hace ${formatTranscurrido(abierta.fecha_hora_apertura)})`;
+      setText(pillHace, `(hace ${formatTranscurrido(abierta.fecha_hora_apertura)})`);
     }
 
     // Only ONE open caja (client rule): another-day session blocks the form
     // and the summary offers closing it first ("Primero cerrá la caja
     // anterior" + a direct action — spec §5).
     const otroDia = abierta.fecha_dia !== localDayKey(new Date());
-    if (avisoAlert) {
-      avisoAlert.hidden = !otroDia;
-      if (otroDia && avisoText) {
-        avisoText.textContent = `Primero cerrá la caja anterior (del ${formatDia(abierta.fecha_dia)}).`;
-      }
+    setHidden(avisoAlert, !otroDia);
+    if (otroDia) {
+      setText(avisoText, `Primero cerrá la caja anterior (del ${formatDia(abierta.fecha_dia)}).`);
     }
 
     const totales = totalesDelDia(abierta.fecha_dia);
     const totalVentas = round2(
       totales.efectivo_ventas + totales.tarjeta_ventas + totales.yape_plin_ventas,
     );
-    pintarStat(statApertura, formatCurrency(abierta.monto_apertura));
-    pintarStat(statVentas, formatCurrency(totalVentas), `${totales.n_ventas} ventas`);
-    pintarStat(statEsperado, formatCurrency(esperadoDe(abierta)));
-    if (metodoEfectivo) metodoEfectivo.textContent = formatCurrency(totales.efectivo_ventas);
-    if (metodoTarjeta) metodoTarjeta.textContent = formatCurrency(totales.tarjeta_ventas);
-    if (metodoYapePlin) metodoYapePlin.textContent = formatCurrency(totales.yape_plin_ventas);
-    if (esperadoModal) esperadoModal.textContent = formatCurrency(esperadoDe(abierta));
+    paintStat(statApertura, formatCurrency(abierta.monto_apertura));
+    paintStat(statVentas, formatCurrency(totalVentas), `${totales.n_ventas} ventas`);
+    paintStat(statEsperado, formatCurrency(esperadoDe(abierta)));
+    setText(metodoEfectivo, formatCurrency(totales.efectivo_ventas));
+    setText(metodoTarjeta, formatCurrency(totales.tarjeta_ventas));
+    setText(metodoYapePlin, formatCurrency(totales.yape_plin_ventas));
+    setText(esperadoModal, formatCurrency(esperadoDe(abierta)));
   }
 
-  function debeEncolar(result: { status: string; error?: string }): boolean {
-    return (
-      result.status === 'network_failure' ||
-      (result.status === 'api_error' && result.error === 'unauthorized')
-    );
-  }
+  // debeEncolar imported from utils/api-result (D4 — shared with checkout.ts).
 
   async function sincronizarAccion(
     tipo: 'abrirCaja' | 'cerrarCaja',
@@ -343,36 +324,35 @@ if (root) {
     }
   }
 
-  formApertura?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    // Fresh attempt: drop stale inline errors before validating again.
-    limpiarErroresForm(formApertura);
-    const raw = montoInput?.value.trim() ?? '';
-    // Raw emptiness first: Number('') is 0, which would pass as valid.
-    if (raw === '' || !Number.isFinite(Number(raw)) || Number(raw) < 0) {
-      // P1 (plan-form-ux.md): the message lives under the field.
-      if (montoInput) mostrarErrorCampo(montoInput, 'Ingresá un monto igual o mayor a 0.');
-      montoInput?.focus();
-      return;
-    }
+  createFormManager<{ monto: number }>({
+    form: formApertura,
+    schema: {
+      monto: {
+        el: montoInput,
+        validate: (raw) => raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0,
+        error: 'Ingresá un monto igual o mayor a 0.',
+        transform: (raw) => round2(Number(raw)),
+      },
+    },
+    onSubmit: (datos) => {
+      const caja: CajaLocal = {
+        id_caja: crypto.randomUUID(), // client id — local first, may be enqueued (§4.6)
+        fecha_dia: localDayKey(new Date()),
+        monto_apertura: datos.monto,
+        estado: 'abierta',
+        fecha_hora_apertura: new Date().toISOString(),
+      };
+      setCajas([caja, ...getCajas()]); // LOCAL FIRST — never wait for the Sheet
+      render();
+      mostrarOk('Caja abierta.');
 
-    const caja: CajaLocal = {
-      id_caja: crypto.randomUUID(), // client id — local first, may be enqueued (§4.6)
-      fecha_dia: localDayKey(new Date()),
-      monto_apertura: round2(Number(raw)),
-      estado: 'abierta',
-      fecha_hora_apertura: new Date().toISOString(),
-    };
-    setCajas([caja, ...getCajas()]); // LOCAL FIRST — never wait for the Sheet
-    render();
-    mostrarOk('Caja abierta.');
-
-    const payload: DatosAbrirCaja = {
-      id_caja: caja.id_caja,
-      fecha_día: caja.fecha_dia,
-      monto_apertura: caja.monto_apertura,
-    };
-    void sincronizarAccion('abrirCaja', payload);
+      const payload: DatosAbrirCaja = {
+        id_caja: caja.id_caja,
+        fecha_día: caja.fecha_dia,
+        monto_apertura: caja.monto_apertura,
+      };
+      void sincronizarAccion('abrirCaja', payload);
+    },
   });
 
   // The suggested amount fills the input and clears any stale inline error.
@@ -397,7 +377,7 @@ if (root) {
       conteoInput.value = '';
       limpiarErrorCampo(conteoInput);
     }
-    if (modalError) modalError.hidden = true;
+    setHidden(modalError, true);
     pintarDiff(); // empty input → the live difference starts hidden
   });
 
@@ -459,10 +439,6 @@ if (root) {
   // "Ventas del día en vivo": recompute when the cashier comes back to the
   // tab — sales registered elsewhere land without a reload (no polling).
   window.addEventListener('focus', render);
-
-  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1).
-  if (montoInput) observarCampo(montoInput);
-  if (conteoInput) observarCampo(conteoInput);
 
   render(); // first paint from the local key
 }

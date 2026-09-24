@@ -6,8 +6,8 @@
 // Focus trap + Esc live in utils/modal.ts — this file only resolves elements.
 // No fixed ids: keys are data-driven from the triggering markup.
 
-import { openModal, closeModal } from '../../utils/modal';
-import { qs } from '../../utils/dom';
+import { openModal, closeModal } from '../../../utils/modal';
+import { qs } from '../../../utils/dom';
 
 document.addEventListener('click', (event) => {
   const target = event.target;

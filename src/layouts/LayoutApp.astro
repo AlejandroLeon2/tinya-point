@@ -237,17 +237,17 @@ const isActive = (href: string) => normalize(href) === current;
 		<ToastRegion />
 
 		<!-- Route guard: everything behind /login (plan-features Fase 1, owner decision 2026-09-22) -->
-		<script>import '../components/islands/route-guard';</script>
+		<script>import '../components/islands/runtime/route-guard';</script>
 		<!-- Sidebar drawer + brand + collapse + logout (plan-sidebar.md Fase 3, refactorUI §3.2) -->
-		<script>import '../components/islands/sidebar';</script>
+		<script>import '../components/islands/runtime/sidebar';</script>
 		<!-- Low-stock badge count (plan-stock.md Fase 3) -->
-		<script>import '../components/islands/stock-badge';</script>
+		<script>import '../components/islands/stock/stock-badge';</script>
 		<!-- Delegated modal open/close (doc/astrobase.md §3.4) — the "Más" Sheet
 		     and every data-modal-open trigger in the app -->
-		<script>import '../components/islands/modal-controller';</script>
+		<script>import '../components/islands/runtime/modal-controller';</script>
 		<!-- cola_sync pill + danger alert + detail modal (extras.md §6 rows 3-4) -->
-		<script>import '../components/islands/sync-status';</script>
+		<script>import '../components/islands/runtime/sync-status';</script>
 		<!-- Caja pill in the TopBar (refactorUI §3.2, Fase 1) -->
-		<script>import '../components/islands/caja-status';</script>
+		<script>import '../components/islands/caja/caja-status';</script>
 	</body>
 </html>

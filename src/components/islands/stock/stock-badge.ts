@@ -8,9 +8,9 @@
 // navigation repaints the badge. No cache → the pill simply stays hidden;
 // it never invents a count. Text via textContent only; data-* hooks only.
 
-import { formatNumero } from '../../utils/format';
-import { getAjustes, getCatalogoCache } from '../../utils/storage';
-import { qs, setText, setHidden } from '../../utils/dom';
+import { formatNumero } from '../../../utils/format';
+import { getAjustes, getCatalogoCache } from '../../../utils/storage';
+import { qs, setText, setHidden } from '../../../utils/dom';
 
 const badge = qs<HTMLElement>(document, '[data-nav-badge="stock"]');
 const countEl = qs<HTMLElement>(badge, '[data-nav-badge-count]');

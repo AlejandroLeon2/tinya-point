@@ -10,7 +10,7 @@
 //   - Lines + totals painted by cart-actions.ts; payment half by checkout.ts.
 // Delegates all drawing to ui/ (doc/astrobase.md §3.3). The sale-closure
 // ORDER (uuid → local snapshot → local stock → clear cart → immediate sync)
-// lives in islands/checkout.ts, which follows base.md §7 literally.
+// lives in islands/cart/checkout.ts, which follows base.md §7 literally.
 import Modal from '../ui/Modal.astro';
 import CartLine from '../ui/CartLine.astro';
 import CartTotals from '../ui/CartTotals.astro';
@@ -178,10 +178,10 @@ const metodos = [
 </Modal>
 
 <script>
-	import '../islands/cart-badge';
-	import '../islands/cart-actions';
-	import '../islands/modal-controller';
-	import '../islands/checkout';
+	import '../islands/cart/cart-badge';
+	import '../islands/cart/cart-actions';
+	import '../islands/runtime/modal-controller';
+	import '../islands/cart/checkout';
 </script>
 
 <script>

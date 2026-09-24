@@ -15,19 +15,14 @@
 //     (deviation y — no persisted last-SUCCESS key exists, so the stamp is
 //     the latest `ultimo_intento`/`creado`) + app version from package.json.
 
-import {
-  limpiarErroresForm,
-  mostrarErrorCampo,
-  observarCampo,
-} from '../../utils/form-errors';
-import { getAjustes, getColaSync, setAjustes, type Ajustes } from '../../utils/storage';
-import { formatHora } from '../../utils/format';
-import { mostrarToast } from '../../utils/toast';
-import { isNonEmpty } from '../../utils/validators';
-import { qs, setText, setHidden } from '../../utils/dom';
-import { crearFeedback } from '../../utils/feedback';
-import { crearPendingButton } from '../../utils/pending-button';
-import pkg from '../../../package.json';
+import { getAjustes, getColaSync, setAjustes, type Ajustes } from '../../../utils/storage';
+import { formatHora } from '../../../utils/format';
+import { isNonEmpty } from '../../../utils/validators';
+import { qs, setText, setHidden } from '../../../utils/dom';
+import { crearFeedback } from '../../../utils/feedback';
+import { crearPendingButton } from '../../../utils/pending-button';
+import { createFormManager } from '../../../utils/form-manager';
+import pkg from '../../../../package.json';
 
 const root = qs<HTMLElement>(document, '[data-ajustes-root]');
 
@@ -53,6 +48,64 @@ if (root) {
 
   const feedback = crearFeedback(errorAlert, errorText);
   const pendingBtn = crearPendingButton(guardarBtn, 'Guardando…');
+
+  interface DatosAjustesForm {
+    nombre: string;
+    moneda: string;
+    igv: number;
+    stockAlerta: number;
+  }
+
+  const formManager = createFormManager<DatosAjustesForm>({
+    form,
+    pendingBtn,
+    schema: {
+      nombre: {
+        el: nombreInput,
+        optional: true,
+      },
+      moneda: {
+        el: monedaInput,
+        validate: isNonEmpty,
+        error: 'Ingresá el símbolo de la moneda (ej: S/).',
+      },
+      igv: {
+        el: igvInput,
+        validate: (raw) => raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 100,
+        error: 'Ingresá un porcentaje de IGV entre 0 y 100.',
+        transform: (raw) => Number(raw),
+      },
+      stockAlerta: {
+        el: stockAlertaInput,
+        validate: (raw) =>
+          raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 999,
+        error: 'Ingresá un número entre 0 y 999 para la alerta de stock.',
+        transform: (raw) => Math.round(Number(raw)),
+      },
+    },
+    onSubmit: (datos) => {
+      const ajustes: Ajustes = {
+        nombre_local: datos.nombre,
+        moneda: datos.moneda,
+        igv_tasa: datos.igv,
+        stock_alerta_min: datos.stockAlerta,
+        sidebar_colapsado: getAjustes().sidebar_colapsado,
+      };
+
+      try {
+        setAjustes(ajustes);
+      } catch {
+        feedback.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
+        return;
+      }
+
+      feedback.ok('Ajustes guardados — recargando…');
+      // Reload so every already-painted price/label re-reads the new settings
+      // (static HTML was built with the defaults; islands repaint on load).
+      window.setTimeout(() => window.location.reload(), 900);
+      return 'keep-pending';
+    },
+  });
 
   function actuales(): Ajustes {
     return {
@@ -126,9 +179,8 @@ if (root) {
   });
 
   descartarBtn?.addEventListener('click', () => {
-    form?.reset(); // back to the DOM defaults, then refill from the snapshot
+    formManager.reset();
     llenar();
-    if (form) limpiarErroresForm(form);
     feedback.ocultar();
     nombreInput?.focus();
   });
@@ -139,74 +191,7 @@ if (root) {
     form?.requestSubmit();
   });
 
-  form?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    // Fresh attempt: drop stale inline errors before validating again.
-    limpiarErroresForm(form);
-
-    const nombre = nombreInput?.value.trim() ?? '';
-    const moneda = monedaInput?.value.trim() ?? '';
-    const igvRaw = igvInput?.value.trim() ?? '';
-    const stockAlertaRaw = stockAlertaInput?.value.trim() ?? '';
-
-    if (!isNonEmpty(moneda)) {
-      // P1 (plan-form-ux.md): the message lives under the field.
-      if (monedaInput) mostrarErrorCampo(monedaInput, 'Ingresá el símbolo de la moneda (ej: S/).');
-      monedaInput?.focus();
-      return;
-    }
-    // Raw emptiness first: Number('') is 0, which would pass as valid.
-    const igv = Number(igvRaw);
-    if (igvRaw === '' || !Number.isFinite(igv) || igv < 0 || igv > 100) {
-      if (igvInput) mostrarErrorCampo(igvInput, 'Ingresá un porcentaje de IGV entre 0 y 100.');
-      igvInput?.focus();
-      return;
-    }
-    const stockAlerta = Number(stockAlertaRaw);
-    if (
-      stockAlertaRaw === '' ||
-      !Number.isFinite(stockAlerta) ||
-      stockAlerta < 0 ||
-      stockAlerta > 999
-    ) {
-      if (stockAlertaInput) {
-        mostrarErrorCampo(stockAlertaInput, 'Ingresá un número entre 0 y 999 para la alerta de stock.');
-      }
-      stockAlertaInput?.focus();
-      return;
-    }
-
-    const ajustes: Ajustes = {
-      nombre_local: nombre,
-      moneda,
-      igv_tasa: igv,
-      stock_alerta_min: Math.round(stockAlerta),
-      sidebar_colapsado: getAjustes().sidebar_colapsado,
-    };
-
-    // P0 (plan-form-ux.md): block re-entry + pending state while the save
-    // and the reload window run — pattern of login-form.ts.
-    if (!pendingBtn.iniciar()) return;
-    try {
-      setAjustes(ajustes);
-    } catch {
-      // write() fail-softs internally, but never leave the button stuck.
-      pendingBtn.finalizar();
-      feedback.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
-      return;
-    }
-
-    feedback.ok('Ajustes guardados — recargando…');
-    // Reload so every already-painted price/label re-reads the new settings
-    // (static HTML was built with the defaults; islands repaint on load).
-    window.setTimeout(() => window.location.reload(), 900);
-  });
-
-  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1).
-  if (monedaInput) observarCampo(monedaInput);
-  if (igvInput) observarCampo(igvInput);
-  if (stockAlertaInput) observarCampo(stockAlertaInput);
-
   llenar(); // first paint from storage (defaults when absent)
   pintarSesion();
 }
+

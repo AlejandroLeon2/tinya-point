@@ -65,13 +65,13 @@ export function subscribeQueue(listener: QueueListener): () => void {
 // First attempt is immediate; subsequent retries are scheduled from failures.
 export function enqueue(
   tipo: ItemColaSync['tipo'],
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown> | object,
 ): void {
   const items = getColaSync();
   items.push({
     id: crypto.randomUUID(),
     tipo,
-    payload,
+    payload: payload as Record<string, unknown>,
     estado: 'pendiente',
     intentos: 0,
     ultimo_intento: null,

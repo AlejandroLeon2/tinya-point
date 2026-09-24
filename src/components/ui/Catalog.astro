@@ -13,10 +13,11 @@
 //   - stale: compact inline notice, no full-width block.
 //   - skeleton: 8 cards while the first paint decision runs (island hides it
 //     on the first render()).
-import Icon from './Icon.astro';
-import Kbd from './Kbd.astro';
-import Skeleton from './Skeleton.astro';
+import Icon from "./Icon.astro";
+import Kbd from "./Kbd.astro";
+import Skeleton from "./Skeleton.astro";
 ---
+
 <section class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
 	<!-- No h1 here anymore: the ONE page title ("Venta") is rendered by the
 	     LayoutApp TopBar (refactorUI §3.1 Fase 1). -->
@@ -35,7 +36,10 @@ import Skeleton from './Skeleton.astro';
 				placeholder="Buscar por nombre…"
 				autocomplete="off"
 			/>
-			<Kbd class="absolute right-3 top-1/2 hidden -translate-y-1/2 md:inline-flex">F2</Kbd>
+			<Kbd
+				class="absolute right-3 top-1/2 hidden -translate-y-1/2 md:inline-flex"
+				>F2</Kbd
+			>
 		</span>
 	</label>
 
@@ -52,7 +56,7 @@ import Skeleton from './Skeleton.astro';
 			type="button"
 			data-category-value=""
 			aria-pressed="true"
-			class="btn btn-secondary min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
+			class="btn btn-secondary w-full min-w-30 min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
 		>
 			Todas
 		</button>
@@ -62,7 +66,7 @@ import Skeleton from './Skeleton.astro';
 			type="button"
 			data-category-value=""
 			aria-pressed="false"
-			class="btn btn-secondary min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
+			class="btn btn-secondary w-full min-w-30 min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
 		>
 			<span data-chip-label></span>
 		</button>
@@ -71,7 +75,11 @@ import Skeleton from './Skeleton.astro';
 	<!-- "Catálogo desactualizado" — compact inline notice (§4.2D: text set by
 	     the island with formatNumero; hidden until the cache is stale and
 	     could not be refreshed). -->
-	<div data-catalog-stale hidden class="flex flex-wrap items-center gap-2 text-base text-text-muted">
+	<div
+		data-catalog-stale
+		hidden
+		class="flex flex-wrap items-center gap-2 text-base text-text-muted"
+	>
 		<p data-catalog-stale-text></p>
 		<button
 			data-catalog-refresh
@@ -120,8 +128,17 @@ import Skeleton from './Skeleton.astro';
 		aria-label="Paginación del catálogo"
 		class="flex items-center justify-between gap-3"
 	>
-		<button data-catalog-prev type="button" class="btn btn-secondary">Anterior</button>
-		<p data-catalog-range aria-live="polite" class="text-base text-text-muted"></p>
-		<button data-catalog-next type="button" class="btn btn-secondary">Siguiente</button>
+		<button data-catalog-prev type="button" class="btn btn-secondary"
+			>Anterior</button
+		>
+		<p
+			data-catalog-range
+			aria-live="polite"
+			class="text-base text-text-muted"
+		>
+		</p>
+		<button data-catalog-next type="button" class="btn btn-secondary"
+			>Siguiente</button
+		>
 	</nav>
 </section>

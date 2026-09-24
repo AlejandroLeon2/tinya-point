@@ -2,7 +2,7 @@
 // Catalog container — under output: "static" the "use cache or fetch" decision
 // (astrobase.md §3.3) cannot run in frontmatter (no localStorage/build-time
 // network — option A, plan-features Fase 2 2026-09-22): it runs client-side
-// in islands/catalog.ts. This component renders the shell: catalog chrome,
+// in islands/catalog/catalog.ts. This component renders the shell: catalog chrome,
 // the empty states (+CTA) and the Card template (astrobase.md §3.3). Draws no
 // business HTML itself.
 //
@@ -33,5 +33,5 @@ import EmptyState from '../ui/EmptyState.astro';
 </Catalog>
 
 <script>
-	import '../islands/catalog';
+	import '../islands/catalog/catalog';
 </script>

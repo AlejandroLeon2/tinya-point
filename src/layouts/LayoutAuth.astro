@@ -23,6 +23,6 @@ import { pwaInfo } from 'virtual:pwa-info';
 		<slot name="header" />
 		<slot />
 		<!-- Route guard: authenticated users skip /login (plan-features Fase 1, owner decision 2026-09-22) -->
-		<script>import '../components/islands/route-guard';</script>
+		<script>import '../components/islands/runtime/route-guard';</script>
 	</body>
 </html>

@@ -11,10 +11,10 @@
 // Contract: [data-sync-pending]/[data-sync-count] anywhere in the document;
 // everything else scoped to [data-sync-root].
 
-import { discardFailed, retryFailed, subscribeQueue } from '../../stores/syncQueue';
-import { formatFecha } from '../../utils/format';
-import { closeModal, openModal } from '../../utils/modal';
-import { qs, setText, setHidden } from '../../utils/dom';
+import { discardFailed, retryFailed, subscribeQueue } from '../../../stores/syncQueue';
+import { formatFecha } from '../../../utils/format';
+import { closeModal, openModal } from '../../../utils/modal';
+import { qs, setText, setHidden } from '../../../utils/dom';
 
 const pendingEl = qs<HTMLElement>(document, '[data-sync-pending]');
 const countEl = qs<HTMLElement>(document, '[data-sync-count]');

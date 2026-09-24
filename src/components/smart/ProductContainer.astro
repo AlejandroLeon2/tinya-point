@@ -2,7 +2,7 @@
 // Product admin container (plan-mejoras-2.md Fase 1, refactored by
 // refactorUI Fase 3 §7/T3.1–T3.3) — smart layer composes chrome + ui/ parts
 // and wires the islands: every string the cashier reads comes from ui/, all
-// behavior from islands/product-admin.ts (astrobase §3.3).
+// behavior from islands/admin/product-admin.ts (astrobase §3.3).
 //
 // Fase 3 layout:
 //   - page Alert (list-load errors) stays at the top;
@@ -131,6 +131,6 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 </section>
 
 <script>
-	import '../islands/product-admin';
-	import '../islands/modal-controller';
+	import '../islands/admin/product-admin';
+	import '../islands/runtime/modal-controller';
 </script>

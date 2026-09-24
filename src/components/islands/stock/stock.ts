@@ -12,7 +12,7 @@
 //     saved value + Alert (same policy as the product form: no offline
 //     queue for edits).
 //   - Network only via api/actions/productos.ts, cache-first with the same
-//     freshness policy as islands/catalog.ts (base.md §6): fresh cache → no
+//     freshness policy as islands/catalog/catalog.ts (base.md §6): fresh cache → no
 //     request; stale → paint, then try to refresh; failure keeps the data.
 //   - On a successful restock the in-memory list AND `catalogo_cache` are
 //     patched locally (patrón G5 del admin) so POS + sidebar badge see the
@@ -27,8 +27,8 @@
 //     cache exists; stale (age ≥ TTL_CATALOGO_MS) swaps to the warning node.
 //   - data-* hooks only, text via textContent; no fixed ids (astrobase §3.4).
 
-import { actualizarProducto, obtenerProductos } from '../../api/actions/productos';
-import { formatCurrency, formatNumero } from '../../utils/format';
+import { actualizarProducto } from '../../../api/actions/productos';
+import { formatCurrency, formatNumero } from '../../../utils/format';
 import {
   getAjustes,
   getCatalogoCache,
@@ -36,10 +36,11 @@ import {
   TTL_CATALOGO_MS,
   type CatalogoCache,
   type Producto,
-} from '../../utils/storage';
-import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, paintStat } from '../../utils/dom';
-import { crearFeedback } from '../../utils/feedback';
-import { minutosDesde } from '../../utils/catalog-cache';
+} from '../../../utils/storage';
+import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, paintStat, delegateAction } from '../../../utils/dom';
+import { crearFeedback } from '../../../utils/feedback';
+import { minutosDesde, refreshCatalogoFromApi } from '../../../utils/catalog-cache';
+import { mensajeDeErrorApi } from '../../../utils/api-result';
 
 const root = qs<HTMLElement>(document, '[data-stock-root]');
 
@@ -201,15 +202,14 @@ if (root) {
     }
   }
 
+  // network_failure is a transport condition (not an api_error.error code), handled first;
+  // payload_invalido / accion_no_soportada delegate to the shared helper (D3).
   function mensajeDeError(status: string, error?: string): string {
     if (status === 'network_failure') return 'Sin conexión — no se pudo actualizar el stock.';
-    if (error === 'payload_invalido') return 'Valor de stock inválido.';
-    if (error === 'accion_no_soportada') {
-      return 'El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.';
-    }
-    // unauthorized never lands here: api/client.ts expira la sesión y
-    // redirige a /login por su cuenta.
-    return 'No se pudo actualizar el stock. Intentá de nuevo.';
+    return mensajeDeErrorApi(error ?? '', {
+      payloadInvalido: 'Valor de stock inválido.',
+      fallback: 'No se pudo actualizar el stock. Intentá de nuevo.',
+    });
   }
 
   async function guardarStock(row: HTMLElement, input: HTMLInputElement): Promise<void> {
@@ -260,22 +260,39 @@ if (root) {
     }
   }
 
-  // Delegated on the list: one listener covers every row and EVERY step
-  // button (−1, +1, +5, +10, +24 — batch sizes configured in markup).
-  listEl?.addEventListener('click', (event) => {
-    const target = event.target as HTMLElement;
-    const btn = target.closest<HTMLElement>('[data-stock-step]');
-    if (!btn || !listEl.contains(btn)) return;
+  function aplicarPaso(btn: HTMLElement, delta: number): void {
     const row = btn.closest<HTMLElement>('[data-stock-row]');
     const input = qs<HTMLInputElement>(row, '[data-stock-input]');
     if (!row || !input) return;
-    const delta = Number(btn.dataset.stockStep);
-    if (!Number.isFinite(delta)) return;
     const siguiente = clampStock(Number(input.value) + delta);
     if (siguiente === Number(input.value)) return; // already at 0 / max
     input.value = String(siguiente);
     programarGuardado(row, input);
-  });
+  }
+
+  // Delegated on the list: one listener covers every row and EVERY step
+  // button (−1, +1, +5, +10, +24 — batch sizes configured in markup).
+  delegateAction(
+    listEl,
+    'click',
+    'data-stock-step',
+    new Proxy(
+      {
+        '-1': (btn) => aplicarPaso(btn, -1),
+        '1': (btn) => aplicarPaso(btn, 1),
+        '5': (btn) => aplicarPaso(btn, 5),
+        '10': (btn) => aplicarPaso(btn, 10),
+        '24': (btn) => aplicarPaso(btn, 24),
+      },
+      {
+        get: (target, prop: string) => {
+          if (prop in target) return target[prop as keyof typeof target];
+          const delta = Number(prop);
+          return Number.isFinite(delta) ? (btn: HTMLElement) => aplicarPaso(btn, delta) : undefined;
+        },
+      },
+    ),
+  );
 
   // Typing: save on change (blur/Enter) — big restocks in ONE call.
   listEl?.addEventListener('change', (event) => {
@@ -312,24 +329,15 @@ if (root) {
   }
 
   async function refreshFromApi(previous: CatalogoCache | null): Promise<void> {
-    const result = await obtenerProductos();
-    if (result.status === 'success') {
-      const next: CatalogoCache = {
-        productos: result.body.productos.map((p) => ({
-          id: p.id,
-          nombre: p.nombre,
-          categoria: p.categoria,
-          precio: p.precio,
-          stock: p.stock,
-          imagen_url: p.imagen_url,
-        })),
-        timestamp: Date.now(),
-      };
-      setCatalogoCache(next);
-      productos = next.productos;
-      hayDatos = true;
-      pintar();
-      setStale(next.timestamp); // recién sincronizado → nodo muted
+    const ok = await refreshCatalogoFromApi();
+    if (ok) {
+      const fresh = getCatalogoCache();
+      if (fresh) {
+        productos = fresh.productos;
+        hayDatos = true;
+        pintar();
+        setStale(fresh.timestamp); // recien sincronizado → nodo muted
+      }
       return;
     }
     // Failure (offline or server): keep whatever we have — never block

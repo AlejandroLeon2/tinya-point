@@ -1,6 +1,6 @@
 ---
 // Low-stock panel container (plan-stock.md + refactorUI §9 / plan T3.8) —
-// smart layer composes chrome + ui/ and wires islands/stock.ts (astrobase
+// smart layer composes chrome + ui/ and wires islands/stock/stock.ts (astrobase
 // §3.3). Read-only over the cached catalog: the restock writes happen in the
 // rows themselves (actualizarProducto inline, plan-reponer-buscar Fase 1).
 // T3.8: StatCard KPIs replace the old stats paragraph, chips
@@ -137,5 +137,5 @@ import StatCard from '../ui/StatCard.astro';
 </section>
 
 <script>
-	import '../islands/stock';
+	import '../islands/stock/stock';
 </script>

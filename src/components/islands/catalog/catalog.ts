@@ -16,19 +16,18 @@
 //     Enter with a UNIQUE result adds it (barcode readers emulate keyboards).
 
 import Fuse from 'fuse.js';
-import { obtenerProductos } from '../../api/actions/productos';
-import { formatCurrency, formatNumero } from '../../utils/format';
-import { resolveImageUrl } from '../../utils/cloudinary';
+import { formatCurrency, formatNumero } from '../../../utils/format';
+import { resolveImageUrl } from '../../../utils/cloudinary';
 import {
   getAjustes,
   getCatalogoCache,
-  setCatalogoCache,
   TTL_CATALOGO_MS,
   type CatalogoCache,
   type Producto,
-} from '../../utils/storage';
-import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, debounce } from '../../utils/dom';
-import { esDesktop } from '../../utils/media';
+} from '../../../utils/storage';
+import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, debounce } from '../../../utils/dom';
+import { esDesktop } from '../../../utils/media';
+import { refreshCatalogoFromApi } from '../../../utils/catalog-cache';
 
 const grid = qs<HTMLElement>(document, '[data-catalog-grid]');
 const template = qs<HTMLTemplateElement>(document, '[data-card-template]');
@@ -260,21 +259,10 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   }
 
   async function refreshFromApi(previous: CatalogoCache | null): Promise<void> {
-    const result = await obtenerProductos();
-    if (result.status === 'success') {
-      const next: CatalogoCache = {
-        productos: result.body.productos.map((p) => ({
-          id: p.id,
-          nombre: p.nombre,
-          categoria: p.categoria,
-          precio: p.precio,
-          stock: p.stock,
-          imagen_url: p.imagen_url,
-        })),
-        timestamp: Date.now(),
-      };
-      setCatalogoCache(next);
-      setData(next.productos);
+    const ok = await refreshCatalogoFromApi();
+    if (ok) {
+      const fresh = getCatalogoCache();
+      if (fresh) setData(fresh.productos);
       setStale(null);
       return;
     }

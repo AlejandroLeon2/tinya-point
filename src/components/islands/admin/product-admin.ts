@@ -20,78 +20,91 @@ import {
   crearProducto,
   obtenerProductos,
   productosAdmin,
-} from '../../api/actions/productos';
-import { getCategorias } from '../../api/actions/categorias';
-import { subirImagenCloudinary } from '../../api/client';
-import type { ProductoAdmin } from '../../api/types';
-import { resolveImageUrl } from '../../utils/cloudinary';
-import { formatCurrency } from '../../utils/format';
+} from '../../../api/actions/productos';
+import { getCategorias } from '../../../api/actions/categorias';
+import { subirImagenCloudinary } from '../../../api/client';
+import type { ProductoAdmin } from '../../../api/types';
+import { resolveImageUrl } from '../../../utils/cloudinary';
 import {
-  limpiarErroresForm,
-  mostrarErrorCampo,
-  observarCampo,
-} from '../../utils/form-errors';
-import { closeModal, openModal } from '../../utils/modal';
+  cloneTemplate,
+  debounce,
+  delegateAction,
+  qs,
+  selectChip,
+  setHidden,
+  setText,
+} from '../../../utils/dom';
+import { crearFeedback } from '../../../utils/feedback';
+import { formatCurrency } from '../../../utils/format';
+import { createFormManager } from '../../../utils/form-manager';
+import { limpiarErroresForm } from '../../../utils/form-errors';
+import { closeModal, openModal } from '../../../utils/modal';
 import {
   isNonEmpty,
   isValidImageUrl,
   isValidPrecio,
   isValidStockValue,
-} from '../../utils/validators';
-import { getAjustes, setCatalogoCache } from '../../utils/storage';
-import { mostrarToast } from '../../utils/toast';
+} from '../../../utils/validators';
+import { getAjustes, setCatalogoCache } from '../../../utils/storage';
+import { mostrarToast } from '../../../utils/toast';
+import { mensajeDeErrorApi } from '../../../utils/api-result';
 
 // Local admin search (plan-reponer-buscar.md Fase 2): Fuse over the loaded
 // list — same policy as the POS catalog (appscriptbase.md §5.3): the input
 // handler NEVER touches the network, it only re-filters in memory.
 import Fuse from 'fuse.js';
 
-const root = document.querySelector<HTMLElement>('[data-productos-root]');
+const root = qs<HTMLElement>(document, '[data-productos-root]');
 
 if (root) {
-  const rowsEl = root.querySelector<HTMLElement>('[data-product-rows]');
-  const template = root.querySelector<HTMLTemplateElement>('[data-product-row-template]');
+  const rowsEl = qs<HTMLElement>(root, '[data-product-rows]');
+  const template = qs<HTMLTemplateElement>(root, '[data-product-row-template]');
   // Desktop (≥md): the DataTable renders ONE <table> per page — its tbody is
   // the drop zone for the ProductRowDesktop clones (ui/DataTable slot).
-  const desktopTemplate = root.querySelector<HTMLTemplateElement>(
+  const desktopTemplate = qs<HTMLTemplateElement>(
+    root,
     '[data-product-row-desktop-template]',
   );
-  const tbody = root.querySelector<HTMLElement>('table tbody');
-  const form = root.querySelector<HTMLFormElement>('[data-product-form]');
-  const formTitle = root.querySelector<HTMLElement>('[data-product-form-title]');
-  const nombreInput = root.querySelector<HTMLInputElement>('[data-product-nombre]');
-  const categoriaInput = root.querySelector<HTMLSelectElement>('[data-product-categoria]');
-  const precioInput = root.querySelector<HTMLInputElement>('[data-product-precio]');
-  const stockInput = root.querySelector<HTMLInputElement>('[data-product-stock]');
-  const imagenInput = root.querySelector<HTMLInputElement>('[data-product-imagen]');
-  const imagenFileInput = root.querySelector<HTMLInputElement>('[data-product-imagen-file]');
-  const imagenPreview = root.querySelector<HTMLImageElement>('[data-product-imagen-preview]');
-  const imagenQuitarBtn = root.querySelector<HTMLButtonElement>('[data-product-imagen-quitar]');
-  const imagenEstado = root.querySelector<HTMLElement>('[data-product-imagen-estado]');
-  const imagenError = root.querySelector<HTMLElement>('[data-product-imagen-error]');
-  const submitBtn = root.querySelector<HTMLButtonElement>('[data-product-submit]');
-  const cancelBtn = root.querySelector<HTMLButtonElement>('[data-product-cancel]');
-  const confirmDeactivateBtn = root.querySelector<HTMLButtonElement>(
+  const tbody = qs<HTMLElement>(root, 'table tbody');
+  const form = qs<HTMLFormElement>(root, '[data-product-form]');
+  const formTitle = qs<HTMLElement>(root, '[data-product-form-title]');
+  const nombreInput = qs<HTMLInputElement>(root, '[data-product-nombre]');
+  const categoriaInput = qs<HTMLSelectElement>(root, '[data-product-categoria]');
+  const precioInput = qs<HTMLInputElement>(root, '[data-product-precio]');
+  const stockInput = qs<HTMLInputElement>(root, '[data-product-stock]');
+  const imagenInput = qs<HTMLInputElement>(root, '[data-product-imagen]');
+  const imagenFileInput = qs<HTMLInputElement>(root, '[data-product-imagen-file]');
+  const imagenPreview = qs<HTMLImageElement>(root, '[data-product-imagen-preview]');
+  const imagenQuitarBtn = qs<HTMLButtonElement>(root, '[data-product-imagen-quitar]');
+  const imagenEstado = qs<HTMLElement>(root, '[data-product-imagen-estado]');
+  const imagenError = qs<HTMLElement>(root, '[data-product-imagen-error]');
+  const submitBtn = qs<HTMLButtonElement>(root, '[data-product-submit]');
+  const cancelBtn = qs<HTMLButtonElement>(root, '[data-product-cancel]');
+  const confirmDeactivateBtn = qs<HTMLButtonElement>(
+    root,
     '[data-product-confirm-deactivate]',
   );
-  const errorAlert = root.querySelector<HTMLElement>('[data-alert="productos-error"]');
-  const errorText = root.querySelector<HTMLElement>('[data-alert-error-text]');
+  const errorAlert = qs<HTMLElement>(root, '[data-alert="productos-error"]');
+  const errorText = qs<HTMLElement>(root, '[data-alert-error-text]');
   // T3.1: guardar errors show INSIDE the drawer (the page alert may sit
   // behind the overlay); list/toggle errors stay on the page alert.
-  const formAlert = root.querySelector<HTMLElement>('[data-alert="productos-form-error"]');
-  const formErrorText = root.querySelector<HTMLElement>('[data-product-form-error-text]');
-  const formModal = root.querySelector<HTMLElement>('[data-modal-root="producto-form"]');
-  const emptyState = root.querySelector<HTMLElement>('[data-empty-state="empty-productos"]');
+  const formAlert = qs<HTMLElement>(root, '[data-alert="productos-form-error"]');
+  const formErrorText = qs<HTMLElement>(root, '[data-product-form-error-text]');
+  const formModal = qs<HTMLElement>(root, '[data-modal-root="producto-form"]');
+  const emptyState = qs<HTMLElement>(root, '[data-empty-state="empty-productos"]');
   // Search-with-no-hits state (plan-reponer-buscar.md Fase 2) — only the
   // query result is empty, the catalog itself may be full.
-  const sinResultados = root.querySelector<HTMLElement>('[data-empty-state="no-results"]');
-  const searchInput = root.querySelector<HTMLInputElement>('[data-product-search]');
+  const sinResultados = qs<HTMLElement>(root, '[data-empty-state="no-results"]');
+  const searchInput = qs<HTMLInputElement>(root, '[data-product-search]');
   // Toolbar (T3.2)
-  const filterWrap = root.querySelector<HTMLElement>('[data-product-filter]');
-  const catFilter = root.querySelector<HTMLSelectElement>('[data-product-catfilter]');
-  const sortSel = root.querySelector<HTMLSelectElement>('[data-product-sort]');
-  const countEl = root.querySelector<HTMLElement>('[data-product-count]');
-  const moreBtn = root.querySelector<HTMLButtonElement>('[data-product-more]');
+  const filterWrap = qs<HTMLElement>(root, '[data-product-filter]');
+  const catFilter = qs<HTMLSelectElement>(root, '[data-product-catfilter]');
+  const sortSel = qs<HTMLSelectElement>(root, '[data-product-sort]');
+  const countEl = qs<HTMLElement>(root, '[data-product-count]');
+  const moreBtn = qs<HTMLButtonElement>(root, '[data-product-more]');
+
+  const feedbackPage = crearFeedback(errorAlert, errorText);
+  const feedbackForm = crearFeedback(formAlert, formErrorText);
 
   // Badge tones (stilesbase §2): success = active, warning = inactive
   // attention — always paired with the word itself, never color alone (§5.2).
@@ -112,10 +125,9 @@ if (root) {
   let catFiltro = '';
   let orden: 'nombre' | 'precio' | 'stock' = 'nombre';
   let visibleCount = BLOQUE;
-  // P0 re-entry guards (plan-form-ux.md Fase 1): the disabled button stops
-  // pointer double-clicks, these flags also cover Enter-key implicit
-  // submission while a request is already in flight (duplicate product).
-  let enviando = false;
+  // P0 re-entry guard for toggle (plan-form-ux.md Fase 1): rapid double-click
+  // on Restaurar/Desactivar would toggle twice.  The product form's own guard
+  // lives inside createFormManager (enVuelo).
   let enviandoToggle = false;
   let subiendoImagen = false;
 
@@ -142,7 +154,7 @@ if (root) {
       for (const nombre of nombres) {
         const option = document.createElement('option');
         option.value = nombre;
-        option.textContent = nombre;
+        setText(option, nombre);
         select.append(option);
       }
       // Keep the cashier's in-progress selection when it still exists.
@@ -152,28 +164,24 @@ if (root) {
     }
   }
 
+  // deviation: alias descriptivo que despacha a feedbackPage (diferenciado de feedbackForm dentro del drawer)
   function mostrarOk(mensaje: string): void {
-    // Success = ephemeral toast (refactorUI §2.3 D9 — never shifts layout);
-    // errors keep the persistent Alert right below.
-    mostrarToast(mensaje);
-    if (errorAlert) errorAlert.hidden = true;
+    feedbackPage.ok(mensaje);
   }
 
-  // Page-level error (cargar / toggles): the drawer may be closed.
+  // deviation: alias descriptivo que despacha a feedbackPage (diferenciado de feedbackForm dentro del drawer)
   function mostrarError(mensaje: string): void {
-    if (errorText) errorText.textContent = mensaje;
-    if (errorAlert) errorAlert.hidden = false;
+    feedbackPage.error(mensaje);
   }
 
   // Form error (guardar): lives INSIDE the drawer next to the fields (T3.1).
   function mostrarErrorForm(mensaje: string): void {
-    if (formErrorText) formErrorText.textContent = mensaje;
-    if (formAlert) formAlert.hidden = false;
+    feedbackForm.error(mensaje);
   }
 
   function ocultarAlertas(): void {
-    if (errorAlert) errorAlert.hidden = true;
-    if (formAlert) formAlert.hidden = true;
+    feedbackPage.ocultar();
+    feedbackForm.ocultar();
     // Inline field errors die with the alerts: edit/new mode starts clean.
     if (form) limpiarErroresForm(form);
   }
@@ -185,20 +193,19 @@ if (root) {
     const url = imagenInput?.value.trim() ?? '';
     if (imagenPreview) {
       imagenPreview.src = url;
-      imagenPreview.hidden = url === '';
+      setHidden(imagenPreview, url === '');
     }
-    if (imagenQuitarBtn) imagenQuitarBtn.hidden = url === '';
+    setHidden(imagenQuitarBtn, url === '');
   }
 
   function mostrarErrorImagen(mensaje: string): void {
-    if (!imagenError) return;
-    imagenError.textContent = mensaje;
-    imagenError.hidden = false;
+    setText(imagenError, mensaje);
+    setHidden(imagenError, false);
   }
 
   function ocultarEstadoImagen(): void {
-    if (imagenEstado) imagenEstado.hidden = true;
-    if (imagenError) imagenError.hidden = true;
+    setHidden(imagenEstado, true);
+    setHidden(imagenError, true);
   }
 
   async function subirImagen(file: File): Promise<void> {
@@ -207,16 +214,14 @@ if (root) {
     if (subiendoImagen) return;
     subiendoImagen = true;
     if (imagenFileInput) imagenFileInput.disabled = true;
-    if (imagenEstado) {
-      imagenEstado.textContent = 'Subiendo imagen…';
-      imagenEstado.hidden = false;
-    }
-    if (imagenError) imagenError.hidden = true;
+    setText(imagenEstado, 'Subiendo imagen…');
+    setHidden(imagenEstado, false);
+    setHidden(imagenError, true);
 
     try {
       const res = await subirImagenCloudinary(file);
 
-      if (imagenEstado) imagenEstado.hidden = true;
+      setHidden(imagenEstado, true);
       if (res.status === 'success') {
         if (imagenInput) imagenInput.value = res.url;
         sincronizarImagen();
@@ -239,14 +244,10 @@ if (root) {
   // Spanish copy per transport outcome / §4.5 code — the code itself never
   // reaches the cashier's eyes.
   function mensajeDeError(error: string): string {
-    switch (error) {
-      case 'payload_invalido':
-        return 'Revisá los campos del producto.';
-      case 'accion_no_soportada':
-        return 'El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.';
-      default:
-        return 'No se pudo guardar. Intentá de nuevo.';
-    }
+    return mensajeDeErrorApi(error, {
+      payloadInvalido: 'Revisá los campos del producto.',
+      fallback: 'No se pudo guardar. Intentá de nuevo.',
+    });
   }
 
   async function refrescarCachePos(): Promise<void> {
@@ -291,32 +292,32 @@ if (root) {
   // ONE paint routine for BOTH templates (mobile li / desktop tr): hooks
   // that don't exist in a template are simply skipped.
   function paintRow(row: HTMLElement, producto: ProductoAdmin): void {
-    const nombre = row.querySelector<HTMLElement>('[data-product-nombre]');
-    const categoria = row.querySelector<HTMLElement>('[data-product-categoria]');
-    const precio = row.querySelector<HTMLElement>('[data-product-precio]');
-    const stock = row.querySelector<HTMLElement>('[data-product-stock]');
-    const stockPlain = row.querySelector<HTMLElement>('[data-product-stock-plain]');
-    const low = row.querySelector<HTMLElement>('[data-product-low]');
-    const agotado = row.querySelector<HTMLElement>('[data-product-agotado]');
-    const badge = row.querySelector<HTMLElement>('[data-product-badge]');
-    const desactivar = row.querySelector<HTMLElement>('[data-product-deactivate]');
-    const restaurar = row.querySelector<HTMLElement>('[data-product-restore]');
-    const img = row.querySelector<HTMLImageElement>('[data-product-img]');
+    const nombre = qs<HTMLElement>(row, '[data-product-nombre]');
+    const categoria = qs<HTMLElement>(row, '[data-product-categoria]');
+    const precio = qs<HTMLElement>(row, '[data-product-precio]');
+    const stock = qs<HTMLElement>(row, '[data-product-stock]');
+    const stockPlain = qs<HTMLElement>(row, '[data-product-stock-plain]');
+    const low = qs<HTMLElement>(row, '[data-product-low]');
+    const agotado = qs<HTMLElement>(row, '[data-product-agotado]');
+    const badge = qs<HTMLElement>(row, '[data-product-badge]');
+    const desactivar = qs<HTMLElement>(row, '[data-product-deactivate]');
+    const restaurar = qs<HTMLElement>(row, '[data-product-restore]');
+    const img = qs<HTMLImageElement>(row, '[data-product-img]');
 
-    if (nombre) nombre.textContent = producto.nombre;
-    if (categoria) categoria.textContent = producto.categoria;
-    if (precio) precio.textContent = formatCurrency(producto.precio);
+    setText(nombre, producto.nombre);
+    setText(categoria, producto.categoria);
+    setText(precio, formatCurrency(producto.precio));
     // Mobile card carries the prefix (no column header); the desktop column
     // header already says "Stock" → plain number there.
-    if (stock) stock.textContent = `Stock: ${producto.stock}`;
-    if (stockPlain) stockPlain.textContent = String(producto.stock);
+    setText(stock, `Stock: ${producto.stock}`);
+    setText(stockPlain, String(producto.stock));
 
     // Desktop stock tags (T3.3): umbral from ajustes.stock_alerta_min —
     // same semantics as the POS catalog (bajo: 0 < stock < umbral).
     if (low || agotado) {
       const umbral = getAjustes().stock_alerta_min;
-      if (low) low.hidden = !(producto.stock > 0 && producto.stock < umbral);
-      if (agotado) agotado.hidden = producto.stock !== 0;
+      setHidden(low, !(producto.stock > 0 && producto.stock < umbral));
+      setHidden(agotado, producto.stock !== 0);
     }
 
     // Admin thumbnail (plan-productos-v2.md Fase 4): single render point
@@ -327,13 +328,13 @@ if (root) {
     if (img) {
       const url = resolveImageUrl(producto.imagen_url);
       if (!url) {
-        img.hidden = true;
+        setHidden(img, true);
       } else {
-        img.hidden = false;
+        setHidden(img, false);
         img.addEventListener(
           'error',
           () => {
-            img.hidden = true;
+            setHidden(img, true);
           },
           { once: true },
         );
@@ -348,15 +349,15 @@ if (root) {
       }
     }
     if (badge) {
-      badge.textContent = producto.activo ? 'Activo' : 'Inactivo';
+      setText(badge, producto.activo ? 'Activo' : 'Inactivo');
       badge.className = `inline-block rounded-full px-3 py-1 text-base font-semibold ${
         producto.activo ? BADGE_ACTIVO : BADGE_INACTIVO
       }`;
     }
     // Only the toggle that matches the current state shows (D2: low → the
     // row offers restore; high → confirm-then-deactivate).
-    if (desactivar) desactivar.hidden = !producto.activo;
-    if (restaurar) restaurar.hidden = producto.activo;
+    setHidden(desactivar, !producto.activo);
+    setHidden(restaurar, producto.activo);
   }
 
   function render(): void {
@@ -394,26 +395,24 @@ if (root) {
 
     // Counter (T3.2): honest numbers — rows actually shown vs. the filtered
     // universe; hidden when there's nothing to count (empty states speak).
-    if (countEl) {
-      countEl.textContent =
-        visibles.length === 0
-          ? ''
-          : `Mostrando ${Math.min(visibles.length, visibleCount)} de ${visibles.length} productos`;
-    }
+    setText(
+      countEl,
+      visibles.length === 0
+        ? ''
+        : `Mostrando ${Math.min(visibles.length, visibleCount)} de ${visibles.length} productos`,
+    );
 
     const mostrados = visibles.slice(0, visibleCount);
     for (const producto of mostrados) {
-      const first = template.content.firstElementChild;
-      if (first) {
-        const row = first.cloneNode(true) as HTMLElement;
+      const row = cloneTemplate(template);
+      if (row) {
         row.setAttribute('data-product-id', producto.id);
         paintRow(row, producto);
         rowsEl.append(row);
       }
       if (desktopTemplate && tbody) {
-        const firstTr = desktopTemplate.content.firstElementChild;
-        if (firstTr) {
-          const tr = firstTr.cloneNode(true) as HTMLElement;
+        const tr = cloneTemplate(desktopTemplate);
+        if (tr) {
           tr.setAttribute('data-product-id', producto.id);
           paintRow(tr, producto);
           tbody.append(tr);
@@ -422,21 +421,19 @@ if (root) {
     }
 
     // T3.3: "Mostrar más" only when rows remain beyond the current block.
-    if (moreBtn) moreBtn.hidden = visibles.length <= visibleCount;
+    setHidden(moreBtn, visibles.length <= visibleCount);
 
-    if (emptyState) emptyState.hidden = productos.length > 0;
-    if (sinResultados) {
-      sinResultados.hidden = !(consulta !== '' && productos.length > 0 && visibles.length === 0);
-    }
+    setHidden(emptyState, productos.length > 0);
+    setHidden(sinResultados, !(consulta !== '' && productos.length > 0 && visibles.length === 0));
   }
 
   function editarProducto(id: string): void {
     const producto = productos.find((p) => p.id === id);
     if (!producto) return;
     editingId = id;
-    if (formTitle) formTitle.textContent = 'Editar producto';
-    if (submitBtn) submitBtn.textContent = 'Guardar cambios';
-    if (cancelBtn) cancelBtn.hidden = false;
+    setText(formTitle, 'Editar producto');
+    setText(submitBtn, 'Guardar cambios');
+    setHidden(cancelBtn, false);
     if (nombreInput) nombreInput.value = producto.nombre;
     if (categoriaInput) {
       // Legacy products may carry a category the select doesn't offer yet
@@ -448,7 +445,7 @@ if (root) {
       if (producto.categoria && !existe) {
         const option = document.createElement('option');
         option.value = producto.categoria;
-        option.textContent = producto.categoria;
+        setText(option, producto.categoria);
         categoriaInput.append(option);
       }
       categoriaInput.value = producto.categoria;
@@ -468,9 +465,9 @@ if (root) {
   function modoNuevo(): void {
     editingId = null;
     form?.reset();
-    if (formTitle) formTitle.textContent = 'Nuevo producto';
-    if (submitBtn) submitBtn.textContent = 'Guardar producto';
-    if (cancelBtn) cancelBtn.hidden = true;
+    setText(formTitle, 'Nuevo producto');
+    setText(submitBtn, 'Guardar producto');
+    setHidden(cancelBtn, true);
     ocultarAlertas();
     ocultarEstadoImagen();
     sincronizarImagen();
@@ -484,74 +481,14 @@ if (root) {
     imagen_url: string;
   };
 
-  function leerFormulario():
-    | { ok: true; datos: DatosForm }
-    | { ok: false; mensaje: string; campo: HTMLInputElement | HTMLSelectElement | null } {
-    const nombre = nombreInput?.value.trim() ?? '';
-    const categoria = categoriaInput?.value.trim() ?? '';
-    const precioRaw = precioInput?.value.trim() ?? '';
-    const stockRaw = stockInput?.value.trim() ?? '';
-    const imagen = imagenInput?.value.trim() ?? '';
-
-    if (!isNonEmpty(nombre)) {
-      return { ok: false, mensaje: 'Ingresá el nombre del producto.', campo: nombreInput ?? null };
-    }
-    if (!isNonEmpty(categoria)) {
-      return {
-        ok: false,
-        mensaje: 'Elegí la categoría del producto.',
-        campo: categoriaInput ?? null,
-      };
-    }
-    // Raw emptiness first: Number('') is 0, which would pass as a valid price.
-    if (precioRaw === '' || !isValidPrecio(Number(precioRaw))) {
-      return {
-        ok: false,
-        mensaje: 'Ingresá un precio igual o mayor a 0.',
-        campo: precioInput ?? null,
-      };
-    }
-    if (stockRaw === '' || !isValidStockValue(Number(stockRaw))) {
-      return {
-        ok: false,
-        mensaje: 'Ingresá un stock entero igual o mayor a 0.',
-        campo: stockInput ?? null,
-      };
-    }
-    if (!isValidImageUrl(imagen)) {
-      return {
-        ok: false,
-        mensaje: 'La imagen debe ser una URL que empiece con http:// o https://.',
-        campo: imagenInput ?? null,
-      };
-    }
-
-    return {
-      ok: true,
-      datos: {
-        nombre,
-        categoria,
-        precio: Number(precioRaw),
-        stock: Number(stockRaw),
-        imagen_url: imagen,
-      },
-    };
-  }
-
   async function guardar(datos: DatosForm): Promise<void> {
-    // P0 re-entry guard + pending state (plan-form-ux.md Fase 1, pattern of
-    // login-form.ts): double submit would create a DUPLICATE product — the
-    // server does not dedupe crearProducto. Enter-to-submit is covered by
-    // the flag even if a browser skips the disabled button.
-    if (enviando) return;
-    enviando = true;
+    // P0 re-entry guard lives inside createFormManager (enVuelo); the button
+    // disable also comes from there (submitBtn option).  We only manage the
+    // dynamic text here ("Creando…" / "Guardando…").
     const idEditando = editingId;
     const esAlta = idEditando === null;
     const textoOriginal = esAlta ? 'Guardar producto' : 'Guardar cambios';
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = esAlta ? 'Creando…' : 'Guardando…';
-    }
+    setText(submitBtn, esAlta ? 'Creando…' : 'Guardando…');
 
     try {
       const resultado = esAlta
@@ -575,14 +512,10 @@ if (root) {
       }
       mostrarErrorForm(mensajeDeError(resultado.error));
     } finally {
-      enviando = false;
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = textoOriginal;
-      }
+      setText(submitBtn, textoOriginal);
       // modoNuevo() already reset the label on success; restore the right
       // one for the mode we are actually in after an error.
-      if (editingId !== null && submitBtn) submitBtn.textContent = 'Guardar cambios';
+      if (editingId !== null) setText(submitBtn, 'Guardar cambios');
     }
   }
 
@@ -609,23 +542,47 @@ if (root) {
     }
   }
 
-  form?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    // Fresh attempt: drop stale inline errors before validating again.
-    limpiarErroresForm(form);
-    const lectura = leerFormulario();
-    if (!lectura.ok) {
-      // P1 (plan-form-ux.md): the message goes NEXT TO the offending field
-      // (role="alert" + aria-invalid), not only to the form-level Alert.
-      if (lectura.campo) {
-        mostrarErrorCampo(lectura.campo, lectura.mensaje);
-        lectura.campo.focus();
-      } else {
-        mostrarErrorForm(lectura.mensaje);
-      }
-      return;
-    }
-    void guardar(lectura.datos);
+  // Declarative schema replaces leerFormulario() + the manual submit
+  // listener + 5× observarCampo calls.  createFormManager handles:
+  //   - submit interception + preventDefault
+  //   - sequential validation with first-error focus + inline error
+  //   - anti-double-submit (enVuelo) + submitBtn.disabled toggle
+  //   - observarCampo auto-wiring on every field in the schema
+  createFormManager<DatosForm>({
+    form,
+    submitBtn,
+    schema: {
+      nombre: {
+        el: nombreInput,
+        validate: isNonEmpty,
+        error: 'Ingresá el nombre del producto.',
+      },
+      categoria: {
+        el: categoriaInput,
+        validate: isNonEmpty,
+        error: 'Elegí la categoría del producto.',
+      },
+      precio: {
+        el: precioInput,
+        // Raw emptiness first: Number('') is 0, which would pass as a valid price.
+        validate: (raw) => raw !== '' && isValidPrecio(Number(raw)),
+        error: 'Ingresá un precio igual o mayor a 0.',
+        transform: (raw) => Number(raw),
+      },
+      stock: {
+        el: stockInput,
+        validate: (raw) => raw !== '' && isValidStockValue(Number(raw)),
+        error: 'Ingresá un stock entero igual o mayor a 0.',
+        transform: (raw) => Number(raw),
+      },
+      imagen_url: {
+        el: imagenInput,
+        validate: (raw) => isValidImageUrl(raw),
+        error: 'La imagen debe ser una URL que empiece con http:// o https://.',
+        optional: true,
+      },
+    },
+    onSubmit: (datos) => guardar(datos),
   });
 
   cancelBtn?.addEventListener('click', () => {
@@ -657,28 +614,27 @@ if (root) {
   });
 
   // ONE delegated listener for BOTH lists (mobile ul + desktop tbody): the
-  // shared data-product-row / data-product-id hooks are identical.
-  root.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const row = target.closest<HTMLElement>('[data-product-row]');
-    if (!row) return;
-    const id = row.getAttribute('data-product-id');
-    if (!id) return;
+  // shared data-product-action attr dispatches to the right handler; the row
+  // and its id are resolved inside each action.
+  function rowId(trigger: HTMLElement): string | null {
+    return trigger.closest<HTMLElement>('[data-product-row]')?.getAttribute('data-product-id') ?? null;
+  }
 
-    if (target.closest('[data-product-edit]')) {
-      editarProducto(id);
-      return;
-    }
-    if (target.closest('[data-product-deactivate]')) {
+  delegateAction(root, 'click', 'data-product-action', {
+    edit: (trigger) => {
+      const id = rowId(trigger);
+      if (id) editarProducto(id);
+    },
+    deactivate: (trigger) => {
       // The modal itself opens via modal-controller (data-modal-open on the
       // button); remember which product the confirmation applies to.
-      pendingDeactivateId = id;
-      return;
-    }
-    if (target.closest('[data-product-restore]')) {
-      void cambiarActivo(id, true);
-    }
+      const id = rowId(trigger);
+      if (id) pendingDeactivateId = id;
+    },
+    restore: (trigger) => {
+      const id = rowId(trigger);
+      if (id) void cambiarActivo(id, true);
+    },
   });
 
   confirmDeactivateBtn?.addEventListener('click', () => {
@@ -706,11 +662,7 @@ if (root) {
     const valor = chip.getAttribute('data-filter-value') ?? '';
     filtro = valor as typeof filtro;
     visibleCount = BLOQUE;
-    filterWrap
-      .querySelectorAll<HTMLElement>('[data-filter-value]')
-      .forEach((c) =>
-        c.setAttribute('aria-pressed', c === chip ? 'true' : 'false'),
-      );
+    selectChip(filterWrap, 'data-filter-value', valor);
     render();
   });
 
@@ -728,15 +680,14 @@ if (root) {
   // Admin search (plan-reponer-buscar.md Fase 2): local-only, debounced —
   // zero API calls in the handler (appscriptbase.md §5.3), same 200 ms
   // debounce as the POS search. A new query restarts the 50-row block.
-  let debounceBusqueda: ReturnType<typeof setTimeout> | undefined;
-  searchInput?.addEventListener('input', () => {
-    clearTimeout(debounceBusqueda);
-    debounceBusqueda = setTimeout(() => {
+  searchInput?.addEventListener(
+    'input',
+    debounce(() => {
       busqueda = searchInput.value;
       visibleCount = BLOQUE;
       render();
-    }, 200);
-  });
+    }, 200),
+  );
 
   // T3.3: next block of 50 (button hides itself when nothing remains).
   moreBtn?.addEventListener('click', () => {
@@ -744,12 +695,8 @@ if (root) {
     render();
   });
 
-  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1).
-  if (nombreInput) observarCampo(nombreInput);
-  if (categoriaInput) observarCampo(categoriaInput);
-  if (precioInput) observarCampo(precioInput);
-  if (stockInput) observarCampo(stockInput);
-  if (imagenInput) observarCampo(imagenInput);
+  // Inline errors vanish as soon as the user retypes (plan-form-ux Fase 1)
+  // — handled by createFormManager's auto-wiring (observarCampo per schema key).
 
   void cargar(); // first paint from the admin read (fallback keeps it usable)
 }

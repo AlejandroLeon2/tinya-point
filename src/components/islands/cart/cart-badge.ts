@@ -8,10 +8,10 @@
 // by cart-badge/cart-actions, zero new islands).
 // Browser-only module, loaded via an Astro <script>.
 
-import { subscribeCart } from '../../stores/cart';
-import { formatCurrency } from '../../utils/format';
-import { calcTotal } from '../../utils/tax';
-import { qs, qsa, setText, setHidden } from '../../utils/dom';
+import { subscribeCart } from '../../../stores/cart';
+import { formatCurrency } from '../../../utils/format';
+import { calcTotal } from '../../../utils/tax';
+import { qs, qsa, setText, setHidden } from '../../../utils/dom';
 
 const bar = qs<HTMLElement>(document, '[data-cart-bar]');
 const spacer = qs<HTMLElement>(document, '[data-cart-bar-spacer]');

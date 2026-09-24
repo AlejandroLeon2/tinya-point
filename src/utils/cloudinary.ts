@@ -24,7 +24,7 @@ function withTransforms(url: string, width: number): string {
   const at = url.indexOf(UPLOAD_MARKER);
   // No /upload/ segment → cannot inject safely, serve as-is.
   if (at === -1) return url;
-  const insert = `f_auto,q_auto,w_${width}`;
+  const insert = `f_auto,q_auto,w_${width}/`;
   const head = at + UPLOAD_MARKER.length;
   return url.slice(0, head) + insert + url.slice(head);
 }

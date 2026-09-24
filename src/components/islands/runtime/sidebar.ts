@@ -20,10 +20,10 @@
 // transform would create a containing block and break fixed descendants).
 // One sidebar per page, queried by data attribute — no fixed ids, no globals.
 
-import { logout } from '../../stores/session';
-import { getAjustes, setAjustes } from '../../utils/storage';
-import { qs, qsa, setText } from '../../utils/dom';
-import { esDesktop, enCambioDesktop } from '../../utils/media';
+import { logout } from '../../../stores/session';
+import { getAjustes, setAjustes } from '../../../utils/storage';
+import { qs, qsa, setText } from '../../../utils/dom';
+import { esDesktop, enCambioDesktop } from '../../../utils/media';
 
 const root = qs<HTMLElement>(document, '[data-sidebar-root]');
 const toggle = qs<HTMLElement>(document, '[data-sidebar-toggle]');
@@ -110,7 +110,7 @@ if (root && toggle) {
 
 // Logout: drops ONLY the token — cart and history survive
 // (stores/session contract) — and lands on /login with replace(), same
-// criterion as islands/route-guard.ts (Back never returns to a protected
+// criterion as islands/runtime/route-guard.ts (Back never returns to a protected
 // page). qsa (Fase 1): the sidebar footer AND the "Más" Sheet both expose
 // a [data-logout] button.
 qsa<HTMLElement>(document, '[data-logout]').forEach((logoutButton) => {

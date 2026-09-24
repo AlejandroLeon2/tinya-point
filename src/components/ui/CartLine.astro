@@ -13,15 +13,15 @@
 			<p data-line-unit class="text-base text-text-muted"></p>
 		</div>
 		<div class="flex items-center gap-3">
-			<button type="button" class="btn btn-secondary" data-cart-qty-step="down" aria-label="Restar una unidad">
+			<button type="button" class="btn btn-secondary" data-cart-qty-step="down" data-cart-action="step-down" aria-label="Restar una unidad">
 				−
 			</button>
 			<span data-line-qty class="text-lg font-semibold text-text">1</span>
-			<button type="button" class="btn btn-secondary" data-cart-qty-step="up" aria-label="Sumar una unidad">
+			<button type="button" class="btn btn-secondary" data-cart-qty-step="up" data-cart-action="step-up" aria-label="Sumar una unidad">
 				+
 			</button>
 		</div>
 		<p data-line-importe class="w-28 text-right text-base font-bold text-text"></p>
-		<button type="button" class="btn btn-secondary" data-cart-remove>Quitar</button>
+		<button type="button" class="btn btn-secondary" data-cart-remove data-cart-action="remove">Quitar</button>
 	</li>
 </template>

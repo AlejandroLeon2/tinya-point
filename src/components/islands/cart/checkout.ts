@@ -19,13 +19,14 @@
 // venta-ok modal, errors and the queue. The internal sale flow is UNCHANGED.
 // Browser-only module, loaded via an Astro <script>.
 
-import type { DatosRegistrarVenta } from '../../api/types';
-import { actualizarStock } from '../../api/actions/stock';
-import { registrarVenta } from '../../api/actions/ventas';
-import { clearCart, getCart, subscribeCart } from '../../stores/cart';
-import { enqueue } from '../../stores/syncQueue';
-import { formatCurrency } from '../../utils/format';
-import { openModal, closeModal } from '../../utils/modal';
+import type { DatosRegistrarVenta } from '../../../api/types';
+import { actualizarStock } from '../../../api/actions/stock';
+import { registrarVenta } from '../../../api/actions/ventas';
+import { clearCart, getCart, subscribeCart } from '../../../stores/cart';
+import { enqueue } from '../../../stores/syncQueue';
+import { round2 } from '../../../utils/caja';
+import { formatCurrency } from '../../../utils/format';
+import { openModal, closeModal } from '../../../utils/modal';
 import {
   getCatalogoCache,
   getHistorialVentas,
@@ -33,42 +34,41 @@ import {
   setHistorialVentas,
   type ItemVenta,
   type VentaLocal,
-} from '../../utils/storage';
-import { calcTotal } from '../../utils/tax';
-import type { MetodoPago } from '../../utils/storage';
+} from '../../../utils/storage';
+import { calcTotal } from '../../../utils/tax';
+import type { MetodoPago } from '../../../utils/storage';
+import { qs, qsa, setText, setHidden } from '../../../utils/dom';
+import { esDesktop } from '../../../utils/media';
+import { debeEncolar } from '../../../utils/api-result';
 
-const root = document.querySelector<HTMLElement>('[data-checkout-root]');
+const root = qs<HTMLElement>(document, '[data-checkout-root]');
 
 if (root) {
-  const cashBlock = root.querySelector<HTMLElement>('[data-checkout-cash]');
-  const recibidoInput = root.querySelector<HTMLInputElement>('[data-checkout-recibido]');
-  const quickGroup = root.querySelector<HTMLElement>('[data-checkout-quick-group]');
-  const vueltoEl = root.querySelector<HTMLElement>('[data-checkout-vuelto]');
-  const vueltoAmountEl = root.querySelector<HTMLElement>('[data-checkout-vuelto-amount]');
-  const faltanEl = root.querySelector<HTMLElement>('[data-checkout-faltan]');
-  const faltanAmountEl = root.querySelector<HTMLElement>('[data-checkout-faltan-amount]');
-  const chargeBtn = root.querySelector<HTMLButtonElement>('[data-checkout-charge]');
-  const reasonEl = root.querySelector<HTMLElement>('[data-checkout-reason]');
-  const errorEl = root.querySelector<HTMLElement>('[data-alert="checkout-error"]');
+  const cashBlock = qs<HTMLElement>(root, '[data-checkout-cash]');
+  const recibidoInput = qs<HTMLInputElement>(root, '[data-checkout-recibido]');
+  const quickGroup = qs<HTMLElement>(root, '[data-checkout-quick-group]');
+  const vueltoEl = qs<HTMLElement>(root, '[data-checkout-vuelto]');
+  const vueltoAmountEl = qs<HTMLElement>(root, '[data-checkout-vuelto-amount]');
+  const faltanEl = qs<HTMLElement>(root, '[data-checkout-faltan]');
+  const faltanAmountEl = qs<HTMLElement>(root, '[data-checkout-faltan-amount]');
+  const chargeBtn = qs<HTMLButtonElement>(root, '[data-checkout-charge]');
+  const reasonEl = qs<HTMLElement>(root, '[data-checkout-reason]');
+  const errorEl = qs<HTMLElement>(root, '[data-alert="checkout-error"]');
 
   // Sale-closure modal (§4.2F) — lives outside the ticket section but in
   // the same page; queried globally (no ids, §0.2).
-  const ventaOkRoot = document.querySelector<HTMLElement>('[data-modal-root="venta-ok"]');
-  const ventaOkTotal = document.querySelector<HTMLElement>('[data-venta-ok-total]');
-  const ventaOkVuelto = document.querySelector<HTMLElement>('[data-venta-ok-vuelto]');
-  const ventaOkVueltoAmount = document.querySelector<HTMLElement>('[data-venta-ok-vuelto-amount]');
-  const ventaOkNueva = document.querySelector<HTMLButtonElement>('[data-venta-ok-nueva]');
-  const ventaOkDetail = document.querySelector<HTMLAnchorElement>('[data-venta-ok-detail]');
+  const ventaOkRoot = qs<HTMLElement>(document, '[data-modal-root="venta-ok"]');
+  const ventaOkTotal = qs<HTMLElement>(document, '[data-venta-ok-total]');
+  const ventaOkVuelto = qs<HTMLElement>(document, '[data-venta-ok-vuelto]');
+  const ventaOkVueltoAmount = qs<HTMLElement>(document, '[data-venta-ok-vuelto-amount]');
+  const ventaOkNueva = qs<HTMLButtonElement>(document, '[data-venta-ok-nueva]');
+  const ventaOkDetail = qs<HTMLAnchorElement>(document, '[data-venta-ok-detail]');
 
-  const desktop = window.matchMedia('(min-width: 768px)');
-  // Money = 2 decimals. Without this, Exacto (11.68) < raw total (11.682)
-  // kept the charge button disabled — comparisons and snapshots use money().
-  const money = (value: number): number => Math.round(value * 100) / 100;
   let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
   let lastTotal = 0;
 
   function selectedMethod(): MetodoPago {
-    const checked = root!.querySelector<HTMLInputElement>('input[name="metodo_pago"]:checked');
+    const checked = qs<HTMLInputElement>(root, 'input[name="metodo_pago"]:checked');
     return (checked?.value as MetodoPago | undefined) ?? 'efectivo';
   }
 
@@ -107,8 +107,8 @@ if (root) {
   function updateChargeState(): void {
     if (!chargeBtn || !reasonEl) return;
     const items = getCart();
-    const total = money(calcTotal(cartSubtotal()));
-    chargeBtn.textContent = `Cobrar ${formatCurrency(total)}`;
+    const total = round2(calcTotal(cartSubtotal()));
+    setText(chargeBtn, `Cobrar ${formatCurrency(total)}`);
 
     let blocked = items.length === 0;
     let reason = '';
@@ -120,27 +120,27 @@ if (root) {
       }
     }
     chargeBtn.disabled = blocked;
-    reasonEl.textContent = reason || 'Faltan S/ 0.00 para poder cobrar.';
-    reasonEl.hidden = reason === '';
+    setText(reasonEl, reason || 'Faltan S/ 0.00 para poder cobrar.');
+    setHidden(reasonEl, reason === '');
   }
 
   function renderChange(): void {
     const isCash = selectedMethod() === 'efectivo';
-    if (cashBlock) cashBlock.hidden = !isCash;
-    const total = money(calcTotal(cartSubtotal()));
+    setHidden(cashBlock, !isCash);
+    const total = round2(calcTotal(cartSubtotal()));
 
-    if (vueltoEl) vueltoEl.hidden = true;
-    if (faltanEl) faltanEl.hidden = true;
+    setHidden(vueltoEl, true);
+    setHidden(faltanEl, true);
     if (isCash) {
       const recibido = receivedAmount();
       if (recibido !== null) {
         const diff = recibido - total;
         if (diff >= 0) {
-          if (vueltoEl) vueltoEl.hidden = false;
-          if (vueltoAmountEl) vueltoAmountEl.textContent = formatCurrency(diff);
+          setHidden(vueltoEl, false);
+          setText(vueltoAmountEl, formatCurrency(diff));
         } else {
-          if (faltanEl) faltanEl.hidden = false;
-          if (faltanAmountEl) faltanAmountEl.textContent = formatCurrency(-diff);
+          setHidden(faltanEl, false);
+          setText(faltanAmountEl, formatCurrency(-diff));
         }
       }
     }
@@ -150,11 +150,11 @@ if (root) {
   // Sale-closure confirmation (§4.2F) — replaces the old success Alert.
   function showVentaOk(total: number, change: number, idVenta: string): void {
     if (!ventaOkRoot) return;
-    if (ventaOkTotal) ventaOkTotal.textContent = formatCurrency(total);
+    setText(ventaOkTotal, formatCurrency(total));
     const showChange = change > 0;
-    if (ventaOkVuelto) ventaOkVuelto.hidden = !showChange;
-    if (ventaOkVueltoAmount && showChange) {
-      ventaOkVueltoAmount.textContent = formatCurrency(change);
+    setHidden(ventaOkVuelto, !showChange);
+    if (showChange) {
+      setText(ventaOkVueltoAmount, formatCurrency(change));
     }
     if (ventaOkDetail) {
       ventaOkDetail.setAttribute('href', `/historial/venta/?id=${encodeURIComponent(idVenta)}`);
@@ -173,14 +173,14 @@ if (root) {
     const items = getCart();
     if (items.length === 0) return;
 
-    if (errorEl) errorEl.hidden = true;
+    setHidden(errorEl, true);
 
     // 1. Client-generated uuid.
     const idVenta = crypto.randomUUID();
     const metodo = selectedMethod();
     const wireItems = items.map((item) => ({ id: item.id, cantidad: item.cantidad, precio: item.precio }));
     const subtotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    const total = money(calcTotal(subtotal));
+    const total = round2(calcTotal(subtotal));
     const recibido = metodo === 'efectivo' ? receivedAmount() : null;
     const change = recibido !== null && recibido >= total ? recibido - total : 0;
 
@@ -228,24 +228,22 @@ if (root) {
     };
     const ventaResult = await registrarVenta(payload);
 
-    const shouldEnqueue = (result: { status: string; error?: string }): boolean =>
-      result.status === 'network_failure' ||
-      (result.status === 'api_error' && result.error === 'unauthorized');
+    // debeEncolar (D4) imported from utils/api-result — shared with caja.ts.
 
     if (ventaResult.status === 'success') {
       for (const wireItem of wireItems) {
         const stockPayload = { id: wireItem.id, cantidadVendida: wireItem.cantidad };
         const stockResult = await actualizarStock(stockPayload);
-        if (shouldEnqueue(stockResult)) {
+        if (debeEncolar(stockResult)) {
           enqueue('actualizarStock', stockPayload);
         } else if (stockResult.status === 'api_error') {
-          if (errorEl) errorEl.hidden = false; // partial acceptance, §5.3
+          setHidden(errorEl, false); // partial acceptance, §5.3
         }
       }
       return;
     }
 
-    if (shouldEnqueue(ventaResult)) {
+    if (debeEncolar(ventaResult)) {
       // Sale did not reach the Sheet: enqueue venta FIRST, then its stock
       // updates — strict FIFO replays them in the same order later.
       enqueue('registrarVenta', payload);
@@ -257,14 +255,14 @@ if (root) {
 
     // api_error (payload_invalido / error_interno): simple copy, no codes,
     // no pointless retries — the sale itself is already safe locally.
-    if (errorEl) errorEl.hidden = false;
+    setHidden(errorEl, false);
   }
 
   chargeBtn?.addEventListener('click', () => {
     void charge();
   });
 
-  for (const radio of root.querySelectorAll<HTMLInputElement>('input[name="metodo_pago"]')) {
+  for (const radio of qsa<HTMLInputElement>(root, 'input[name="metodo_pago"]')) {
     radio.addEventListener('change', renderChange);
   }
   recibidoInput?.addEventListener('input', renderChange);
@@ -286,14 +284,14 @@ if (root) {
   ventaOkNueva?.addEventListener('click', () => {
     if (autoCloseTimer) clearTimeout(autoCloseTimer);
     if (ventaOkRoot) closeModal(ventaOkRoot);
-    const search = document.querySelector<HTMLInputElement>('[data-catalog-search]');
+    const search = qs<HTMLInputElement>(document, '[data-catalog-search]');
     search?.focus();
     search?.select();
   });
 
   // F9 = charge (desktop only, §4.2E).
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'F9' || !desktop.matches) return;
+    if (event.key !== 'F9' || !esDesktop()) return;
     event.preventDefault();
     if (chargeBtn && !chargeBtn.disabled) chargeBtn.click();
   });
@@ -302,10 +300,10 @@ if (root) {
   // through their own subscriptions).
   subscribeCart((items) => {
     const subtotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    lastTotal = money(calcTotal(subtotal));
+    lastTotal = round2(calcTotal(subtotal));
     paintQuickAmounts(lastTotal);
     // A cart change starts a fresh sale cycle — stale feedback would lie.
-    if (errorEl) errorEl.hidden = true;
+    setHidden(errorEl, true);
     renderChange();
   });
 }

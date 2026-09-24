@@ -19,10 +19,11 @@
 //     EmptyState, T0.1). Hooks are data-* scoped to [data-venta-root]; item
 // text always via textContent.
 
-import { formatCurrency, formatFecha, formatHora } from '../../utils/format';
-import { getAjustes, getColaSync, getHistorialVentas } from '../../utils/storage';
-import { calcTax, etiquetaIgv, getTaxRate } from '../../utils/tax';
-import { qs, setText, setHidden, cloneTemplate, setPillState } from '../../utils/dom';
+import { formatCurrency, formatFecha, formatHora } from '../../../utils/format';
+import { getAjustes, getColaSync, getHistorialVentas } from '../../../utils/storage';
+import { calcTax, etiquetaIgv, getTaxRate } from '../../../utils/tax';
+import { qs, setText, setHidden, cloneTemplate, setPillState } from '../../../utils/dom';
+import { METODO_LABEL } from '../../../utils/metodos';
 
 const root = qs<HTMLElement>(document, '[data-venta-root]');
 
@@ -49,12 +50,7 @@ if (root) {
   // Receipt header: nombre del local (T3.6) — empty ajustes keeps "Tienda".
   setText(localEl, getAjustes().nombre_local || 'Tienda');
 
-  // Spanish labels for the wire values of base.md §2.2.
-  const METODO_LABEL: Record<string, string> = {
-    efectivo: 'Efectivo',
-    tarjeta: 'Tarjeta',
-    'yape-plin': 'Yape/Plin',
-  };
+  // METODO_LABEL imported from utils/metodos (D12 — shared with historial.ts).
 
   const id = new URLSearchParams(window.location.search).get('id');
   const venta = id ? getHistorialVentas().find((v) => v.id_venta === id) : undefined;

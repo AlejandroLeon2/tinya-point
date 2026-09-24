@@ -18,11 +18,12 @@
 		<span class="flex flex-wrap items-center gap-3">
 			<!-- Shown ⇔ local count > 0; travels with the disabled Eliminar. -->
 			<span data-categoria-en-uso hidden class="text-base font-semibold text-warning"></span>
-			<button type="button" class="btn btn-secondary" data-categoria-edit="">Editar</button>
+			<button type="button" class="btn btn-secondary" data-categoria-edit="" data-categoria-action="edit">Editar</button>
 			<button
 				type="button"
 				class="btn btn-danger"
 				data-categoria-delete=""
+				data-categoria-action="delete"
 				data-modal-open="confirmar-borrar-categoria"
 			>
 				Eliminar

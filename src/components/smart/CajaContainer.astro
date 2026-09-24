@@ -1,6 +1,6 @@
 ---
 // Caja container (doc/plan-mejoras-2.md Fase 2 + refactorUI §5 / plan T3.7)
-// — smart layer composes chrome + ui/ parts and wires islands/caja.ts.
+// — smart layer composes chrome + ui/ parts and wires islands/caja/caja.ts.
 // Estado como cabecera: StatusPill "Caja abierta desde HH:MM (hace …)"
 // ⇔ "Sin caja abierta" (spec §5). Apertura form OR open-session summary
 // (mutually exclusive — the island flips them: static output, ONE page for
@@ -97,6 +97,6 @@ import StatusPill from '../ui/StatusPill.astro';
 </section>
 
 <script>
-	import '../islands/caja';
-	import '../islands/modal-controller';
+	import '../islands/caja/caja';
+	import '../islands/runtime/modal-controller';
 </script>

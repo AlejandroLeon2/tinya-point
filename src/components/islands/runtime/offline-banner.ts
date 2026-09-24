@@ -4,8 +4,8 @@
 // (contract from doc/plan.md Fase 5 / plan-features Fase 1).
 // One banner per page, queried by data attribute — no fixed ids, no globals.
 
-import { startNetworkListener, subscribeNetworkStatus } from '../../stores/session';
-import { qs, setHidden } from '../../utils/dom';
+import { startNetworkListener, subscribeNetworkStatus } from '../../../stores/session';
+import { qs, setHidden } from '../../../utils/dom';
 
 const banner = qs<HTMLElement>(document, '[data-offline-banner]');
 

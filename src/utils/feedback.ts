@@ -3,6 +3,8 @@
 // Note: caja.ts and product-admin.ts use multiple alerts (error/cierre/aviso or page/form) —
 // they create one instance per alert (feedbackError, feedbackCierre…) instead of a single one.
 
+import { mostrarToast } from './toast';
+
 export interface FeedbackApi {
   ok(mensaje: string): void;
   error(mensaje: string): void;

@@ -3,12 +3,12 @@
 // network (local first, §4.6). State = visibility of the two pill links —
 // `hidden` toggling ONLY, never class toggling (§0.4). The hora text goes
 // through textContent (never HTML). Repaints on the caja:state-changed event
-// dispatched by islands/caja.ts (open/close without reload) and on tab focus
+// dispatched by islands/caja/caja.ts (open/close without reload) and on tab focus
 // (sales registered elsewhere). One TopBar per page, data attributes, no ids.
 
-import { formatHora } from '../../utils/format';
-import { getCajas } from '../../utils/storage';
-import { qs, setText, setHidden } from '../../utils/dom';
+import { formatHora } from '../../../utils/format';
+import { getCajas } from '../../../utils/storage';
+import { qs, setText, setHidden } from '../../../utils/dom';
 
 const abiertaEl = qs<HTMLElement>(document, '[data-caja-abierta]');
 const horaEl = qs<HTMLElement>(document, '[data-caja-hora]');

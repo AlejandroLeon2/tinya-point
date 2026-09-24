@@ -19,12 +19,12 @@ import {
   removeFromCart,
   subscribeCart,
   updateCartQuantity,
-} from '../../stores/cart';
-import { closestAncestor, closestCard, qs, qsa, setText, setHidden, cloneTemplate } from '../../utils/dom';
-import { formatCurrency } from '../../utils/format';
-import { closeModal } from '../../utils/modal';
-import type { ItemCarrito } from '../../utils/storage';
-import { calcTax, calcTotal, etiquetaIgv } from '../../utils/tax';
+} from '../../../stores/cart';
+import { closestAncestor, closestCard, qs, qsa, setText, setHidden, cloneTemplate, delegateAction } from '../../../utils/dom';
+import { formatCurrency } from '../../../utils/format';
+import { closeModal } from '../../../utils/modal';
+import type { ItemCarrito } from '../../../utils/storage';
+import { calcTax, calcTotal, etiquetaIgv } from '../../../utils/tax';
 
 // Scoped to the single ticket node (Fase 2): lines, totals, cancel trigger
 // and checkout all share it — there is no second totals block anymore.
@@ -104,7 +104,7 @@ document.addEventListener('click', (event) => {
   if (!(target instanceof Element)) return;
 
   // Agregar — product data rides on the painted card's dataset (set by
-  // islands/catalog.ts paintCard). The trigger is the card's overlay button
+  // islands/catalog/catalog.ts paintCard). The trigger is the card's overlay button
   // and always adds ONE unit (§4.2D — no stepper).
   const add = target.closest<HTMLElement>('[data-add-to-cart]');
   if (add) {
@@ -129,28 +129,6 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  // Cart line quantity ± — floor at 1; removal is the explicit "Quitar".
-  const step = target.closest<HTMLElement>('[data-cart-qty-step]');
-  if (step) {
-    const row = step.closest<HTMLElement>('[data-cart-line]');
-    const id = row?.dataset.cartLine;
-    const qty = qs<HTMLElement>(row, '[data-line-qty]');
-    if (!id || !qty) return;
-    const current = Number(qty.textContent);
-    if (!Number.isFinite(current)) return;
-    const next = current + (step.getAttribute('data-cart-qty-step') === 'up' ? 1 : -1);
-    if (next < 1) return;
-    updateCartQuantity(id, next);
-    return;
-  }
-
-  const remove = target.closest<HTMLElement>('[data-cart-remove]');
-  if (remove) {
-    const id = remove.closest<HTMLElement>('[data-cart-line]')?.dataset.cartLine;
-    if (id) removeFromCart(id);
-    return;
-  }
-
   // Cancel-sale confirm — sits INSIDE the modal; clears, then closes it.
   const confirm = target.closest<HTMLElement>('[data-cart-cancel-confirm]');
   if (confirm) {
@@ -158,6 +136,32 @@ document.addEventListener('click', (event) => {
     const root = closestAncestor<HTMLElement>(confirm, '[data-modal-root]');
     if (root) closeModal(root);
   }
+});
+
+// Cart lines action dispatcher: stepper ± and remove delegated on the lines container.
+delegateAction(linesEl, 'click', 'data-cart-action', {
+  'step-up': (trigger) => {
+    const row = trigger.closest<HTMLElement>('[data-cart-line]');
+    const id = row?.dataset.cartLine;
+    const qty = qs<HTMLElement>(row, '[data-line-qty]');
+    if (!id || !qty) return;
+    const current = Number(qty.textContent);
+    if (!Number.isFinite(current)) return;
+    updateCartQuantity(id, current + 1);
+  },
+  'step-down': (trigger) => {
+    const row = trigger.closest<HTMLElement>('[data-cart-line]');
+    const id = row?.dataset.cartLine;
+    const qty = qs<HTMLElement>(row, '[data-line-qty]');
+    if (!id || !qty) return;
+    const current = Number(qty.textContent);
+    if (!Number.isFinite(current) || current <= 1) return;
+    updateCartQuantity(id, current - 1);
+  },
+  remove: (trigger) => {
+    const id = trigger.closest<HTMLElement>('[data-cart-line]')?.dataset.cartLine;
+    if (id) removeFromCart(id);
+  },
 });
 
 // Immediate first paint + every store change (badge subscribes separately).
