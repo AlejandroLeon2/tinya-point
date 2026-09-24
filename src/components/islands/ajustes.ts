@@ -24,41 +24,35 @@ import { getAjustes, getColaSync, setAjustes, type Ajustes } from '../../utils/s
 import { formatHora } from '../../utils/format';
 import { mostrarToast } from '../../utils/toast';
 import { isNonEmpty } from '../../utils/validators';
+import { qs, setText, setHidden } from '../../utils/dom';
+import { crearFeedback } from '../../utils/feedback';
+import { crearPendingButton } from '../../utils/pending-button';
 import pkg from '../../../package.json';
 
-const root = document.querySelector<HTMLElement>('[data-ajustes-root]');
+const root = qs<HTMLElement>(document, '[data-ajustes-root]');
 
 if (root) {
-  const form = root.querySelector<HTMLFormElement>('[data-ajustes-form]');
-  const nombreInput = root.querySelector<HTMLInputElement>('[data-ajustes-nombre]');
-  const monedaInput = root.querySelector<HTMLInputElement>('[data-ajustes-moneda]');
-  const igvInput = root.querySelector<HTMLInputElement>('[data-ajustes-igv]');
-  const stockAlertaInput = root.querySelector<HTMLInputElement>('[data-ajustes-stock-alerta]');
-  const errorAlert = root.querySelector<HTMLElement>('[data-alert="ajustes-error"]');
-  const errorText = root.querySelector<HTMLElement>('[data-ajustes-error-text]');
-  const preview = root.querySelector<HTMLElement>('[data-ajustes-preview]');
-  const dirtyBar = root.querySelector<HTMLElement>('[data-ajustes-dirty]');
-  const guardarBtn = root.querySelector<HTMLButtonElement>('[data-ajustes-guardar]');
-  const descartarBtn = root.querySelector<HTMLButtonElement>('[data-ajustes-descartar]');
-  const colaEl = root.querySelector<HTMLElement>('[data-ajustes-cola]');
-  const ultimaSyncEl = root.querySelector<HTMLElement>('[data-ajustes-ultima-sync]');
-  const versionEl = root.querySelector<HTMLElement>('[data-ajustes-version]');
+  const form = qs<HTMLFormElement>(root, '[data-ajustes-form]');
+  const nombreInput = qs<HTMLInputElement>(root, '[data-ajustes-nombre]');
+  const monedaInput = qs<HTMLInputElement>(root, '[data-ajustes-moneda]');
+  const igvInput = qs<HTMLInputElement>(root, '[data-ajustes-igv]');
+  const stockAlertaInput = qs<HTMLInputElement>(root, '[data-ajustes-stock-alerta]');
+  const errorAlert = qs<HTMLElement>(root, '[data-alert="ajustes-error"]');
+  const errorText = qs<HTMLElement>(root, '[data-ajustes-error-text]');
+  const preview = qs<HTMLElement>(root, '[data-ajustes-preview]');
+  const dirtyBar = qs<HTMLElement>(root, '[data-ajustes-dirty]');
+  const guardarBtn = qs<HTMLButtonElement>(root, '[data-ajustes-guardar]');
+  const descartarBtn = qs<HTMLButtonElement>(root, '[data-ajustes-descartar]');
+  const colaEl = qs<HTMLElement>(root, '[data-ajustes-cola]');
+  const ultimaSyncEl = qs<HTMLElement>(root, '[data-ajustes-ultima-sync]');
+  const versionEl = qs<HTMLElement>(root, '[data-ajustes-version]');
 
   // Snapshot of the values loaded at boot — the dirty bar compares against
   // THIS, never against storage (storage only changes on save).
   let cargados: Ajustes = getAjustes();
 
-  function mostrarOk(mensaje: string): void {
-    // Success = ephemeral toast (refactorUI §2.3 D9 — no layout shift);
-    // errors keep the persistent Alert below.
-    mostrarToast(mensaje);
-    if (errorAlert) errorAlert.hidden = true;
-  }
-
-  function mostrarError(mensaje: string): void {
-    if (errorText) errorText.textContent = mensaje;
-    if (errorAlert) errorAlert.hidden = false;
-  }
+  const feedback = crearFeedback(errorAlert, errorText);
+  const pendingBtn = crearPendingButton(guardarBtn, 'Guardando…');
 
   function actuales(): Ajustes {
     return {
@@ -83,7 +77,7 @@ if (root) {
   }
 
   function pintarSuciedad(): void {
-    if (dirtyBar) dirtyBar.hidden = !hayCambios();
+    setHidden(dirtyBar, !hayCambios());
   }
 
   // Live preview from the TYPED values; falls back to the loaded moneda
@@ -101,20 +95,18 @@ if (root) {
 
   function pintarSesion(): void {
     const cola = getColaSync();
-    if (colaEl) {
-      colaEl.textContent = `${cola.length} pendiente${cola.length === 1 ? '' : 's'}`;
-    }
+    setText(colaEl, `${cola.length} pendiente${cola.length === 1 ? '' : 's'}`);
     if (ultimaSyncEl) {
       if (cola.length === 0) {
-        ultimaSyncEl.textContent = 'Sin pendientes';
+        setText(ultimaSyncEl, 'Sin pendientes');
       } else {
         // deviation y: no last-success key — latest local attempt/creation.
         const ultima = cola.reduce((a, b) => ((b.ultimo_intento ?? b.creado) >= (a.ultimo_intento ?? a.creado) ? b : a));
         const iso = ultima.ultimo_intento ?? ultima.creado;
-        ultimaSyncEl.textContent = `${formatHora(iso)} (último intento)`;
+        setText(ultimaSyncEl, `${formatHora(iso)} (último intento)`);
       }
     }
-    if (versionEl) versionEl.textContent = `v${pkg.version}`;
+    setText(versionEl, `v${pkg.version}`);
   }
 
   function llenar(): void {
@@ -137,7 +129,7 @@ if (root) {
     form?.reset(); // back to the DOM defaults, then refill from the snapshot
     llenar();
     if (form) limpiarErroresForm(form);
-    if (errorAlert) errorAlert.hidden = true;
+    feedback.ocultar();
     nombreInput?.focus();
   });
 
@@ -194,23 +186,17 @@ if (root) {
 
     // P0 (plan-form-ux.md): block re-entry + pending state while the save
     // and the reload window run — pattern of login-form.ts.
-    if (guardarBtn) {
-      guardarBtn.disabled = true;
-      guardarBtn.textContent = 'Guardando…';
-    }
+    if (!pendingBtn.iniciar()) return;
     try {
       setAjustes(ajustes);
     } catch {
       // write() fail-softs internally, but never leave the button stuck.
-      if (guardarBtn) {
-        guardarBtn.disabled = false;
-        guardarBtn.textContent = 'Guardar ajustes';
-      }
-      mostrarError('No se pudieron guardar los ajustes. Intentá de nuevo.');
+      pendingBtn.finalizar();
+      feedback.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
       return;
     }
 
-    mostrarOk('Ajustes guardados — recargando…');
+    feedback.ok('Ajustes guardados — recargando…');
     // Reload so every already-painted price/label re-reads the new settings
     // (static HTML was built with the defaults; islands repaint on load).
     window.setTimeout(() => window.location.reload(), 900);
