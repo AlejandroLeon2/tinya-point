@@ -14,35 +14,39 @@
 import { discardFailed, retryFailed, subscribeQueue } from '../../stores/syncQueue';
 import { formatFecha } from '../../utils/format';
 import { closeModal, openModal } from '../../utils/modal';
+import { qs, setText, setHidden } from '../../utils/dom';
 
-const pendingEl = document.querySelector<HTMLElement>('[data-sync-pending]');
-const countEl = document.querySelector<HTMLElement>('[data-sync-count]');
+const pendingEl = qs<HTMLElement>(document, '[data-sync-pending]');
+const countEl = qs<HTMLElement>(document, '[data-sync-count]');
 
-const root = document.querySelector<HTMLElement>('[data-sync-root]');
-const dangerEl = root?.querySelector<HTMLElement>('[data-alert="sync-danger"]');
-const detailEl = root?.querySelector<HTMLElement>('[data-sync-detail]');
-const retryBtn = root?.querySelector<HTMLElement>('[data-sync-retry]');
-const discardBtn = root?.querySelector<HTMLElement>('[data-sync-discard]');
-const confirmBtn = root?.querySelector<HTMLElement>('[data-sync-confirm-discard]');
-const modal = root?.querySelector<HTMLElement>('[data-modal-root="sync-detail"]');
+const root = qs<HTMLElement>(document, '[data-sync-root]');
+const dangerEl = qs<HTMLElement>(root, '[data-alert="sync-danger"]');
+const detailEl = qs<HTMLElement>(root, '[data-sync-detail]');
+const retryBtn = qs<HTMLElement>(root, '[data-sync-retry]');
+const discardBtn = qs<HTMLElement>(root, '[data-sync-discard]');
+const confirmBtn = qs<HTMLElement>(root, '[data-sync-confirm-discard]');
+const modal = qs<HTMLElement>(root, '[data-modal-root="sync-detail"]');
 
 if (pendingEl || dangerEl) {
   subscribeQueue((items) => {
     const waiting = items.filter((i) => i.estado === 'pendiente' || i.estado === 'enviando');
     const failed = items.filter((i) => i.estado === 'error_permanente');
 
-    if (pendingEl) pendingEl.hidden = waiting.length === 0;
-    if (countEl) countEl.textContent = String(waiting.length);
-    if (dangerEl) dangerEl.hidden = failed.length === 0;
+    setHidden(pendingEl, waiting.length === 0);
+    setText(countEl, String(waiting.length));
+    setHidden(dangerEl, failed.length === 0);
 
     // One plain line per failed item: date, what it was, how many attempts.
     if (detailEl) {
-      detailEl.textContent = failed
-        .map((item) => {
-          const que = item.tipo === 'registrarVenta' ? 'Venta' : 'Stock';
-          return `${formatFecha(item.creado)} — ${que} — intentos: ${item.intentos}`;
-        })
-        .join('\n');
+      setText(
+        detailEl,
+        failed
+          .map((item) => {
+            const que = item.tipo === 'registrarVenta' ? 'Venta' : 'Stock';
+            return `${formatFecha(item.creado)} — ${que} — intentos: ${item.intentos}`;
+          })
+          .join('\n'),
+      );
     }
   });
 
