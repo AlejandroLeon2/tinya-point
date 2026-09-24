@@ -27,22 +27,24 @@ import {
   type CatalogoCache,
   type Producto,
 } from '../../utils/storage';
+import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, debounce } from '../../utils/dom';
+import { esDesktop } from '../../utils/media';
 
-const grid = document.querySelector<HTMLElement>('[data-catalog-grid]');
-const template = document.querySelector<HTMLTemplateElement>('[data-card-template]');
-const searchInput = document.querySelector<HTMLInputElement>('[data-catalog-search]');
-const categoryGroup = document.querySelector<HTMLElement>('[data-catalog-category]');
-const chipTemplate = document.querySelector<HTMLTemplateElement>('[data-category-chip-template]');
-const staleBox = document.querySelector<HTMLElement>('[data-catalog-stale]');
-const staleText = document.querySelector<HTMLElement>('[data-catalog-stale-text]');
-const refreshBtn = document.querySelector<HTMLButtonElement>('[data-catalog-refresh]');
-const emptyCatalog = document.querySelector<HTMLElement>('[data-empty-state="empty-catalog"]');
-const noResults = document.querySelector<HTMLElement>('[data-empty-state="no-results"]');
-const skeleton = document.querySelector<HTMLElement>('[data-catalog-skeleton]');
-const pagination = document.querySelector<HTMLElement>('[data-catalog-pagination]');
-const rangeText = document.querySelector<HTMLElement>('[data-catalog-range]');
-const prevBtn = document.querySelector<HTMLButtonElement>('[data-catalog-prev]');
-const nextBtn = document.querySelector<HTMLButtonElement>('[data-catalog-next]');
+const grid = qs<HTMLElement>(document, '[data-catalog-grid]');
+const template = qs<HTMLTemplateElement>(document, '[data-card-template]');
+const searchInput = qs<HTMLInputElement>(document, '[data-catalog-search]');
+const categoryGroup = qs<HTMLElement>(document, '[data-catalog-category]');
+const chipTemplate = qs<HTMLTemplateElement>(document, '[data-category-chip-template]');
+const staleBox = qs<HTMLElement>(document, '[data-catalog-stale]');
+const staleText = qs<HTMLElement>(document, '[data-catalog-stale-text]');
+const refreshBtn = qs<HTMLButtonElement>(document, '[data-catalog-refresh]');
+const emptyCatalog = qs<HTMLElement>(document, '[data-empty-state="empty-catalog"]');
+const noResults = qs<HTMLElement>(document, '[data-empty-state="no-results"]');
+const skeleton = qs<HTMLElement>(document, '[data-catalog-skeleton]');
+const pagination = qs<HTMLElement>(document, '[data-catalog-pagination]');
+const rangeText = qs<HTMLElement>(document, '[data-catalog-range]');
+const prevBtn = qs<HTMLButtonElement>(document, '[data-catalog-prev]');
+const nextBtn = qs<HTMLButtonElement>(document, '[data-catalog-next]');
 
 // Visual pagination (plan-productos-v2 D1): client-side chunks over the
 // already-filtered list. No API, no storage, no server paging.
@@ -70,10 +72,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   }
 
   function paintChipSelection(): void {
-    for (const chip of chipsEl.querySelectorAll<HTMLElement>('[data-category-value]')) {
-      const value = chip.getAttribute('data-category-value') ?? '';
-      chip.setAttribute('aria-pressed', String(value === selectedCategory));
-    }
+    selectChip(chipsEl, 'data-category-value', selectedCategory);
   }
 
   function populateCategories(items: Producto[]): void {
@@ -85,16 +84,15 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     const hasPrevious = selectedCategory === '' || categories.includes(selectedCategory);
     if (!hasPrevious) selectedCategory = '';
 
-    chipsEl.querySelectorAll<HTMLElement>('[data-category-value]').forEach((chip) => {
+    qsa<HTMLElement>(chipsEl, '[data-category-value]').forEach((chip) => {
       if ((chip.getAttribute('data-category-value') ?? '') !== '') chip.remove();
     });
     for (const categoria of categories) {
-      const first = chipTpl.content.firstElementChild;
-      if (!first) continue;
-      const chip = first.cloneNode(true) as HTMLElement;
+      const chip = cloneTemplate(chipTpl);
+      if (!chip) continue;
       chip.setAttribute('data-category-value', categoria);
-      const label = chip.querySelector<HTMLElement>('[data-chip-label]');
-      if (label) label.textContent = categoria;
+      const label = qs<HTMLElement>(chip, '[data-chip-label]');
+      setText(label, categoria);
       chipsEl.append(chip);
     }
     paintChipSelection();
@@ -120,20 +118,19 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   }
 
   function paintCard(product: Producto): HTMLElement | null {
-    const first = cardTemplate.content.firstElementChild;
-    if (!first) return null;
-    const node = first.cloneNode(true) as HTMLElement;
+    const node = cloneTemplate(cardTemplate);
+    if (!node) return null;
 
-    const name = node.querySelector<HTMLElement>('[data-card-name]');
-    const price = node.querySelector<HTMLElement>('[data-card-price]');
-    const stock = node.querySelector<HTMLElement>('[data-card-stock]');
-    const low = node.querySelector<HTMLElement>('[data-card-low]');
-    const addBtn = node.querySelector<HTMLButtonElement>('[data-add-to-cart]');
-    const img = node.querySelector<HTMLImageElement>('[data-card-img]');
-    const placeholder = node.querySelector<HTMLElement>('[data-card-placeholder]');
+    const name = qs<HTMLElement>(node, '[data-card-name]');
+    const price = qs<HTMLElement>(node, '[data-card-price]');
+    const stock = qs<HTMLElement>(node, '[data-card-stock]');
+    const low = qs<HTMLElement>(node, '[data-card-low]');
+    const addBtn = qs<HTMLButtonElement>(node, '[data-add-to-cart]');
+    const img = qs<HTMLImageElement>(node, '[data-card-img]');
+    const placeholder = qs<HTMLElement>(node, '[data-card-placeholder]');
 
-    if (name) name.textContent = product.nombre;
-    if (price) price.textContent = formatCurrency(product.precio);
+    setText(name, product.nombre);
+    setText(price, formatCurrency(product.precio));
     // The overlay button carries the accessible name (§4.2D).
     if (addBtn) addBtn.setAttribute('aria-label', `Agregar ${product.nombre}`);
 
@@ -147,15 +144,15 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
     // stock 0 → visible TEXT "Agotado" (template already sets copy + tone);
     // never color alone (stilesbase §5.2).
-    if (stock) stock.hidden = product.stock > 0;
+    setHidden(stock, product.stock > 0);
 
     // Low stock (< ajustes.stock_alerta_min, > 0) → warning tag "Quedan N"
     // (refactorUI §4.2D) — text + tone, painted via textContent.
     if (low) {
       const umbral = getAjustes().stock_alerta_min;
       const showLow = product.stock > 0 && product.stock < umbral;
-      low.hidden = !showLow;
-      if (showLow) low.textContent = `Quedan ${formatNumero(product.stock)}`;
+      setHidden(low, !showLow);
+      if (showLow) setText(low, `Quedan ${formatNumero(product.stock)}`);
     }
 
     // stock 0 → the add overlay is disabled too (refactorUI §4.2D,
@@ -183,7 +180,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
           'error',
           () => {
             img.classList.add('opacity-0');
-            placeholder.hidden = false;
+            setHidden(placeholder, false);
           },
           { once: true },
         );
@@ -191,7 +188,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
           'load',
           () => {
             img.classList.remove('opacity-0');
-            placeholder.hidden = true;
+            setHidden(placeholder, true);
           },
           { once: true },
         );
@@ -205,11 +202,11 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   function updatePagination(total: number, totalPages: number): void {
     if (!pagination || !rangeText || !prevBtn || !nextBtn) return;
     // One page (or nothing) → the controls only add noise.
-    pagination.hidden = totalPages <= 1;
+    setHidden(pagination, totalPages <= 1);
     if (totalPages <= 1) return;
     const from = page * PAGE_SIZE + 1;
     const to = Math.min((page + 1) * PAGE_SIZE, total);
-    rangeText.textContent = `${formatNumero(from)}–${formatNumero(to)} de ${formatNumero(total)}`;
+    setText(rangeText, `${formatNumero(from)}–${formatNumero(to)} de ${formatNumero(total)}`);
     prevBtn.disabled = page === 0;
     nextBtn.disabled = page >= totalPages - 1;
   }
@@ -223,7 +220,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     page = Math.min(Math.max(page, 0), totalPages - 1);
 
     // Remove only previously painted cards — template and coexistents stay.
-    gridEl.querySelectorAll('[data-product-card]').forEach((card) => card.remove());
+    qsa(gridEl, '[data-product-card]').forEach((card) => card.remove());
     painted.clear();
     const start = page * PAGE_SIZE;
     for (const product of list.slice(start, start + PAGE_SIZE)) {
@@ -236,23 +233,23 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
     // First real paint done → the loading skeletons have served their purpose
     // (T2.9: shown from build, never competing with the empty states).
-    if (skeleton) skeleton.hidden = true;
+    setHidden(skeleton, true);
 
     const isEmptyCatalog = products.length === 0;
-    if (emptyCatalog) emptyCatalog.hidden = !isEmptyCatalog;
-    if (noResults) noResults.hidden = !(products.length > 0 && list.length === 0);
+    setHidden(emptyCatalog, !isEmptyCatalog);
+    setHidden(noResults, !(products.length > 0 && list.length === 0));
     updatePagination(list.length, totalPages);
   }
 
   function setStale(timestamp: number | null): void {
     if (!staleBox || !staleText) return;
     if (timestamp === null) {
-      staleBox.hidden = true;
+      setHidden(staleBox, true);
       return;
     }
     const minutes = Math.max(1, Math.round((Date.now() - timestamp) / 60_000));
-    staleText.textContent = `Catálogo de hace ${formatNumero(minutes)} min`;
-    staleBox.hidden = false;
+    setText(staleText, `Catálogo de hace ${formatNumero(minutes)} min`);
+    setHidden(staleBox, false);
   }
 
   function setData(items: Producto[]): void {
@@ -285,7 +282,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     // sale (base.md §6). Stale data gets the extras.md §6 notice; no data at
     // all stays on the "Todavía no hay productos cargados" empty state.
     if (previous && previous.productos.length > 0) setStale(previous.timestamp);
-    else if (skeleton) skeleton.hidden = true; // nothing to load → empties own the screen
+    else setHidden(skeleton, true); // nothing to load → empties own the screen
   }
 
   async function init(): Promise<void> {
@@ -307,12 +304,13 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
   // Search: local-only debounced filter — NO api call in input/key handlers
   // (plan-features Fase 2 gate, appscriptbase.md §5.3).
-  let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-  searchEl.addEventListener('input', () => {
-    page = 0;
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(render, 200);
-  });
+  searchEl.addEventListener(
+    'input',
+    debounce(() => {
+      page = 0;
+      render();
+    }, 200),
+  );
 
   // Keyboard/POS (§4.2D): Enter with exactly ONE visible result adds it —
   // barcode readers type + Enter; Esc clears the query.
@@ -321,10 +319,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
       event.preventDefault();
       const only = visibleProducts();
       if (only.length === 1) {
-        painted
-          .get(only[0].id)
-          ?.querySelector<HTMLButtonElement>('[data-add-to-cart]')
-          ?.click();
+        qs<HTMLButtonElement>(painted.get(only[0].id) ?? null, '[data-add-to-cart]')?.click();
       }
       return;
     }
@@ -337,9 +332,8 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   });
 
   // F2 → focus search (desktop only, §4.2E).
-  const desktop = window.matchMedia('(min-width: 768px)');
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'F2' || !desktop.matches) return;
+    if (event.key !== 'F2' || !esDesktop()) return;
     event.preventDefault();
     searchEl.focus();
     searchEl.select();
