@@ -5,14 +5,15 @@
 // One banner per page, queried by data attribute — no fixed ids, no globals.
 
 import { startNetworkListener, subscribeNetworkStatus } from '../../stores/session';
+import { qs, setHidden } from '../../utils/dom';
 
-const banner = document.querySelector<HTMLElement>('[data-offline-banner]');
+const banner = qs<HTMLElement>(document, '[data-offline-banner]');
 
 if (banner) {
   startNetworkListener();
   // subscribeNetworkStatus fires immediately with the current status, so the
   // banner reflects a page loaded while already offline.
   subscribeNetworkStatus((status) => {
-    banner.hidden = status === 'online';
+    setHidden(banner, status === 'online');
   });
 }
