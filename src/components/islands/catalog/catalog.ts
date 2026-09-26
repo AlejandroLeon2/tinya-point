@@ -28,6 +28,9 @@ import {
 import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, debounce } from '../../../utils/dom';
 import { esDesktop } from '../../../utils/media';
 import { refreshCatalogoFromApi } from '../../../utils/catalog-cache';
+import { normalizeSearchQuery } from '../../../utils/search-normalize';
+import { createVoiceSearch, isSpeechSupported, type VoiceSearch } from '../../../utils/speech';
+import { mostrarToast } from '../../../utils/toast';
 
 const grid = qs<HTMLElement>(document, '[data-catalog-grid]');
 const template = qs<HTMLTemplateElement>(document, '[data-card-template]');
@@ -40,6 +43,8 @@ const refreshBtn = qs<HTMLButtonElement>(document, '[data-catalog-refresh]');
 const emptyCatalog = qs<HTMLElement>(document, '[data-empty-state="empty-catalog"]');
 const noResults = qs<HTMLElement>(document, '[data-empty-state="no-results"]');
 const skeleton = qs<HTMLElement>(document, '[data-catalog-skeleton]');
+const voiceBtn = qs<HTMLButtonElement>(document, '[data-catalog-voice]');
+const voiceStatus = qs<HTMLElement>(document, '[data-catalog-voice-status]');
 const pagination = qs<HTMLElement>(document, '[data-catalog-pagination]');
 const rangeText = qs<HTMLElement>(document, '[data-catalog-range]');
 const prevBtn = qs<HTMLButtonElement>(document, '[data-catalog-prev]');
@@ -67,7 +72,13 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   const painted = new Map<string, HTMLElement>();
 
   function buildIndex(items: Producto[]): void {
-    fuse = new Fuse(items, { keys: ['nombre', 'categoria'], threshold: 0.3 });
+    fuse = new Fuse(items, {
+      keys: [
+        { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
+        { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+      ],
+      threshold: 0.35,
+    });
   }
 
   function paintChipSelection(): void {
@@ -105,7 +116,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   }
 
   function visibleProducts(): Producto[] {
-    const query = searchEl.value.trim();
+    const query = normalizeSearchQuery(searchEl.value);
 
     let base = products;
     if (query && fuse) {
@@ -290,6 +301,37 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     await refreshFromApi(cached);
   }
 
+  // Voice search (plan-speak-search.md Fase 3): the mic only WRITES into
+  // this same input and dispatches `input` — one search path for both (D1).
+  let voice: VoiceSearch | null = null;
+  const defaultPlaceholder = searchEl.placeholder;
+  if (voiceBtn && isSpeechSupported()) {
+    setHidden(voiceBtn, false);
+    voice = createVoiceSearch({
+      onText: (text) => {
+        searchEl.value = text;
+        searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+        searchEl.focus();
+      },
+      onState: (state) => {
+        const isListening = state === 'listening';
+        const label = isListening ? 'Detener búsqueda por voz' : 'Buscar por voz';
+        voiceBtn.setAttribute('aria-label', label);
+        voiceBtn.setAttribute('title', label);
+        voiceBtn.classList.toggle('text-danger', isListening);
+        voiceBtn.classList.toggle('animate-pulse', isListening);
+        voiceBtn.classList.toggle('text-text-muted', !isListening);
+        searchEl.placeholder = isListening ? 'Escuchando…' : defaultPlaceholder;
+        setHidden(voiceStatus, !isListening);
+      },
+      onError: mostrarToast,
+    });
+    voiceBtn.addEventListener('click', () => {
+      if (voice?.getState() === 'listening') voice.cancel();
+      else voice?.start();
+    });
+  }
+
   // Search: local-only debounced filter — NO api call in input/key handlers
   // (plan-features Fase 2 gate, appscriptbase.md §5.3).
   searchEl.addEventListener(
@@ -303,8 +345,19 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   // Keyboard/POS (§4.2D): Enter with exactly ONE visible result adds it —
   // barcode readers type + Enter; Esc clears the query.
   searchEl.addEventListener('keydown', (event) => {
+    // Listening first (plan-speak-search.md §Behavior): Esc cancels WITHOUT
+    // clearing; Enter stops the session instead of adding a card.
+    if (event.key === 'Escape' && voice?.getState() === 'listening') {
+      event.preventDefault();
+      voice.cancel();
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
+      if (voice?.getState() === 'listening') {
+        voice.stop();
+        return;
+      }
       const only = visibleProducts();
       if (only.length === 1) {
         qs<HTMLButtonElement>(painted.get(only[0].id) ?? null, '[data-add-to-cart]')?.click();

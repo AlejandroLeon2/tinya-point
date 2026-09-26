@@ -37,11 +37,33 @@ import Skeleton from "./Skeleton.astro";
 				autocomplete="off"
 			/>
 			<Kbd
-				class="absolute right-3 top-1/2 hidden -translate-y-1/2 md:inline-flex"
+				class="absolute right-14 top-1/2 hidden -translate-y-1/2 md:inline-flex"
 				>F2</Kbd
 			>
+			<!-- Voice search (plan-speak-search.md Fase 3): hidden until the
+			     island confirms Speech Recognition support (D8). -->
+			<button
+				data-catalog-voice
+				type="button"
+				hidden
+				aria-label="Buscar por voz"
+				title="Buscar por voz"
+				class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted"
+			>
+				<Icon name="mic" class="h-6 w-6" />
+			</button>
 		</span>
 	</label>
+
+	<!-- "Escuchando…" indicator (aria-live: announced when revealed). -->
+	<p
+		data-catalog-voice-status
+		hidden
+		aria-live="polite"
+		class="flex items-center gap-2 text-base text-text-muted"
+	>
+		<span aria-hidden="true">●</span> Escuchando…
+	</p>
 
 	<!-- Category chips (§4.2D): wrapper KEEPS the data-catalog-category hook
 	     (the island reads the selected data-category-value from it). First
