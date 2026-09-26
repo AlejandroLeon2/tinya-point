@@ -53,6 +53,8 @@ import { mensajeDeErrorApi } from '../../../utils/api-result';
 // list — same policy as the POS catalog (appscriptbase.md §5.3): the input
 // handler NEVER touches the network, it only re-filters in memory.
 import Fuse from 'fuse.js';
+import { normalizeSearchQuery } from '../../../utils/search-normalize';
+import { createVoiceSearch, isSpeechSupported } from '../../../utils/speech';
 
 const root = qs<HTMLElement>(document, '[data-productos-root]');
 
@@ -96,6 +98,7 @@ if (root) {
   // query result is empty, the catalog itself may be full.
   const sinResultados = qs<HTMLElement>(root, '[data-empty-state="no-results"]');
   const searchInput = qs<HTMLInputElement>(root, '[data-product-search]');
+  const voiceBtn = qs<HTMLButtonElement>(root, '[data-product-voice]');
   // Toolbar (T3.2)
   const filterWrap = qs<HTMLElement>(root, '[data-product-filter]');
   const catFilter = qs<HTMLSelectElement>(root, '[data-product-catfilter]');
@@ -367,10 +370,16 @@ if (root) {
 
     // Search filter (plan-reponer-buscar.md): index rebuilt here so every
     // mutation (create/edit/restore) is searchable without extra wiring.
-    const consulta = busqueda.trim();
+    const consulta = busqueda;
     let fuse: Fuse<ProductoAdmin> | null = null;
     if (consulta) {
-      fuse = new Fuse(productos, { keys: ['nombre', 'categoria'], threshold: 0.3 });
+      fuse = new Fuse(productos, {
+        keys: [
+          { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
+          { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+        ],
+        threshold: 0.35,
+      });
     }
     const base = consulta && fuse ? fuse.search(consulta).map((r) => r.item) : productos;
 
@@ -683,11 +692,40 @@ if (root) {
   searchInput?.addEventListener(
     'input',
     debounce(() => {
-      busqueda = searchInput.value;
+      busqueda = normalizeSearchQuery(searchInput.value);
       visibleCount = BLOQUE;
       render();
     }, 200),
   );
+
+  // Voice search (plan-speak-search.md Fase 4): same service as the POS —
+  // the mic writes into this input and dispatches `input` (D1).
+  const defaultPlaceholder = searchInput?.placeholder ?? '';
+  if (searchInput && voiceBtn && isSpeechSupported()) {
+    setHidden(voiceBtn, false);
+    const voice = createVoiceSearch({
+      onText: (text) => {
+        searchInput.value = text;
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+        searchInput.focus();
+      },
+      onState: (state) => {
+        const isListening = state === 'listening';
+        const label = isListening ? 'Detener búsqueda por voz' : 'Buscar por voz';
+        voiceBtn.setAttribute('aria-label', label);
+        voiceBtn.setAttribute('title', label);
+        voiceBtn.classList.toggle('text-danger', isListening);
+        voiceBtn.classList.toggle('animate-pulse', isListening);
+        voiceBtn.classList.toggle('text-text-muted', !isListening);
+        searchInput.placeholder = isListening ? 'Escuchando…' : defaultPlaceholder;
+      },
+      onError: mostrarToast,
+    });
+    voiceBtn.addEventListener('click', () => {
+      if (voice.getState() === 'listening') voice.cancel();
+      else voice.start();
+    });
+  }
 
   // T3.3: next block of 50 (button hides itself when nothing remains).
   moreBtn?.addEventListener('click', () => {

@@ -21,6 +21,7 @@ import Chip from '../ui/Chip.astro';
 import ChipGroup from '../ui/ChipGroup.astro';
 import DataTable from '../ui/DataTable.astro';
 import EmptyState from '../ui/EmptyState.astro';
+import Icon from '../ui/Icon.astro';
 import Modal from '../ui/Modal.astro';
 import ProductForm from '../ui/ProductForm.astro';
 import ProductRow from '../ui/ProductRow.astro';
@@ -36,14 +37,28 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 	<!-- Toolbar (T3.2): search + estado chips + categoría + orden + counter.
 	     Todos los filtros locales, cero red (appscriptbase §5.3). -->
 	<div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-		<input
-			data-product-search
-			type="search"
-			class="input-field md:max-w-64"
-			placeholder="Buscar por nombre o categoría…"
-			aria-label="Buscar productos"
-			autocomplete="off"
-		/>
+		<span class="relative w-full md:max-w-64">
+			<input
+				data-product-search
+				type="search"
+				class="input-field pr-14"
+				placeholder="Buscar por nombre o categoría…"
+				aria-label="Buscar productos"
+				autocomplete="off"
+			/>
+			<!-- Voice search (plan-speak-search.md Fase 4): hidden until
+			     the island confirms Speech Recognition support. -->
+			<button
+				data-product-voice
+				type="button"
+				hidden
+				aria-label="Buscar por voz"
+				title="Buscar por voz"
+				class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted"
+			>
+				<Icon name="mic" class="h-6 w-6" />
+			</button>
+		</span>
 		<div data-product-filter class="min-w-0">
 			<ChipGroup label="Filtrar por estado">
 				<Chip data-filter-value="" aria-pressed="true">Todos</Chip>
