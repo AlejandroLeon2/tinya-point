@@ -1,7 +1,11 @@
 // Sale detail from the LOCAL historial (plan-mejoras-2.md Fase 3, decision
 // D3; comprobante redesign T3.6): static page + ?id= because getStaticPaths
-// per venta is impossible with output: "static" (gotcha G1). Zero API
-// (base.md §7). Totals: the subtotal row renders ONLY when the snapshot
+// per venta is impossible with output: "static" (gotcha G1). First paint is
+// always the local snapshot (nothing waits on the network); when the id is
+// NOT in the local list — a sale made on another device, or a cleared cache
+// — one background merge (§4.15, forced past the TTL) can still recover it
+// from the Sheet before the empty state stands (utils/historial-sync.ts).
+// Totals: the subtotal row renders ONLY when the snapshot
 // carries it (gotcha G9 — sales from before Fase 3 show no subtotal, no
 // migration); IGV always renders, derived from the snapshot when present and
 // from total / (1 + tasa) (inverse of calcTotal) otherwise — that fallback
@@ -20,7 +24,8 @@
 // text always via textContent.
 
 import { formatCurrency, formatFecha, formatHora } from '../../../utils/format';
-import { getAjustes, getColaSync, getHistorialVentas } from '../../../utils/storage';
+import { getAjustes, getColaSync, getHistorialVentas, type VentaLocal } from '../../../utils/storage';
+import { sincronizarHistorial } from '../../../utils/historial-sync';
 import { calcTax, etiquetaIgv, getTaxRate } from '../../../utils/tax';
 import { qs, setText, setHidden, cloneTemplate, setPillState } from '../../../utils/dom';
 import { METODO_LABEL } from '../../../utils/metodos';
@@ -53,15 +58,22 @@ if (root) {
   // METODO_LABEL imported from utils/metodos (D12 — shared with historial.ts).
 
   const id = new URLSearchParams(window.location.search).get('id');
-  const venta = id ? getHistorialVentas().find((v) => v.id_venta === id) : undefined;
 
-  if (!venta) {
-    // Missing or unknown id: hide the detail + its actions, reveal the empty
-    // state (which carries its own "Volver al historial" CTA).
+  // Missing or unknown id: hide the detail + its actions, reveal the empty
+  // state (which carries its own "Volver al historial" CTA).
+  function mostrarNoEncontrada(): void {
     setHidden(contenido, true);
     setHidden(acciones, true);
     setHidden(noEncontrada, false);
-  } else {
+  }
+
+  // Paint the whole receipt. Re-runnable: lines are cleared first so a
+  // late recovery (empty state → real sale) never duplicates rows.
+  function pintar(venta: VentaLocal): void {
+    setHidden(noEncontrada, true);
+    setHidden(contenido, false);
+    setHidden(acciones, false);
+
     setText(fechaEl, formatFecha(venta.fecha_hora));
     setText(horaEl, formatHora(venta.fecha_hora));
     setText(metodoEl, METODO_LABEL[venta.metodo_pago] ?? venta.metodo_pago);
@@ -83,6 +95,7 @@ if (root) {
     }
 
     if (linesEl && template) {
+      linesEl.replaceChildren();
       for (const item of venta.items) {
         const linea = cloneTemplate(template);
         if (!linea) continue;
@@ -107,6 +120,25 @@ if (root) {
       setText(igvEl, formatCurrency(igv));
     }
     setText(totalEl, formatCurrency(venta.total));
+  }
+
+  const venta = id ? getHistorialVentas().find((v) => v.id_venta === id) : undefined;
+
+  if (venta) {
+    pintar(venta);
+  } else {
+    mostrarNoEncontrada();
+    // The id may belong to a sale this device never cached (another device
+    // sold it). ONE forced merge — bypasses TTL_HISTORIAL_MS — can bring it
+    // back from the Sheet; if it does, repaint. A genuinely unknown id, an
+    // offline device or a backend without §4.15 keeps the empty state:
+    // nothing throws, nothing flashes.
+    if (id) {
+      void sincronizarHistorial({ forzar: true }).then(() => {
+        const recuperada = getHistorialVentas().find((v) => v.id_venta === id);
+        if (recuperada) pintar(recuperada);
+      });
+    }
   }
 
   // Imprimir (T3.6): the @media print sheet in global.css isolates this

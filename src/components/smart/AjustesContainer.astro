@@ -11,6 +11,7 @@
 // TabBar (z-40) via safe-area offset and drops to `md:bottom-0`.
 import Alert from '../ui/Alert.astro';
 import AjustesForm from '../ui/AjustesForm.astro';
+import Modal from '../ui/Modal.astro';
 ---
 <section data-ajustes-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
 	<!-- Errors keep the persistent Alert; success goes through the ephemeral
@@ -46,7 +47,23 @@ import AjustesForm from '../ui/AjustesForm.astro';
 		<div class="mt-1 flex flex-wrap gap-3">
 			<!-- Handled globally by islands/runtime/sidebar.ts (data-logout). -->
 			<button type="button" data-logout class="btn btn-secondary">Cerrar sesión</button>
+			<!-- Opens the confirmation below; the island clears on CONFIRM.
+			     Disabled while offline (see the note): with an empty catalog
+			     cache the POS has nothing to sell until the network returns. -->
+			<button
+				type="button"
+				data-ajustes-limpiar-cache
+				data-modal-open="confirmar-limpiar-cache"
+				class="btn btn-secondary">Limpiar caché</button>
 		</div>
+		<p class="text-base text-text-muted">
+			Vacía el catálogo y la frescura del historial guardados en este
+			dispositivo — se vuelven a descargar solos. No toca tu sesión, tus
+			ajustes, tus ventas ni la cola de sincronización.
+		</p>
+		<p data-ajustes-cache-offline hidden class="text-base font-semibold text-warning">
+			Necesitás conexión para limpiar la caché
+		</p>
 	</section>
 
 	<!-- T3.10: sticky dirty bar — visible ⇔ cambios sin guardar. The save
@@ -69,8 +86,36 @@ import AjustesForm from '../ui/AjustesForm.astro';
 			</div>
 		</div>
 	</div>
+
+	<!-- Confirmation for the cache clear (mapa-ui-ux §10.8: destructive /
+	     double-confirm modals always go through ui/Modal + modal-controller).
+	     Center variant, primary (not danger) action: nothing business-critical
+	     is lost — both keys rebuild from the API. -->
+	<Modal modalKey="confirmar-limpiar-cache" title="¿Limpiar la caché?">
+		<p class="text-base text-text">
+			Se descarga de vuelta el catálogo y la frescura del historial la
+			proxima vez que abras cada pantalla.
+		</p>
+		<p class="text-base text-text-muted">
+			No se borran tus ventas, la cola de sincronización, la sesión ni
+			tus ajustes.
+		</p>
+		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+			Cancelar
+		</button>
+		<button
+			slot="actions"
+			type="button"
+			class="btn btn-primary"
+			data-ajustes-confirmar-limpiar-cache
+			data-modal-close
+		>
+			Sí, limpiar
+		</button>
+	</Modal>
 </section>
 
 <script>
 	import '../islands/settings/ajustes';
+	import '../islands/runtime/modal-controller';
 </script>

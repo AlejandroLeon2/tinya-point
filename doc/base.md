@@ -54,15 +54,19 @@ No usar Tina CMS: asume un editor de contenido dedicado, lo cual no aplica cuand
 | metodo_pago | string | efectivo / tarjeta / yape-plin |
 | sincronizado | boolean | control interno |
 
-Esta hoja es **respaldo/reporte**, no la fuente de verdad operativa (esa es localStorage).
+Esta hoja es **respaldo/reporte**, no la fuente de verdad operativa de la venta en curso (esa es localStorage). Desde `appscriptbase.md` §4.15 es además la fuente de **lectura** de `/historial`: el cliente la mergea con su lista local (unión por `id_venta`, nada local se borra — ver §6 y §7).
 
 ### 2.3 localStorage (cliente)
 
 - `catalogo_cache`: array de productos + `timestamp` de última sincronización
 - `carrito_actual`: items en la venta en curso
-- `historial_ventas`: ventas cerradas localmente
+- `historial_ventas`: ventas cerradas localmente (+ las que trae el merge con el Sheet, §4.15)
 - `cola_sync`: ventas/movimientos de stock pendientes de enviar al Sheet (para modo offline)
+- `cajas`: sesiones de caja — **6ta llave**, `plan-mejoras-2.md` Fase 2 (detalle en §2.4)
 - `ajustes`: datos del negocio (nombre, moneda, tasa de IGV, umbral de alerta de stock) — **7ma llave**, agregada por `plan-productos-v2.md` Fase 5 (D4) y ampliada por `plan-stock.md` Fase 1; defaults aplicados cuando no existe
+- `historial_cache`: solo `timestamp` de la última lectura del historial desde el Sheet — **8ma llave**, agregada por la §4.15. No guarda datos (viven en `historial_ventas`), solo frescura: mientras `ahora − timestamp < 5 min` (`TTL_HISTORIAL_MS`) /historial no vuelve a llamar a la API
+
+Única función de mantenimiento de este bloque: **`storage.limpiarCaches()`** — borra SOLO las dos cachés rebuildables (`catalogo_cache` + `historial_cache`); su único llamante es el botón "Limpiar caché" de `/ajustes` (con confirmación en modal y guardia offline). Las demás llaves son **estado**, no caché, y no se borran desde ninguna UI.
 
 ### 2.4 Google Sheet — hoja "Cajas" (sesiones de apertura/cierre)
 
@@ -202,6 +206,14 @@ Usuario cierra venta → se guarda YA en localStorage (fuente de verdad inmediat
                      → se intenta enviar a Apps Script (registrarVenta + actualizarStock, con el token de sesión)
                      → si falla (sin red, o token vencido → re-login): queda en "cola_sync"
                      → reintentar cola_sync cuando vuelva la conexión (ej. evento 'online', o al abrir la app)
+
+Historial (lectura, appscriptbase.md §4.15):
+Pintar YA desde `historial_ventas` (sin spinner, sin "esperando datos")
+       → en background, si `historial_cache` venció (TTL 5 min) y hay red: POST historialVentas
+       → MERGE por `id_venta` (nunca reemplazar): el Sheet manda en total / metodo_pago / items;
+         lo local conserva subtotal, nombres al momento de la venta y fecha_hora
+       → repintar SOLO si el merge cambió algo; grupos abiertos se preservan
+       → sin red / backend sin §4.15 / error: se queda lo local, se estampa la caché y no se martilla
 ```
 
 Principio clave: **la venta nunca depende de que el Sheet responda**. El Sheet es respaldo/consulta, no bloqueante.
@@ -215,7 +227,7 @@ Principio clave: **la venta nunca depende de que el Sheet responda**. El Sheet e
 - Cálculo de total con impuesto configurable (ej. IGV 18%)
 - Registro de método de pago (efectivo con cálculo de vuelto, tarjeta, yape/plin como simple etiqueta)
 - Cierre de venta: descuenta stock localmente, guarda en historial local, intenta sync a Sheet
-- Historial de ventas del propio dispositivo (agrupado por día con desglose por método, filtrable por fecha, con detalle de cada venta en su ruta)
+- Historial de ventas: pinta **desde el dispositivo** (agrupado por día con desglose por método, filtrable por fecha, con detalle de cada venta en su ruta) y **mergea en background** el log del Sheet (`appscriptbase.md` §4.15) — la primera respuesta es siempre local, no hay espera visible *(26/09/2026: antes decía "del propio dispositivo" con gate de cero API; el Sheet es ahora la fuente de lectura y lo local sigue siendo la fuente de escritura, ver §6)*
 - Reporte básico del día: total vendido, número de ventas, productos más vendidos — **calculado solo sobre datos locales de ese dispositivo** *(23/09/2026: la vista en pantalla —historial agrupado por día + apertura/cierre de caja— pasa a `plan-mejoras-2.md` Fases 2–4 por pedido explícito del dueño e **implementada el mismo día** (historial por día + tarjeta de caja del día); **"productos más vendidos" queda pendiente de decisión del dueño** — no estaba en los 3 pedidos que cubre ese plan; ver `extras.md` §5)*
 - Export manual de historial local a CSV (respaldo ante borrado de caché) *(sigue fuera de esta pasada — `extras.md` §5)*
 - Funcionamiento offline vía PWA: la venta debe poder completarse sin internet

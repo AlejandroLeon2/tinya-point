@@ -31,6 +31,11 @@ export type AccionEscritura =
   | 'actualizarCategoria'
   | 'borrarCategoria';
 export type AccionLectura = 'productos' | 'categorias';
+// Reads that REQUIRE a token (§4.15). They travel over POST — the token
+// never goes in a query string (appscriptbase.md §5.3) — so they are a
+// separate union instead of a GET read, and `llamarApi` accepts both.
+export type AccionLecturaProtegida = 'historialVentas';
+export type AccionPost = AccionEscritura | AccionLecturaProtegida;
 
 // §4.1 GET ?action=productos — public catalog read, light fields only.
 export interface ProductoApi {
@@ -89,6 +94,32 @@ export interface PeticionRegistrarVenta {
 
 export interface RespuestaOk {
   ok: true;
+}
+
+// §4.15 POST action=historialVentas — the Sheet's sales log. Rows carry the
+// ids-only wire items (§4.3) plus `nombre`, resolved server-side from the
+// Productos sheet so a receipt from another device renders real names.
+// `fecha_hora` is an ISO string of the SERVER's arrival time — see
+// utils/historial-sync.ts: the client keeps its own timestamp when it has
+// one, otherwise a queued sale would jump to its sync day.
+export interface ItemVentaServidor {
+  id: string;
+  cantidad: number;
+  precio: number;
+  nombre: string;
+}
+
+export interface VentaServidor {
+  fecha_hora: string;
+  id_venta: string;
+  items: ItemVentaServidor[];
+  total: number;
+  metodo_pago: string; // untrusted on purpose — validated at merge time (§4.5)
+}
+
+export interface RespuestaHistorialVentas {
+  ok: true;
+  ventas: VentaServidor[];
 }
 
 // §4.4 POST action=actualizarStock — `advertencia` appears only when the

@@ -13,7 +13,16 @@
 interface Props {
   mensaje?: string;
   hidden?: boolean;
-  state?: 'empty-catalog' | 'no-results' | 'empty-historial' | 'no-date-results' | 'venta-notfound' | 'stock-ok' | 'stock-nodata' | 'empty-productos';
+  state?:
+    | 'empty-catalog'
+    | 'no-results'
+    | 'empty-historial'
+    | 'no-date-results'
+    | 'venta-notfound'
+    | 'stock-ok'
+    | 'stock-nodata'
+    | 'empty-productos'
+    | 'empty-categorias';
 }
 const { mensaje = 'Todavía no hay productos cargados', hidden = false, state } = Astro.props;
 ---

@@ -58,6 +58,11 @@ function despacharAccion(action, body) {
       return registrarVenta(body.token, body.data);
     case 'actualizarStock':
       return actualizarStock(body.token, body.data);
+    // §4.15 — token-gated READ of the sales log. Reads travel over POST so
+    // the token never lands in a query string (§5.3); the client merges the
+    // result into its local historial instead of replacing it.
+    case 'historialVentas':
+      return historialVentas(body.token, body.data);
     // plan-mejoras-2.md Fase 1 — admin catalog (contracts §4.8–§4.10).
     case 'productosAdmin':
       return productosAdmin(body.token, body.data);

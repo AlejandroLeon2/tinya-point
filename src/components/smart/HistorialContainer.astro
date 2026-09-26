@@ -1,10 +1,11 @@
 ---
-// Sales-history container — 100% local: reads historial_ventas via
+// Sales-history container — first paint is local: reads historial_ventas via
 // utils/storage.ts inside islands/historial/historial.ts (SSG cannot touch
-// localStorage at build — same option-A pattern as the catalog). This
-// component renders only the filter chrome + shell; every row comes from
-// ui/ (astrobase §3.3) and nothing here ever calls the API (base.md §7
-// "del propio dispositivo"). T3.4 (refactorUI §6.1): KPI strip + rango
+// localStorage at build — same option-A pattern as the catalog), then merges
+// the Sheet's log in the background (§4.15, utils/historial-sync.ts) — so
+// this container never waits on the network. It renders only the filter
+// chrome + shell; every row comes from ui/ (astrobase §3.3). T3.4
+// (refactorUI §6.1): KPI strip + rango
 // chips + búsqueda local; the existing Desde/Hasta inputs are conserved
 // (island shows them in Personalizado <md, always ≥md). Exportar CSV stays
 // out of scope (spec marks it optional, plan has no checkbox). The extras.md

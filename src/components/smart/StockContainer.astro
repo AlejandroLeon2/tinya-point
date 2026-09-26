@@ -69,13 +69,13 @@ import StatCard from '../ui/StatCard.astro';
 				<p data-stock-nombre class="truncate text-lg font-semibold text-text"></p>
 				<p data-stock-categoria class="text-base text-text-muted"></p>
 			</div>
-			<div class="flex flex-wrap items-center justify-end gap-2">
+			<div class="flex flex-wrap items-center justify-between gap-2">
 				<p data-stock-precio class="text-lg font-semibold text-text"></p>
 				<!-- Inline restock stepper (plan-reponer-buscar Fase 1): the input
 				     saves on change (blur/Enter); ±1 plus the batch buttons below
 				     step with the SAME 500 ms debounce (spec §9). Batch sizes are
 				     configured via data-stock-step. -->
-				<div data-stock-stepper class="flex items-center gap-1">
+				<div data-stock-stepper class="flex justify-between items-center gap-1">
 					<button
 						type="button"
 						data-stock-step="-1"
@@ -102,7 +102,7 @@ import StatCard from '../ui/StatCard.astro';
 						+
 					</button>
 				</div>
-				<div class="flex items-center gap-1">
+				<div class="flex items-center justify-between gap-1">
 					<button type="button" data-stock-step="5" class="btn btn-secondary px-3" aria-label="Sumar 5 unidades">+5</button>
 					<button type="button" data-stock-step="10" class="btn btn-secondary px-3" aria-label="Sumar 10 unidades">+10</button>
 					<button type="button" data-stock-step="24" class="btn btn-secondary px-3" aria-label="Sumar 24 unidades">+24</button>

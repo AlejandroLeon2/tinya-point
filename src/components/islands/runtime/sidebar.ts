@@ -35,7 +35,7 @@ const nombreLocal = getAjustes().nombre_local.trim();
 if (nombreLocal) setText(brand, nombreLocal);
 
 // Desktop collapse rail (refactorUI §3.2 Fase 1): preference lives inside
-// the existing `ajustes` JSON — NO new localStorage key (the map caps 7).
+// the existing `ajustes` JSON — NO new localStorage key (the map caps 8).
 const collapseToggle = qs<HTMLElement>(document, '[data-sidebar-collapse-toggle]');
 if (root && collapseToggle) {
   const setCollapsed = (collapsed: boolean): void => {

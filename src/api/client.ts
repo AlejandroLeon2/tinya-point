@@ -8,7 +8,7 @@
 //     the caller decides whether it belongs in cola_sync.
 
 import { getToken, setToken } from '../utils/storage';
-import type { AccionEscritura, AccionLectura, ErrorCode } from './types';
+import type { AccionPost, AccionLectura, ErrorCode } from './types';
 
 // Set in .env / Vercel dashboard (doc/extras.md §3.7). Empty at build time is
 // fine: the fetch would fail and classify as network_failure, never crash.
@@ -71,8 +71,9 @@ async function request<T>(url: string, init?: RequestInit): Promise<ApiResult<T>
 
 const headers = { 'Content-Type': 'text/plain;charset=utf-8' };
 
-// POST { action, token, data } — token-gated writes (doc/base.md §3.3).
-export async function llamarApi<T>(action: AccionEscritura, data: unknown): Promise<ApiResult<T>> {
+// POST { action, token, data } — token-gated writes AND protected reads
+// (doc/base.md §3.3, appscriptbase.md §4.15).
+export async function llamarApi<T>(action: AccionPost, data: unknown): Promise<ApiResult<T>> {
   return request<T>(API_URL, {
     method: 'POST',
     headers,

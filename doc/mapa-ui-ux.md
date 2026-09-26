@@ -310,8 +310,10 @@ venta + stock (FIFO) → `Alert checkout-error` solo si la API rechazó el paylo
 ###6.3 `/historial` *(actualizado Fase 3 T3.4–T3.5)*
 
 - **archivo:** `src/pages/historial.astro` · **layout:** LayoutApp · **auth:** protegida
-- **islas:** `historial` (+ chrome) · **fuentes:** **100% local** `historial_ventas` + `cajas`
-  + `cola_sync` (**cero API**)
+- **islas:** `historial` (+ chrome) · **fuentes:** **primero local** `historial_ventas` + `cajas`
+  + `cola_sync`; después, en background y solo si `historial_cache` venció (TTL 5 min),
+  **merge** con el Sheet vía `POST action=historialVentas` — unión por `id_venta`, nada local
+  se borra, repintado solo si cambió algo (`utils/historial-sync.ts` · `appscriptbase.md` §4.15)
 
 **Componentes:**
 
@@ -367,8 +369,9 @@ venta + stock (FIFO) → `Alert checkout-error` solo si la API rechazó el paylo
 
 - **archivo:** `src/pages/historial/venta.astro` (ruta **estática**; el id va en query —
   `getStaticPaths` es imposible con `output:"static"`) · **layout:** LayoutApp · **auth:** protegida
-- **islas:** `venta-detail` · **fuentes:** **100% local** `historial_ventas` + `cola_sync` +
-  `ajustes` (**cero API**)
+- **islas:** `venta-detail` · **fuentes:** **primero local** `historial_ventas` + `cola_sync` +
+  `ajustes`; si el `id` no está en la local, **un** merge forzado (`historialVentas`, salta el TTL)
+  puede recuperarla del Sheet antes de rendir el estado vacío (`utils/historial-sync.ts`)
 
 **Componentes:**
 
@@ -667,6 +670,16 @@ venta + stock (FIFO) → `Alert checkout-error` solo si la API rechazó el paylo
      no existe key de último éxito persistido).
    - `Versión de la app` → `[data-ajustes-version]` = `v` + `package.json` version.
    - `Cerrar sesión` `[data-logout]` — manejado globalmente por `islands/sidebar.ts`.
+   - `Limpiar caché` `[data-ajustes-limpiar-cache]` — **solo abre** el modal de
+     confirmación (`data-modal-open="confirmar-limpiar-cache"`); la limpieza corre recién
+     en el CONFIRM → `storage.limpiarCaches()` = borra **únicamente** `catalogo_cache` +
+     `historial_cache` (las dos rebuildables). **Nunca** toca `sesion_token`, `ajustes`,
+     `carrito_actual`, `historial_ventas`, `cola_sync` ni `cajas`. Éxito → **Toast**
+     "Caché limpiada — …". Sigue **cero API** en esta isla: los caches se repueblan en la
+     próxima página que los necesita.
+   - Nota offline `[data-ajustes-cache-offline]` + `disabled` del botón ⇔ `!navigator.onLine`
+     (listeners `online`/`offline`, patrón de `categorias-admin`): un catálogo vacío sin red
+     deja el POS sin productos para vender (`catalog.ts init()` → `refreshFromApi(null)`).
 6. **Barra sticky dirty** `div[data-ajustes-dirty]` — `fixed` abajo con
    `bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))]` (<sm, sobre el TabBar z-40) y
    `md:bottom-0`; z-30. **Visible ⇔ hay cambios sin guardar** (comparación contra el
@@ -674,6 +687,11 @@ venta + stock (FIFO) → `Alert checkout-error` solo si la API rechazó el paylo
    `Descartar cambios[data-ajustes-descartar]` (restaura snapshot + limpia errores) +
    `Guardar ajustes[data-ajustes-guardar]` (type=button → `form.requestSubmit()`; durante
    el guardado: `disabled` + texto "Guardando…"; se restaura en error).
+7. **Modal `confirmar-limpiar-cache`** (ui/Modal, variante `center`) — "¿Limpiar la caché?"
+   con la aclaración de qué **no** se borra; acciones `Cancelar[data-modal-close]` +
+   `Sí, limpiar[data-ajustes-confirmar-limpiar-cache][data-modal-close]` (`btn-primary`,
+   no `btn-danger`: no pierde nada del negocio). Isla monta `modal-controller` junto a
+   `settings/ajustes`.
 
 ---
 
@@ -701,7 +719,7 @@ venta + stock (FIFO) → `Alert checkout-error` solo si la API rechazó el paylo
 | `product-admin` | `/productos` | lista dual (tarjetas+tabla) con `paintRow()` único, drawer `producto-form` (nuevo/editar/cerrar), toolbar local (chips/categoría/orden/contador), paginación 50, buscador Fuse, validación inline, cachear catálogo, toasts de éxito |
 | `categorias-admin` | `/categorias` | lista, CRUD inline, validación, toasts de éxito, conteos cache-only + pre-guard de delete, nota offline con guard de Enter |
 | `stock` | `/stock` | KPIs (reponer/agotados/valorizado), chips de filtro con aria-pressed, lista de bajos con stepper ±1 + lote `data-stock-step`, tags Bajo/Agotado, stamp de frescura muted↔warn, refresh delegado (Actualizar + Reintentar), patch local de cache G5 |
-| `ajustes` | `/ajustes` | form, validación, guardado (**incluye `sidebar_colapsado`**), toast de éxito, preview en vivo, barra dirty (snapshot/descartar/requestSubmit), card Sesión y dispositivo (cola/intento/versión) |
+| `ajustes` | `/ajustes` | form, validación, guardado (**incluye `sidebar_colapsado`**), toast de éxito, preview en vivo, barra dirty (snapshot/descartar/requestSubmit), card Sesión y dispositivo (cola/intento/versión), **limpiar caché** (modal `confirmar-limpiar-cache` → `storage.limpiarCaches()`, guard offline) |
 
 ---
 
@@ -739,7 +757,7 @@ sincronización).
 3. Texto de usuario siempre en español rioplatense en UI, **siempre vía `textContent`** (nunca `innerHTML` con datos).
 4. Todo estado runtime se manipula con el atributo `hidden` (mostrar ⇔ `el.hidden = condición`), no con clases.
 5. Listas = `<template>` + `cloneNode` + delegación con `closest()` (un listener por contenedor).
-6. `localStorage` **solo** a través de `utils/storage.ts` (7 llaves; valores JSON).
+6. `localStorage` **solo** a través de `utils/storage.ts` (8 llaves; valores JSON).
 7. Todo HTTP pasa por `src/api/client.ts`; todo `fetch(` vive ahí (gate).
 8. Modales destrucción/doble confirmación → siempre `ui/Modal` + `modal-controller` (§5.5 stilesbase).
 9. Accesibilidad: estados nunca solo-color (texto+tono), alerts con `role=alert`, foco visible,

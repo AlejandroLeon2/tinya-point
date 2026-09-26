@@ -59,7 +59,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.2 Router interno
 
 - **`despacharAccion(action, body)`**
-  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10), `"crearCategoria"`, `"actualizarCategoria"`, `"borrarCategoria"` (§4.12–§4.14). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
+  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10), `"crearCategoria"`, `"actualizarCategoria"`, `"borrarCategoria"` (§4.12–§4.14) y `"historialVentas"` (§4.15 — **lectura** protegida, va por POST porque el token no puede viajar en el query string, ver §5.3). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
 
 ### 3.3 Autenticación
 
@@ -123,6 +123,18 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 
 - **`existeNombreEn(hoja, nombre, exceptoId)` / `categoriaEnUso(nombre)` / `renombrarCategoriaEnProductos(viejo, nuevo)`** (helpers internos)
   Duplicados case-insensitive (ignorando una fila al renombrar), uso en Productos y el cascade — todos bajo el lock del handler que los llama.
+
+### 3.8 Historial de ventas (lectura protegida, §4.15)
+
+- **`historialVentas(token, data)`**
+  1. `validarToken(token)` → si inválido, corta con `unauthorized` (es una lectura, pero expone todas las ventas: no es pública).
+  2. Lee la hoja "Ventas" completa (sin `LockService`: no escribe) y devuelve `{ ok: true, ventas: [...] }` — **no** pagina: el volumen de un POS de barrio cabe en una respuesta, y el cliente hace el merge en memoria.
+  3. Cada fila se normaliza al contrato: `fecha_hora` a ISO (el Sheet guarda un `Date` de JS), `items` desde la celda JSON de la §4.3, y `total` a número.
+  4. `nombre` de cada item se resuelve **server-side** leyendo "Productos" (`mapaNombresProductos()`): la §4.3 guarda ids solamente, así que un comprobante generado en otro dispositivo vendría sin nombres. Se resuelve en el servidor una sola vez (un solo read de "Productos" por request) en vez de que cada cliente reate el catálogo entero.
+  5. Una celda `items` corrupta degrada a `[]` (con `Logger.log`), nunca rompe la respuesta completa: una fila mala no puede tumbar el historial entero.
+
+- **`mapaNombresProductos()` / `parsearItemsVenta(celda, nombres)`** (helpers internos)
+  Header-driven (busca las columnas `id`/`nombre` por encabezado, tolera hojas ausentes) y tolerante a fila malformada, respectivamente.
 
 ---
 
@@ -424,6 +436,46 @@ Handler: `borrarCategoria(token, data)`.
 
 Errores: `payload_invalido` (`id` inexistente), `categoria_en_uso` (algún producto la referencia — renombralos o desactivalos antes). Sin soft delete: la fila se borra de verdad cuando está libre.
 
+### 4.15 `POST { action: "historialVentas" }` (requiere token)
+
+Handler: `historialVentas(token, data)` (§3.8). **Es una lectura y va por POST** a propósito: el token no puede viajar en un query string (§5.3), y las lecturas públicas de catálogo (§4.1/§4.11) son las únicas que se permiten en GET.
+
+**Request:**
+```json
+{
+  "action": "historialVentas",
+  "token": "3f2a1c9e-...",
+  "data": {}
+}
+```
+
+**Response — éxito (200, siempre):**
+```json
+{
+  "ok": true,
+  "ventas": [
+    {
+      "fecha_hora": "2026-09-26T18:04:11.000Z",
+      "id_venta": "3f2a1c9e-...",
+      "items": [
+        { "id": "p001", "cantidad": 2, "precio": 3.5, "nombre": "Coca-Cola 500ml" }
+      ],
+      "total": 7,
+      "metodo_pago": "efectivo"
+    }
+  ]
+}
+```
+
+Errores: `unauthorized` (token ausente/vencido), `error_interno`. Nunca `accion_no_soportada` **si** el Web App ya fue redesplegado con esta versión — un backend anterior responde exactamente eso, y el cliente lo trata como "sin soporte" (mantiene la lista local y no vuelve a martillar hasta el TTL).
+
+Notas de contrato:
+
+- El orden es **indiferente**: el cliente ordena por `fecha_hora` descendente tras el merge.
+- `fecha_hora` es el instante en que el servidor **recibió** la venta (reloj del servidor, §4.3), no el instante en que el cajero la cerró. Por eso el cliente conserva su propio timestamp cuando lo tiene: una venta encolada offline durante días no debe saltar al día en que por fin subió.
+- `metodo_pago` llega **sin validar** (es un string crudo de la hoja); el cliente lo filtra en el merge contra `METODOS` y si no calza conserva el valor local que sí es válido.
+- `subtotal` **no** existe en el Sheet (snapshot local-only, gotcha G9): una venta traída desde otro dispositivo se muestra sin fila de subtotal y con el IGV derivado de `total` — el mismo comportamiento que ya tiene para ventas antiguas.
+
 ---
 
 ## 5. Guía de consumo desde el cliente (Astro)
@@ -450,12 +502,15 @@ Errores: `payload_invalido` (`id` inexistente), `categoria_en_uso` (algún produ
 | Abrir caja | `POST action=abrirCaja` (snapshot local antes de la red) | Sí |
 | Cerrar caja | `POST action=cerrarCaja` (upsert por `id_caja`) | Sí |
 | Listado de administración de productos | `POST action=productosAdmin` (incluye `activo: false`) | Sí |
+| Abrir /historial o /historial/venta | `POST action=historialVentas` **solo** si `historial_cache` venció (TTL 5 min) o el id no está en la lista local (fuerza) | Sí |
 | Alta de producto | `POST action=crearProducto` | Sí |
 | Editar producto / baja lógica | `POST action=actualizarProducto` (baja = `activo: false`) | Sí |
 
 ### 5.3 Qué NO hacer al consumir esta API
 
 - No llamar a `GET ?action=productos` en cada tecla de búsqueda — la búsqueda es sobre el `catalogo_cache` local, no contra el Sheet (ver spec, sección 9).
+- No llamar a `historialVentas` en cada navegación a `/historial` — la lista pinta **primero** desde `historial_ventas` y el merge corre en background respetando `historial_cache` (TTL 5 min). Nunca vaciar la lista local esperando la respuesta: el historial no tiene "esperando datos".
+- No **reemplazar** `historial_ventas` con la respuesta de `historialVentas` — es un merge por `id_venta` (§4.15): el Sheet aporta `total`/`metodo_pago`/`items`, lo local aporta `subtotal`, los nombres al momento de la venta y sobre todo `fecha_hora`. Borrar lo local haría desaparecer ventas que siguen en `cola_sync`.
 - No reintentar `registrarVenta`/`actualizarStock` en loop inmediato si falla: encolar y reintentar solo con el evento `online` o al reabrir la app, para no quemar la cuota de ejecuciones ni la de `UrlFetch`.
 - No guardar `usuario`/`clave` en ningún lado del cliente, ni siquiera temporalmente en una variable de módulo — solo el `token` vive en `localStorage`, como ya define la sección 3 de la especificación.
 - No asumir que dos requests de escritura seguidas (`registrarVenta` + `actualizarStock`) son atómicas — si el primero tiene éxito y el segundo falla por red, la venta ya quedó registrada en el Sheet pero el stock no se descontó ahí; el diseño acepta esa inconsistencia como aceptable dado el volumen (un solo dispositivo, no hay lectura concurrente de stock en tiempo real — ver spec, sección 8).

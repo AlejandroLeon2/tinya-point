@@ -117,7 +117,7 @@ Esto es importante porque el ejemplo original de `Card.astro` mete un contador c
 
 Todo lo que hoy se repetiría copiado y pegado entre componentes va acá, sin excepción:
 
-- **`storage.ts`** — el único lugar que sabe los nombres exactos de las llaves de `localStorage` (`catalogo_cache`, `carrito_actual`, `historial_ventas`, `cola_sync`) y expone funciones para leer/escribir cada una. Ningún otro archivo del proyecto escribe `localStorage.setItem` directamente — así, si el día de mañana cambia el nombre de una llave o se agrega versionado, se cambia en un solo lugar.
+- **`storage.ts`** — el único lugar que sabe los nombres exactos de las llaves de `localStorage` (las 8 de `base.md` §2.3) y expone funciones para leer/escribir cada una. Ningún otro archivo del proyecto escribe `localStorage.setItem` directamente — así, si el día de mañana cambia el nombre de una llave o se agrega versionado, se cambia en un solo lugar.
 - **`modal.ts`** — funciones genéricas de abrir/cerrar/trap de foco reutilizadas por cualquier modal de la app (confirmar cancelación de venta, ver detalle de producto, etc.), para no reescribir la misma lógica de accesibilidad en cada modal nuevo.
 - **`format.ts`** — formateo de moneda, fechas y números (por ejemplo, precios siempre con 2 decimales y el símbolo `S/`), para que no haya una card con `$12` y otra con `S/ 12.00`.
 - **`dom.ts`** — helpers pequeños de selección/eventos usados por los módulos de `islands/` (por ejemplo, "encuentra el `.card` más cercano a este elemento").
@@ -135,7 +135,7 @@ Como los componentes de Astro se hidratan de forma aislada (cada isla es indepen
 - **`client.ts`** — la única función que hace `fetch` de verdad en todo el proyecto (`llamarApi(action, data)` de la guía anterior). Sabe el `Content-Type` correcto para evitar el problema de CORS con Apps Script, arma el body con el token vigente, y detecta `unauthorized` para limpiar la sesión.
 - **`actions/`** — una función por acción de negocio (`login()`, `obtenerProductos()`, `registrarVenta()`, `actualizarStock()`), cada una llamando internamente a `client.ts`. Los componentes `smart/` importan de aquí, nunca de `client.ts` directamente — así cada acción puede tener su propia validación de payload antes de salir, sin ensuciar el cliente genérico.
 - **`types.ts`** — las formas exactas de request/response definidas en la guía de la API (los mismos JSON documentados ahí), para que cualquier cambio en el contrato se note en un solo archivo.
-- **`apps-script/`** — el código fuente de Apps Script (`Code.gs`, `auth.gs`, `productos.gs`, `ventas.gs`, `utils.gs`, `appsscript.json`) vive **dentro del mismo repositorio**, aunque no se compile con Astro. Esto no es solo orden: es lo que permite tener control de versiones real del backend (vía `clasp push`/`clasp pull`) en vez de que el código de Apps Script exista únicamente pegado en el editor web de Google, sin historial ni respaldo.
+- **`apps-script/`** — el código fuente de Apps Script (`Code.gs`, `auth.gs`, `productos.gs`, `categorias.gs`, `ventas.gs`, `caja.gs`, `utils.gs`, `appsscript.json`) vive **dentro del mismo repositorio**, aunque no se compile con Astro. Esto no es solo orden: es lo que permite tener control de versiones real del backend (vía `clasp push`/`clasp pull`) en vez de que el código de Apps Script exista únicamente pegado en el editor web de Google, sin historial ni respaldo. (El esquema de las hojas — `crearHojas()`/`estadoSetup()` — vive aparte en `setup/setup.gs`, que no es parte del router.)
 
 ### 3.8 `pages/`
 

@@ -1,5 +1,10 @@
-// Paints /historial from historial_ventas — 100% local, ZERO API calls
-// (plan-features Fase 5 gate; base.md §7 "del propio dispositivo"). The
+// Paints /historial from historial_ventas — the LOCAL list first (instant,
+// no spinner, no "esperando datos"), then a background merge with the
+// Sheet's sales log (§4.15 via utils/historial-sync.ts: union by id_venta,
+// the API is the truth for what it records, nothing local is ever dropped,
+// response cached in `historial_cache` so repeat visits skip the call).
+// Replaces the old "ZERO API calls" gate (plan-features Fase 5 /
+// base.md §7) — see base.md §7 for the updated wording. The
 // date filter compares each venta's DEVICE-LOCAL calendar day (not UTC —
 // toISOString would shift sales across days) against the Desde/Hasta inputs
 // and runs BEFORE grouping (plan-mejoras-2 Fase 3). Days render as native
@@ -32,6 +37,7 @@ import { getCajas, getColaSync, getHistorialVentas, type CajaLocal, type MetodoP
 import { qs, qsa, setText, setHidden, cloneTemplate, setPillState, selectChip, paintStat, debounce, delegateAction } from '../../../utils/dom';
 import { esDesktop, enCambioDesktop } from '../../../utils/media';
 import { METODO_LABEL, METODOS } from '../../../utils/metodos';
+import { sincronizarHistorial } from '../../../utils/historial-sync';
 
 const root = qs<HTMLElement>(document, '[data-historial-root]');
 
@@ -221,6 +227,17 @@ if (root) {
     const cajas = getCajas();
     const estados = estadoSyncMap();
 
+    // Which groups are currently open — captured BEFORE the rebuild so a
+    // filter change or a background merge never collapses what the user had
+    // expanded. Only the FIRST paint opens today's group (spec §6.3).
+    const abiertos = new Set<string>();
+    for (const diaAbierto of qsa(daysEl, '[data-hist-day]')) {
+      if (diaAbierto instanceof HTMLDetailsElement && diaAbierto.open) {
+        const clave = diaAbierto.getAttribute('data-dia-key');
+        if (clave) abiertos.add(clave);
+      }
+    }
+
     qsa(daysEl, '[data-hist-day]').forEach((day) => day.remove());
 
     for (const dia of dias) {
@@ -290,9 +307,11 @@ if (root) {
         setHidden(cajaEl, true);
       }
 
-      // Only today's group is open, only on the first paint.
+      // Only today's group is open on the FIRST paint; later re-renders
+      // keep the groups the user left open (spec §6.3).
+      day.setAttribute('data-dia-key', dia);
       if (day instanceof HTMLDetailsElement) {
-        day.open = primeraVez && dia === hoy;
+        day.open = primeraVez ? dia === hoy : abiertos.has(dia);
       }
 
       for (const venta of ventas) {
@@ -369,4 +388,14 @@ if (root) {
   pintarChips();
   aplicarRango(); // default Personalizado → inputs visible everywhere
   render(); // immediate first paint from local storage
+
+  // Background revalidation (§4.15): the list above was painted from
+  // localStorage, so NOTHING waits on the network. The merge only repaints
+  // when the Sheet actually had new or changed sales; inside TTL_HISTORIAL_MS
+  // it resolves from `historial_cache` without a single request, and on any
+  // failure it keeps showing the local list (estado = offline | sin_soporte
+  // | error, cambio = false).
+  void sincronizarHistorial().then((resultado) => {
+    if (resultado.cambio) render();
+  });
 }

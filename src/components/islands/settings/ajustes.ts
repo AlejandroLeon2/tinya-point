@@ -13,9 +13,18 @@
 //     at load; Guardar → form.requestSubmit(), Descartar → restore snapshot;
 //   - "Sesión y dispositivo": cola_sync length + last local attempt
 //     (deviation y — no persisted last-SUCCESS key exists, so the stamp is
-//     the latest `ultimo_intento`/`creado`) + app version from package.json.
+//     the latest `ultimo_intento`/`creado`) + app version from package.json;
+//   - "Limpiar caché": opens the ui/Modal confirmation, then
+//     storage.limpiarCaches() (two rebuildable keys only) — still zero API:
+//     the caches repopulate on the next page that needs them.
 
-import { getAjustes, getColaSync, setAjustes, type Ajustes } from '../../../utils/storage';
+import {
+  getAjustes,
+  getColaSync,
+  limpiarCaches,
+  setAjustes,
+  type Ajustes,
+} from '../../../utils/storage';
 import { formatHora } from '../../../utils/format';
 import { isNonEmpty } from '../../../utils/validators';
 import { qs, setText, setHidden } from '../../../utils/dom';
@@ -41,6 +50,9 @@ if (root) {
   const colaEl = qs<HTMLElement>(root, '[data-ajustes-cola]');
   const ultimaSyncEl = qs<HTMLElement>(root, '[data-ajustes-ultima-sync]');
   const versionEl = qs<HTMLElement>(root, '[data-ajustes-version]');
+  const limpiarCacheBtn = qs<HTMLButtonElement>(root, '[data-ajustes-limpiar-cache]');
+  const confirmarLimpiarBtn = qs<HTMLButtonElement>(root, '[data-ajustes-confirmar-limpiar-cache]');
+  const cacheOfflineNote = qs<HTMLElement>(root, '[data-ajustes-cache-offline]');
 
   // Snapshot of the values loaded at boot — the dirty bar compares against
   // THIS, never against storage (storage only changes on save).
@@ -190,6 +202,31 @@ if (root) {
     // (same validation + pending state as pressing Enter in a field).
     form?.requestSubmit();
   });
+
+  // ── Limpiar caché (26/09/2026) ────────────────────────────────────────
+  // The TRIGGER only opens the ui/Modal confirmation; the work runs on
+  // CONFIRM. storage.limpiarCaches() drops exactly two rebuildable keys —
+  // catalogo_cache + historial_cache — and never the operational ones
+  // (sesion_token, ajustes, historial_ventas, cola_sync, carrito_actual).
+  // Offline is guarded the way categorias-admin guards its submit: with an
+  // empty catalog cache, catalog.ts init() has nothing to paint and the POS
+  // can't sell until the network returns. That guard closes only the
+  // avoidable window — clearing online and THEN losing the connection
+  // degrades exactly like any other offline load.
+  confirmarLimpiarBtn?.addEventListener('click', () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    limpiarCaches();
+    feedback.ok('Caché limpiada — el catálogo y el historial se vuelven a bajar solos.');
+  });
+
+  function actualizarCacheOnline(): void {
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    setHidden(cacheOfflineNote, !offline);
+    if (limpiarCacheBtn) limpiarCacheBtn.disabled = offline;
+  }
+  window.addEventListener('online', actualizarCacheOnline);
+  window.addEventListener('offline', actualizarCacheOnline);
+  actualizarCacheOnline();
 
   llenar(); // first paint from storage (defaults when absent)
   pintarSesion();

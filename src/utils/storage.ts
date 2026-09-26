@@ -17,6 +17,11 @@ const KEY_CAJAS = 'cajas';
 // (nombre/moneda) + the configurable IGV rate (base.md §7). Single-device
 // settings, same localStorage source as the rest of the operational state.
 const KEY_AJUSTES = 'ajustes';
+// 8th key (appscriptbase.md §4.15): freshness stamp of the last historial
+// fetch. The merged sales themselves live in `historial_ventas` — this key
+// only says HOW OLD that data is, so reopening /historial can skip the API
+// call inside the TTL (base.md §2.3).
+const KEY_HISTORIAL_CACHE = 'historial_cache';
 
 // Local domain types — this layer must not depend on src/api/ (Dependency
 // Inversion: stores/utils sit below the wire contract, not beside it).
@@ -99,6 +104,11 @@ export interface ItemColaSync {
 // Catalog TTL (doc/base.md §6): fresh for 15 minutes after last sync.
 export const TTL_CATALOGO_MS = 15 * 60 * 1000;
 
+// Historial TTL (doc/base.md §6): 5 minutes — shorter than the catalog
+// because sales are what an owner re-checks most often, and the merge makes
+// a background refresh invisible (nothing is ever blanked while it runs).
+export const TTL_HISTORIAL_MS = 5 * 60 * 1000;
+
 // These functions can be reached from frontmatter at BUILD time, where
 // localStorage does not exist — guard instead of crashing the build.
 const hasStorage = (): boolean => typeof localStorage !== 'undefined';
@@ -155,6 +165,32 @@ export function getHistorialVentas(): VentaLocal[] {
 
 export function setHistorialVentas(ventas: VentaLocal[]): void {
   write(KEY_HISTORIAL_VENTAS, ventas);
+}
+
+// Freshness stamp of the last successful historial read (8th key) — same
+// "how old is this data" contract as CatalogoCache.timestamp.
+export interface HistorialCache {
+  timestamp: number; // epoch ms — fresh while now - timestamp < TTL_HISTORIAL_MS
+}
+
+export function getHistorialCache(): HistorialCache | null {
+  return read<HistorialCache | null>(KEY_HISTORIAL_CACHE, null);
+}
+
+export function setHistorialCache(cache: HistorialCache): void {
+  write(KEY_HISTORIAL_CACHE, cache);
+}
+
+// "Limpiar caché" (Ajustes) — drops ONLY the two rebuildable caches, the
+// ones whose whole job is "frescura": the catalog and the freshness stamp of
+// the historial. Everything else is OPERATIONAL data and is deliberately
+// untouched — sesion_token, ajustes, carrito_actual, historial_ventas,
+// cola_sync and cajas are the user's state, not a cache, so clearing them
+// would be a different (destructive) action and must never hide behind this
+// button. Both keys repopulate on the next page load that needs them.
+export function limpiarCaches(): void {
+  remove(KEY_CATALOGO_CACHE);
+  remove(KEY_HISTORIAL_CACHE);
 }
 
 export function getColaSync(): ItemColaSync[] {

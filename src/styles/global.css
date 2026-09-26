@@ -127,8 +127,8 @@
    ============================================================ */
 @utility btn {
   @apply inline-flex items-center justify-center gap-2
-         rounded-lg px-6 py-4 text-lg font-semibold
-         min-h-14 min-w-14
+         rounded-lg px-4 py-2 text-lg font-semibold
+         min-h-12 min-w-12
          transition-colors
          focus-visible:outline focus-visible:outline-2
          focus-visible:outline-offset-2 focus-visible:outline-primary
@@ -176,7 +176,7 @@
 
   .input-field {
     @apply w-full rounded-lg border-2 border-border bg-surface
-           px-4 py-3 text-lg text-text
+           px-4 py-2 text-lg text-text
            focus-visible:outline focus-visible:outline-2
            focus-visible:outline-offset-2 focus-visible:outline-primary;
   }

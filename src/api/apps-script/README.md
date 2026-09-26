@@ -15,7 +15,9 @@ Services used (all built-ins of `appsscript.json`, no external libraries):
 | `Code.gs` | `doGet`/`doPost` entry points + `despacharAccion` router |
 | `auth.gs` | login, session creation (+12h), token validation + expired-row cleanup |
 | `productos.gs` | public catalog read (active rows, light fields) |
-| `ventas.gs` | `registrarVenta` / `actualizarStock` (token + lock) + `buscarFilaPorId` |
+| `ventas.gs` | `registrarVenta` / `actualizarStock` (token + lock) + `buscarFilaPorId` + `historialVentas` (token-gated **read** of the whole log, §4.15) |
+| `caja.gs` | `abrirCaja` / `cerrarCaja` (token + lock, upsert por `id_caja`) |
+| `categorias.gs` | `obtenerCategorias` + CRUD de categorías con cascade a Productos |
 | `utils.gs` | `obtenerLibro()` spreadsheet access (standalone + container-bound) + `respuestaJson` / `respuestaError` (internal detail → Logger only) |
 | `appsscript.json` | manifest (V8, `America/Lima`, web app `ANYONE_ANONYMOUS` / `USER_DEPLOYING`) — lives in the clasp root `src/api/` |
 
@@ -59,7 +61,15 @@ export PUBLIC_API_URL='https://script.google.com/macros/s/<DEPLOY>/exec'
 curl -sL "$PUBLIC_API_URL?action=productos"   # → {"ok":true,...}
 curl -sL -H 'Content-Type: text/plain' \
   -d '{"action":"login","usuario":"x","clave":"y"}' "$PUBLIC_API_URL"
+# historialVentas needs the token from the login response (§4.15):
+curl -sL -H 'Content-Type: text/plain' \
+  -d '{"action":"historialVentas","token":"<TOKEN>","data":{}}' "$PUBLIC_API_URL"
 ```
+
+A backend that predates §4.15 answers `{"ok":false,"error":"accion_no_soportada"}`
+to that last one — the client then keeps the local list and stops calling until
+its TTL. Remember to `clasp push` + redeploy: **the deployed script is what
+serves `PUBLIC_API_URL`, not this repo**.
 
 Do **not** add `-X` to those: Apps Script answers `302` to a
 `script.googleusercontent.com/macros/echo` URL that must be re-requested as
@@ -69,9 +79,21 @@ forcing `-X POST` through the redirect returns Google's HTML error page.
 ## Full deployment checklist
 
 Human-only steps (account/Google required) live in `doc/plan.md`
-(Fase 6 — "Checklist humano") and `doc/extras.md` §3: Sheet with
-`Productos`/`Ventas`/`Sesiones` sheets, Script Properties `SPREADSHEET_ID`,
-`USUARIO`/`CLAVE`, web-app deploy as "Anyone", seed, first login.
+(Fase 6 — "Checklist humano") and `doc/extras.md` §3:
+
+1. **Sheets** — run `crearHojas()` (see [`../setup/README.md`](../setup/README.md)):
+   creates `Productos`, `Categorias`, `Ventas`, `Cajas` and `Sesiones` with
+   their exact headers, idempotently.
+2. **Script Properties** — `SPREADSHEET_ID` (or `vincularLibroActivo()`),
+   `USUARIO`, `CLAVE`.
+3. Web-app deploy as "Anyone", seed, first login.
+
+## Sheet bootstrap (`../setup/`)
+
+`../setup/setup.gs` owns the spreadsheet **schema** (sheet names + header
+rows, mirroring `doc/base.md` §2.1–§2.5). Run `crearHojas()` from the editor
+to create everything a fresh spreadsheet needs; `estadoSetup()` reports what
+is missing without writing. Full details in [`../setup/README.md`](../setup/README.md).
 
 ## One-shot seed
 

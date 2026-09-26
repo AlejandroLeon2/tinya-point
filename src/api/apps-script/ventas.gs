@@ -150,3 +150,108 @@ function buscarFilaPorId(hoja, id) {
   }
   return -1;
 }
+
+// ── Lectura del historial (§4.15) ────────────────────────────────────────
+// The Sheet is the source of truth for ventas: this returns the whole log
+// so the client can MERGE it into its local `historial_ventas` (the client
+// never replaces that list — offline/pending sales must survive). Runs over
+// POST like every token-gated call: the token never travels in a query
+// string (§5.3). No lock — a read mutates nothing.
+
+/**
+ * Full sales log, newest-independent (the client sorts).
+ * `items` is parsed and enriched with the product NAME from "Productos":
+ * §4.3 stores ids only, and a receipt from another device would otherwise
+ * render blank lines. Renames are reflected on purpose (the catalog is the
+ * truth for names too).
+ * @param {string} token
+ * @param {Object} data unused — the client sends {}
+ * @return {Object} { ok:true, ventas:[{fecha_hora, id_venta, items, total, metodo_pago}] }
+ */
+function historialVentas(token, data) {
+  const sesion = validarToken(token);
+  if (!sesion.valido) {
+    return respuestaError('unauthorized', 'historialVentas: ' + sesion.motivo);
+  }
+
+  const datos = obtenerLibro().getSheetByName('Ventas').getDataRange().getValues();
+  if (datos.length < 2) return { ok: true, ventas: [] };
+
+  const nombres = mapaNombresProductos();
+  const ventas = [];
+  for (let f = 1; f < datos.length; f++) {
+    const fila = datos[f];
+    const idVenta = String(fila[1]).trim();
+    if (!idVenta) continue; // blank/partial row
+    ventas.push({
+      fecha_hora: fila[0] instanceof Date ? fila[0].toISOString() : String(fila[0]),
+      id_venta: idVenta,
+      items: parsearItemsVenta(fila[2], nombres),
+      total: Number(fila[3]),
+      metodo_pago: String(fila[4]).trim(),
+    });
+  }
+  return { ok: true, ventas: ventas };
+}
+
+/**
+ * id → nombre from "Productos" (header-driven, tolerant of a missing sheet).
+ * @return {Object<string, string>}
+ */
+function mapaNombresProductos() {
+  const nombres = {};
+  let datos;
+  try {
+    datos = obtenerLibro().getSheetByName('Productos').getDataRange().getValues();
+  } catch (err) {
+    Logger.log('mapaNombresProductos: %s', err);
+    return nombres;
+  }
+  if (datos.length < 2) return nombres;
+
+  let colId = -1;
+  let colNombre = -1;
+  for (let c = 0; c < datos[0].length; c++) {
+    const clave = String(datos[0][c]).trim();
+    if (clave === 'id') colId = c;
+    if (clave === 'nombre') colNombre = c;
+  }
+  if (colId === -1 || colNombre === -1) return nombres;
+
+  for (let f = 1; f < datos.length; f++) {
+    const id = String(datos[f][colId]).trim();
+    if (id) nombres[id] = String(datos[f][colNombre]);
+  }
+  return nombres;
+}
+
+/**
+ * The `items` cell is a JSON string (§4.3). Malformed content degrades to
+ * an empty list — one bad row must never break the whole historial read.
+ * @param {string} celda raw cell value
+ * @param {Object<string, string>} nombres id → product name
+ * @return {Array<{id: string, cantidad: number, precio: number, nombre: string}>}
+ */
+function parsearItemsVenta(celda, nombres) {
+  let crudo;
+  try {
+    crudo = typeof celda === 'string' ? JSON.parse(celda) : celda;
+  } catch (err) {
+    Logger.log('parsearItemsVenta: %s', err);
+    return [];
+  }
+  if (!Array.isArray(crudo)) return [];
+
+  const items = [];
+  for (let i = 0; i < crudo.length; i++) {
+    const item = crudo[i];
+    if (!item || typeof item.id !== 'string') continue;
+    items.push({
+      id: item.id,
+      cantidad: Number(item.cantidad),
+      precio: Number(item.precio),
+      nombre: nombres[item.id] || '',
+    });
+  }
+  return items;
+}
