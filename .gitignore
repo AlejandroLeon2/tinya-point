@@ -25,3 +25,7 @@ pnpm-debug.log*
 
 # clasp local link (contains the script ID — never commit)
 .clasp.json
+
+# login credentials bootstrap (contains a real password — pushed with clasp,
+# never committed; the pair lives in Script Properties, not in git)
+src/api/setup/credenciales.gs
