@@ -1,0 +1,33 @@
+---
+// Admin brand row — SINGLE template cloned per brand by
+// islands/brands-admin.ts (same mechanism as ui/CategoriaRow.astro).
+// ui/ draws, never fetches or reads local data (astrobase §1). Delete opens
+// the shared confirm modal (stilesbase §5.5); rename is safe and direct.
+---
+<template data-marca-row-template>
+	<li
+		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3"
+		data-marca-row=""
+	>
+		<span class="flex min-w-0 flex-col gap-1">
+			<span data-marca-nombre class="text-base font-semibold text-text"></span>
+			<!-- Product tally derived from catalogo_cache ONLY — hidden ⇔ there
+			     is no cache (the island decides). -->
+			<span data-marca-count hidden class="text-base text-text-muted"></span>
+		</span>
+		<span class="flex flex-wrap items-center gap-3">
+			<!-- Shown ⇔ local count > 0; travels with the disabled Eliminar. -->
+			<span data-marca-en-uso hidden class="text-base font-semibold text-warning"></span>
+			<button type="button" class="btn btn-secondary" data-marca-edit="" data-marca-action="edit">Editar</button>
+			<button
+				type="button"
+				class="btn btn-danger"
+				data-marca-delete=""
+				data-marca-action="delete"
+				data-modal-open="confirmar-borrar-marca"
+			>
+				Eliminar
+			</button>
+		</span>
+	</li>
+</template>

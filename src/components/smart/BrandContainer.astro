@@ -1,0 +1,53 @@
+---
+// Brands admin container — mirror of CategoriaContainer.astro: the smart
+// layer composes chrome + ui/ parts and wires the island (astrobase §3.3).
+// Delete is confirmed through the shared ui/Modal + modal-controller
+// contract (stilesbase §5.5).
+import Alert from '../ui/Alert.astro';
+import EmptyState from '../ui/EmptyState.astro';
+import BrandForm from '../ui/BrandForm.astro';
+import BrandRow from '../ui/BrandRow.astro';
+import Modal from '../ui/Modal.astro';
+---
+<section data-marcas-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
+	<!-- Errors keep the persistent Alert; success goes through the ephemeral
+	     Toast — the h1 lives in the LayoutApp TopBar. -->
+	<Alert tone="danger" name="marcas-error" hidden>
+		<span data-marca-error-text></span>
+	</Alert>
+
+	<!-- Quick create in ONE row above the list (same pattern as
+	     /categorias). The offline note travels with the disabled submit. -->
+	<BrandForm />
+	<p data-marca-offline hidden class="text-base font-semibold text-warning">
+		Necesitás conexión para modificar marcas
+	</p>
+
+	<ul data-marca-rows class="flex flex-col gap-3"></ul>
+	<BrandRow />
+	<EmptyState state="empty-marcas" mensaje="Todavía no hay marcas" hidden />
+
+	<Modal modalKey="confirmar-borrar-marca" title="¿Eliminar marca?">
+		<p>
+			La marca se borra de la lista. Solo se puede eliminar si ningún
+			producto la está usando.
+		</p>
+		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
+			Cancelar
+		</button>
+		<button
+			slot="actions"
+			type="button"
+			class="btn btn-danger"
+			data-marca-confirm-delete
+			data-modal-close
+		>
+			Sí, eliminar
+		</button>
+	</Modal>
+</section>
+
+<script>
+	import '../islands/admin/brands-admin';
+	import '../islands/runtime/modal-controller';
+</script>

@@ -15,15 +15,17 @@
 // through textContent — product names never become HTML. Copy is simple
 // Spanish, never raw error codes (stilesbase §5.7); no auto-retries (§5.3).
 
+import { getCategorias } from '../../../api/actions/categorias';
+import { getMarcas } from '../../../api/actions/marcas';
 import {
   actualizarProducto,
   crearProducto,
   obtenerProductos,
   productosAdmin,
 } from '../../../api/actions/productos';
-import { getCategorias } from '../../../api/actions/categorias';
 import { subirImagenCloudinary } from '../../../api/client';
 import type { ProductoAdmin } from '../../../api/types';
+import { mensajeDeErrorApi } from '../../../utils/api-result';
 import { resolveImageUrl } from '../../../utils/cloudinary';
 import {
   cloneTemplate,
@@ -35,19 +37,18 @@ import {
   setText,
 } from '../../../utils/dom';
 import { crearFeedback } from '../../../utils/feedback';
-import { formatCurrency } from '../../../utils/format';
-import { createFormManager } from '../../../utils/form-manager';
 import { limpiarErroresForm } from '../../../utils/form-errors';
+import { createFormManager } from '../../../utils/form-manager';
+import { formatCurrency } from '../../../utils/format';
 import { closeModal, openModal } from '../../../utils/modal';
+import { getAjustes, setCatalogoCache } from '../../../utils/storage';
+import { mostrarToast } from '../../../utils/toast';
 import {
   isNonEmpty,
   isValidImageUrl,
   isValidPrecio,
   isValidStockValue,
 } from '../../../utils/validators';
-import { getAjustes, setCatalogoCache } from '../../../utils/storage';
-import { mostrarToast } from '../../../utils/toast';
-import { mensajeDeErrorApi } from '../../../utils/api-result';
 
 // Local admin search (plan-reponer-buscar.md Fase 2): Fuse over the loaded
 // list — same policy as the POS catalog (appscriptbase.md §5.3): the input
@@ -72,6 +73,7 @@ if (root) {
   const formTitle = qs<HTMLElement>(root, '[data-product-form-title]');
   const nombreInput = qs<HTMLInputElement>(root, '[data-product-nombre]');
   const categoriaInput = qs<HTMLSelectElement>(root, '[data-product-categoria]');
+  const marcaInput = qs<HTMLSelectElement>(root, '[data-product-marca]');
   const precioInput = qs<HTMLInputElement>(root, '[data-product-precio]');
   const stockInput = qs<HTMLInputElement>(root, '[data-product-stock]');
   const imagenInput = qs<HTMLInputElement>(root, '[data-product-imagen]');
@@ -165,6 +167,35 @@ if (root) {
       select.value = existe ? seleccionPrevia : '';
       if (select === catFilter) catFiltro = select.value;
     }
+  }
+
+  // Marca <select> (optional field): same degradation as poblarCategorias —
+  // GET ?action=marcas, falling back to the brands DERIVED from the admin
+  // product list when the action isn't deployed yet (or offline). Only the
+  // first blank "Sin marca" option is preserved.
+  async function poblarMarcas(): Promise<void> {
+    if (!marcaInput) return;
+    const res = await getMarcas();
+    let nombres: string[];
+    if (res.status === 'success') {
+      nombres = res.body.marcas.map((m) => m.nombre);
+    } else {
+      nombres = [...new Set(productos.map((p) => p.marca ?? '').filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'es'),
+      );
+    }
+
+    const seleccionPrevia = marcaInput.value;
+    while (marcaInput.options.length > 1) marcaInput.remove(1);
+    for (const nombre of nombres) {
+      const option = document.createElement('option');
+      option.value = nombre;
+      setText(option, nombre);
+      marcaInput.append(option);
+    }
+    // Keep the cashier's in-progress selection when it still exists.
+    const existe = Array.from(marcaInput.options).some((o) => o.value === seleccionPrevia);
+    marcaInput.value = existe ? seleccionPrevia : '';
   }
 
   // deviation: alias descriptivo que despacha a feedbackPage (diferenciado de feedbackForm dentro del drawer)
@@ -267,6 +298,7 @@ if (root) {
     if (res.status === 'success') {
       productos = res.body.productos;
       await poblarCategorias();
+      await poblarMarcas();
       render();
       return;
     }
@@ -278,6 +310,7 @@ if (root) {
     if (publico.status === 'success') {
       productos = publico.body.productos.map((p) => ({ ...p, activo: true }));
       await poblarCategorias();
+      await poblarMarcas();
       render();
       return;
     }
@@ -297,6 +330,7 @@ if (root) {
   function paintRow(row: HTMLElement, producto: ProductoAdmin): void {
     const nombre = qs<HTMLElement>(row, '[data-product-nombre]');
     const categoria = qs<HTMLElement>(row, '[data-product-categoria]');
+    const marca = qs<HTMLElement>(row, '[data-product-marca]');
     const precio = qs<HTMLElement>(row, '[data-product-precio]');
     const stock = qs<HTMLElement>(row, '[data-product-stock]');
     const stockPlain = qs<HTMLElement>(row, '[data-product-stock-plain]');
@@ -309,6 +343,12 @@ if (root) {
 
     setText(nombre, producto.nombre);
     setText(categoria, producto.categoria);
+    // Brand line: hidden ⇔ the product has none (older rows / sheet without
+    // the column arrive as '' from the server).
+    if (marca) {
+      setText(marca, producto.marca ?? '');
+      setHidden(marca, !(producto.marca ?? '').trim());
+    }
     setText(precio, formatCurrency(producto.precio));
     // Mobile card carries the prefix (no column header); the desktop column
     // header already says "Stock" → plain number there.
@@ -377,6 +417,9 @@ if (root) {
         keys: [
           { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
           { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+          // Brand is searchable (typed AND voiced — the mic writes into the
+          // same input and this index does the matching).
+          { name: 'marca', getFn: (p) => normalizeSearchQuery(p.marca ?? '') },
         ],
         threshold: 0.35,
       });
@@ -461,6 +504,19 @@ if (root) {
     }
     if (precioInput) precioInput.value = String(producto.precio);
     if (stockInput) stockInput.value = String(producto.stock);
+    if (marcaInput) {
+      // Same legacy-value guard as the category select: a brand the sheet
+      // offers but the loaded options miss never silently resets to blank.
+      const marca = producto.marca ?? '';
+      const existe = Array.from(marcaInput.options).some((o) => o.value === marca);
+      if (marca && !existe) {
+        const option = document.createElement('option');
+        option.value = marca;
+        setText(option, marca);
+        marcaInput.append(option);
+      }
+      marcaInput.value = marca;
+    }
     if (imagenInput) imagenInput.value = producto.imagen_url;
     ocultarAlertas();
     ocultarEstadoImagen();
@@ -488,6 +544,7 @@ if (root) {
     precio: number;
     stock: number;
     imagen_url: string;
+    marca: string;
   };
 
   async function guardar(datos: DatosForm): Promise<void> {
@@ -570,6 +627,12 @@ if (root) {
         el: categoriaInput,
         validate: isNonEmpty,
         error: 'Elegí la categoría del producto.',
+      },
+      // Optional like the image: an empty select means "sin marca" and the
+      // server stores '' (never a validation error).
+      marca: {
+        el: marcaInput,
+        optional: true,
       },
       precio: {
         el: precioInput,

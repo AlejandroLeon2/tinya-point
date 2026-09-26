@@ -29,6 +29,9 @@ export interface Producto {
   id: string;
   nombre: string;
   categoria: string;
+  // Optional on purpose: caches written before the brand field exist (and
+  // sheets without the column) keep working — the search treats '' as absent.
+  marca?: string;
   precio: number;
   stock: number;
   imagen_url?: string;

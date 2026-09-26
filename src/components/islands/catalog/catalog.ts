@@ -76,6 +76,9 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
       keys: [
         { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
         { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+        // Brand is searchable (typed AND voiced — the mic writes into the
+        // same input and this index does the matching).
+        { name: 'marca', getFn: (p) => normalizeSearchQuery(p.marca ?? '') },
       ],
       threshold: 0.35,
     });
@@ -132,6 +135,7 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     if (!node) return null;
 
     const name = qs<HTMLElement>(node, '[data-card-name]');
+    const brand = qs<HTMLElement>(node, '[data-card-brand]');
     const price = qs<HTMLElement>(node, '[data-card-price]');
     const stock = qs<HTMLElement>(node, '[data-card-stock]');
     const low = qs<HTMLElement>(node, '[data-card-low]');
@@ -140,6 +144,11 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
     const placeholder = qs<HTMLElement>(node, '[data-card-placeholder]');
 
     setText(name, product.nombre);
+    if (brand) {
+      const marca = (product.marca ?? '').trim();
+      setText(brand, marca);
+      setHidden(brand, marca === '');
+    }
     setText(price, formatCurrency(product.precio));
     // The overlay button carries the accessible name (§4.2D).
     if (addBtn) addBtn.setAttribute('aria-label', `Agregar ${product.nombre}`);

@@ -10,14 +10,15 @@
 //   - missing sheet          → created with headers, bold, frozen, formats
 //   - existing sheet, all OK → reported as `ya_existia_completa`, untouched
 //   - missing header         → ADDED as a trailing column (the handlers of
-//                              Productos/Categorias/Cajas resolve columns by
-//                              header NAME, so appending is always safe)
+//                              Productos/Categorias/Marcas/Cajas resolve
+//                              columns by header NAME, so appending is safe)
 //   - row 1 clearly NOT a header (sheet has data, zero expected headers)
 //     → left ALONE and reported: guessing here could mislabel real data.
 //
-// Schema source: doc/base.md §2.1–§2.5. The backend reads in TWO styles and
+// Schema source: doc/base.md §2.1–§2.6. The backend reads in TWO styles and
 // this file honours both:
-//   - header-name lookup → column order is free (Productos, Categorias, Cajas)
+//   - header-name lookup → column order is free (Productos, Categorias,
+//                          Marcas, Cajas)
 //   - fixed position     → the order below IS the contract (Ventas, Sesiones)
 //
 // Column names are the literal Spanish keys of the wire/data contract
@@ -38,6 +39,7 @@ var HOJAS = [
       { encabezado: 'id', tipo: 'texto', ancho: 300 },
       { encabezado: 'nombre', tipo: 'texto', ancho: 220 },
       { encabezado: 'categoria', tipo: 'texto', ancho: 140 },
+      { encabezado: 'marca', tipo: 'texto', ancho: 140 },
       { encabezado: 'precio', tipo: 'numero', ancho: 90 },
       { encabezado: 'stock', tipo: 'entero', ancho: 80 },
       // Optional and never read by the API — kept so the one-shot seed
@@ -50,6 +52,16 @@ var HOJAS = [
   {
     // base.md §2.5 — header-name lookup (categorias.gs).
     nombre: 'Categorias',
+    columnas: [
+      { encabezado: 'id', tipo: 'texto', ancho: 300 },
+      { encabezado: 'nombre', tipo: 'texto', ancho: 220 },
+    ],
+  },
+  {
+    // base.md §2.6 — header-name lookup (marcas.gs): same id/nombre shape as
+    // Categorias. crearMarca/actualizarMarca/borrarMarca append/patch/delete
+    // rows here; actualizarMarca cascades into Productos.marca under one lock.
+    nombre: 'Marcas',
     columnas: [
       { encabezado: 'id', tipo: 'texto', ancho: 300 },
       { encabezado: 'nombre', tipo: 'texto', ancho: 220 },

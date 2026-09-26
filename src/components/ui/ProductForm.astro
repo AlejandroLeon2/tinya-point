@@ -23,6 +23,14 @@ import Button from './Button.astro';
 			<option value="">Elegí una categoría</option>
 		</select>
 	</label>
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Marca
+		<!-- Same contract as Categoría: GET ?action=marcas with a products-
+		     derived fallback; marca is optional so the blank option leads. -->
+		<select data-product-marca class="input-field">
+			<option value="">Sin marca</option>
+		</select>
+	</label>
 
 	<div class="flex flex-wrap gap-3">
 		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">

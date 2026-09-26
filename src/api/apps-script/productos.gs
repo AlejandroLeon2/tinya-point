@@ -35,6 +35,7 @@ function obtenerProductos() {
       nombre: String(fila[cols.nombre]),
       precio: Number(fila[cols.precio]),
       categoria: cols.categoria === undefined ? '' : String(fila[cols.categoria]),
+      marca: cols.marca === undefined ? '' : String(fila[cols.marca]),
       stock: Number(fila[cols.stock]),
       imagen_url: cols.imagen_url === undefined || !fila[cols.imagen_url]
         ? ''
@@ -86,6 +87,7 @@ function productosAdmin(token, data) {
       nombre: String(fila[cols.nombre]),
       precio: Number(fila[cols.precio]),
       categoria: cols.categoria === undefined ? '' : String(fila[cols.categoria]),
+      marca: cols.marca === undefined ? '' : String(fila[cols.marca]),
       stock: Number(fila[cols.stock]),
       imagen_url: cols.imagen_url === undefined || !fila[cols.imagen_url]
         ? ''
@@ -102,7 +104,7 @@ function productosAdmin(token, data) {
  * (§4.9) — creating a product is not an offline flow, unlike a sale (whose
  * id_venta comes from the client).
  * @param {string} token
- * @param {{nombre: string, categoria: string, precio: number, stock: number, imagen_url?: string}} data
+ * @param {{nombre: string, categoria: string, precio: number, stock: number, imagen_url?: string, marca?: string}} data
  * @return {Object} { ok:true, id } | { ok:false, error }
  */
 function crearProducto(token, data) {
@@ -122,7 +124,8 @@ function crearProducto(token, data) {
     typeof data.stock !== 'number' ||
     !Number.isInteger(data.stock) ||
     data.stock < 0 ||
-    (data.imagen_url !== undefined && typeof data.imagen_url !== 'string')
+    (data.imagen_url !== undefined && typeof data.imagen_url !== 'string') ||
+    (data.marca !== undefined && typeof data.marca !== 'string')
   ) {
     return respuestaError('payload_invalido', 'crearProducto: bad data');
   }
@@ -132,6 +135,7 @@ function crearProducto(token, data) {
     id: nuevoId,
     nombre: data.nombre.trim(),
     categoria: data.categoria,
+    marca: data.marca || '',
     precio: data.precio,
     stock: data.stock,
     imagen_url: data.imagen_url || '',
@@ -161,7 +165,7 @@ function crearProducto(token, data) {
  * Partial update by id (§4.10). Only the fields present in `data` are
  * written; activo: false is the logical delete — never a hard delete (D2).
  * @param {string} token
- * @param {{id: string, nombre?: string, categoria?: string, precio?: number, stock?: number, imagen_url?: string, activo?: boolean}} data
+ * @param {{id: string, nombre?: string, categoria?: string, precio?: number, stock?: number, imagen_url?: string, activo?: boolean, marca?: string}} data
  * @return {Object} { ok:true } | { ok:false, error }
  */
 function actualizarProducto(token, data) {
@@ -180,6 +184,7 @@ function actualizarProducto(token, data) {
   if (data.precio !== undefined) campos.precio = data.precio;
   if (data.stock !== undefined) campos.stock = data.stock;
   if (data.imagen_url !== undefined) campos.imagen_url = data.imagen_url;
+  if (data.marca !== undefined) campos.marca = data.marca;
   if (data.activo !== undefined) campos.activo = data.activo;
 
   if (Object.keys(campos).length === 0) {
@@ -196,6 +201,7 @@ function actualizarProducto(token, data) {
         !Number.isInteger(campos.stock) ||
         campos.stock < 0)) ||
     (campos.imagen_url !== undefined && typeof campos.imagen_url !== 'string') ||
+    (campos.marca !== undefined && typeof campos.marca !== 'string') ||
     (campos.activo !== undefined && typeof campos.activo !== 'boolean')
   ) {
     return respuestaError('payload_invalido', 'actualizarProducto: bad fields');

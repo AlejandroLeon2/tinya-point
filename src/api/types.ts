@@ -5,7 +5,8 @@
 import type { MetodoPago } from '../utils/storage';
 
 // §4.5 — closed union of server error codes; the same strings everywhere.
-// categoria_* added by plan-productos-v2 Fase 2 (§4.12–§4.14).
+// categoria_* added by plan-productos-v2 Fase 2 (§4.12–§4.14); marca_* by
+// the brand field (same rules, mirrored actions).
 export type ErrorCode =
   | 'credenciales_invalidas'
   | 'unauthorized'
@@ -13,12 +14,15 @@ export type ErrorCode =
   | 'payload_invalido'
   | 'error_interno'
   | 'categoria_duplicada'
-  | 'categoria_en_uso';
+  | 'categoria_en_uso'
+  | 'marca_duplicada'
+  | 'marca_en_uso';
 
 // Router actions (§3.2). login carries its own body shape — see PeticionLogin.
 // productosAdmin/crearProducto/actualizarProducto added by plan-mejoras-2 Fase 1
 // (contracts §4.8–§4.10); abrirCaja/cerrarCaja by Fase 2 (§4.6/§4.7);
-// crear/actualizar/borrarCategoria by plan-productos-v2 Fase 2 (§4.12–§4.14).
+// crear/actualizar/borrarCategoria by plan-productos-v2 Fase 2 (§4.12–§4.14);
+// crear/actualizar/borrarMarca mirror those for the brand sheet.
 export type AccionEscritura =
   | 'registrarVenta'
   | 'actualizarStock'
@@ -29,8 +33,11 @@ export type AccionEscritura =
   | 'cerrarCaja'
   | 'crearCategoria'
   | 'actualizarCategoria'
-  | 'borrarCategoria';
-export type AccionLectura = 'productos' | 'categorias';
+  | 'borrarCategoria'
+  | 'crearMarca'
+  | 'actualizarMarca'
+  | 'borrarMarca';
+export type AccionLectura = 'productos' | 'categorias' | 'marcas';
 // Reads that REQUIRE a token (§4.15). They travel over POST — the token
 // never goes in a query string (appscriptbase.md §5.3) — so they are a
 // separate union instead of a GET read, and `llamarApi` accepts both.
@@ -43,6 +50,7 @@ export interface ProductoApi {
   nombre: string;
   precio: number;
   categoria: string;
+  marca: string;
   stock: number;
   imagen_url: string;
 }
@@ -194,12 +202,15 @@ export interface RespuestaProductosAdmin {
 }
 
 // §4.9 POST action=crearProducto — the server answers with the generated id.
+// `marca` is OPTIONAL on the wire: the sheet may not carry the column yet and
+// older clients never send it (server defaults it to '').
 export interface DatosCrearProducto {
   nombre: string;
   categoria: string;
   precio: number;
   stock: number;
   imagen_url?: string;
+  marca?: string;
 }
 
 export interface PeticionCrearProducto {
@@ -224,6 +235,7 @@ export interface DatosActualizarProducto {
   stock?: number;
   imagen_url?: string;
   activo?: boolean;
+  marca?: string;
 }
 
 export interface PeticionActualizarProducto {
@@ -285,4 +297,59 @@ export interface PeticionBorrarCategoria {
   action: 'borrarCategoria';
   token: string | null;
   data: DatosBorrarCategoria;
+}
+
+// ── Marcas (mirror of the categorías contracts, same shape and rules) ──────
+
+// GET ?action=marcas — public light read that feeds the product form's
+// <select>. Sorted server-side by name.
+export interface MarcaApi {
+  id: string;
+  nombre: string;
+}
+
+export interface RespuestaMarcas {
+  ok: true;
+  marcas: MarcaApi[];
+}
+
+// POST action=crearMarca — server answers with the generated id.
+export interface DatosCrearMarca {
+  nombre: string;
+}
+
+export interface PeticionCrearMarca {
+  action: 'crearMarca';
+  token: string | null;
+  data: DatosCrearMarca;
+}
+
+export interface RespuestaCrearMarca {
+  ok: true;
+  id: string;
+}
+
+// POST action=actualizarMarca — rename by id; the server cascades the change
+// to every product that used the old name (same lock as categorías).
+export interface DatosActualizarMarca {
+  id: string;
+  nombre: string;
+}
+
+export interface PeticionActualizarMarca {
+  action: 'actualizarMarca';
+  token: string | null;
+  data: DatosActualizarMarca;
+}
+
+// POST action=borrarMarca — rejected with marca_en_uso when any product still
+// references the name (sheet-side guard, no soft delete).
+export interface DatosBorrarMarca {
+  id: string;
+}
+
+export interface PeticionBorrarMarca {
+  action: 'borrarMarca';
+  token: string | null;
+  data: DatosBorrarMarca;
 }
