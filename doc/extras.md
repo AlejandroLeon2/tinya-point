@@ -62,9 +62,9 @@ Muestra la imagen cacheada al instante y la actualiza en segundo plano si cambi�
 
 ## 3. Setup inicial (checklist, en orden)
 
-1. **Google Sheet:** crear el archivo **vacío** (sin hojas a mano). Las 5 hojas con sus cabeceras exactas las crea el propio backend: `Productos`, `Categorias`, `Ventas`, `Cajas`, `Sesiones` (esquema en sección 2, implementado en `src/api/setup/setup.gs`).
+1. **Google Sheet:** crear el archivo **vacío** (sin hojas a mano). Las 6 hojas con sus cabeceras exactas las crea el propio backend: `Productos`, `Categorias`, `Marcas`, `Ventas`, `Cajas`, `Sesiones` (esquema en sección 2, implementado en `src/api/setup/setup.gs`).
 2. **Apps Script:** desde el Sheet, `Extensiones → Apps Script`. Crear los archivos de `api/apps-script/` (sección 3.7 de la arquitectura) + `api/setup/` y hacer `clasp push`. Luego, en el editor, correr **`crearHojas()`** — crea todas las hojas faltantes con sus encabezados y es idempotente (no toca filas existentes). `estadoSetup()` informa qué falta sin escribir nada. Detalle: `src/api/setup/README.md`.
-3. **Script Properties:** `Configuración del proyecto → Propiedades del script` → `SPREADSHEET_ID` (o correr `vincularLibroActivo()` si el editor está abierto desde el Sheet) + `USUARIO` y `CLAVE` (o su hash).
+3. **Script Properties:** `Configuración del proyecto → Propiedades del script` → `SPREADSHEET_ID` (o correr `vincularLibroActivo()` si el editor está abierto desde el Sheet) + `USUARIO` y `CLAVE` (o su hash) — a mano o corriendo **`guardarCredenciales()`** (`src/api/setup/credenciales.gs`, gitignored: la clave nunca entra al repo).
 4. **Deploy:** `Implementar → Nueva implementación → Aplicación web`. Ejecutar como "Yo" (el dueño del script), acceso "Cualquier persona". Copiar la URL que entrega — esa es la única URL que usará el frontend.
 5. **Seed del catálogo:** correr el script de una sola vez contra DummyJSON (especificación, sección 4) para llenar `Productos` con datos de prueba.
 6. **Cloudinary:** crear cuenta gratuita, anotar el `cloud name`.
