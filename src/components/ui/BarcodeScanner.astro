@@ -1,0 +1,78 @@
+---
+// Barcode scanner overlay (plan-camara-barras Fase 1) — pure markup: a
+// fixed z-60 panel over EVERYTHING, including the product-form drawer
+// (utils/modal allows ONE active modal, so the scanner cannot ride it and
+// owns its own open/close/focus contract — see islands/runtime/
+// barcode-scanner.ts). ui/ draws, never fetches (astrobase §1); the camera
+// lifecycle, Escape/Tab handling and friendly errors live in that island.
+// Render ONCE per page that scans (POS catalog + /productos).
+import Icon from './Icon.astro';
+---
+<div
+	data-barcode-scanner
+	hidden
+	class="fixed inset-0 z-60 flex items-center justify-center bg-text/60 p-4"
+>
+	<div
+		role="dialog"
+		aria-modal="true"
+		aria-label="Escanear código de barras"
+		class="flex max-h-full w-full max-w-md flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-surface p-6 shadow-modal"
+	>
+		<div class="flex items-start justify-between gap-3">
+			<h2 class="text-lg font-bold text-text">Escanear código de barras</h2>
+			<button
+				type="button"
+				class="btn btn-secondary ml-auto"
+				data-barcode-scanner-close
+				aria-label="Cancelar escaneo"
+			>
+				✕
+			</button>
+		</div>
+
+		<!-- Preview: muted + playsinline are REQUIRED for iOS Safari to
+		     autoplay the camera stream inside a modal. -->
+		<div class="overflow-hidden rounded-lg border-2 border-border bg-black">
+			<video
+				data-barcode-scanner-video
+				muted
+				playsinline
+				class="aspect-video w-full object-cover"
+			></video>
+		</div>
+
+		<p class="text-base text-text-muted">
+			Centra el código de barras dentro del marco. Se leen sobre todo los
+			códigos EAN-13, EAN-8 y UPC-A de los productos.
+		</p>
+
+		<!-- aria-live status: "Preparando la cámara…" / "Busca el código…" -->
+		<p
+			data-barcode-scanner-status
+			hidden
+			aria-live="polite"
+			class="text-base text-text-muted"
+		>
+		</p>
+		<!-- role=alert: permission denied / no camera / insecure context. -->
+		<p
+			data-barcode-scanner-error
+			hidden
+			role="alert"
+			class="text-base font-semibold text-danger"
+		>
+		</p>
+
+		<div class="flex flex-wrap gap-3">
+			<button type="button" class="btn btn-secondary" data-barcode-scanner-close>
+				Cancelar
+			</button>
+			<!-- Revealed ONLY after a start failure (permission denied, no
+			     camera…) — same visibility contract as the error copy. -->
+			<button type="button" class="btn btn-primary" data-barcode-scanner-retry hidden>
+				Intentar de nuevo
+			</button>
+		</div>
+	</div>
+</div>

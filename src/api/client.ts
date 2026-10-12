@@ -22,6 +22,7 @@ const SERVER_CODES = new Set<ErrorCode>([
   'error_interno',
   'categoria_duplicada',
   'categoria_en_uso',
+  'barcode_duplicado',
 ]);
 
 // Local transport outcome — distinct from the server's ErrorCode union:

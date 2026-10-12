@@ -37,14 +37,21 @@ import {
 import { crearFeedback } from '../../../utils/feedback';
 import { formatCurrency } from '../../../utils/format';
 import { createFormManager } from '../../../utils/form-manager';
-import { limpiarErroresForm } from '../../../utils/form-errors';
+import { limpiarErrorCampo, limpiarErroresForm } from '../../../utils/form-errors';
 import { closeModal, openModal } from '../../../utils/modal';
 import {
   isNonEmpty,
   isValidImageUrl,
+  isValidMarca,
   isValidPrecio,
   isValidStockValue,
 } from '../../../utils/validators';
+import {
+  esBarcodeValido,
+  hayBarcodeDuplicado,
+  normalizarBarcode,
+} from '../../../utils/barcode';
+import { abrirEscaneoBarcode } from '../runtime/barcode-scanner';
 import { getAjustes, setCatalogoCache } from '../../../utils/storage';
 import { mostrarToast } from '../../../utils/toast';
 import { mensajeDeErrorApi } from '../../../utils/api-result';
@@ -72,6 +79,12 @@ if (root) {
   const formTitle = qs<HTMLElement>(root, '[data-product-form-title]');
   const nombreInput = qs<HTMLInputElement>(root, '[data-product-nombre]');
   const categoriaInput = qs<HTMLSelectElement>(root, '[data-product-categoria]');
+  const marcaInput = qs<HTMLInputElement>(root, '[data-product-marca]');
+  // Código de barras (plan-camara-barras): ONE input for both entry paths —
+  // manual write/paste and the camera scanner (which fills it on detect).
+  const barcodeInput = qs<HTMLInputElement>(root, '[data-product-barcode]');
+  const barcodeScanBtn = qs<HTMLButtonElement>(root, '[data-product-barcode-scan]');
+  const barcodeOk = qs<HTMLElement>(root, '[data-product-barcode-ok]');
   const precioInput = qs<HTMLInputElement>(root, '[data-product-precio]');
   const stockInput = qs<HTMLInputElement>(root, '[data-product-stock]');
   const imagenInput = qs<HTMLInputElement>(root, '[data-product-imagen]');
@@ -236,7 +249,7 @@ if (root) {
       } else if (res.status === 'not_configured') {
         mostrarErrorImagen('La subida de imágenes no está configurada en este entorno.');
       } else {
-        mostrarErrorImagen('No se pudo subir la imagen. Intentá de nuevo.');
+        mostrarErrorImagen('No se pudo subir la imagen. Intenta de nuevo.');
       }
     } finally {
       subiendoImagen = false;
@@ -245,11 +258,15 @@ if (root) {
   }
 
   // Spanish copy per transport outcome / §4.5 code — the code itself never
-  // reaches the cashier's eyes.
+  // reaches the cashier's eyes. Domain error first (same pattern as
+  // categorias-admin for categoria_duplicada).
   function mensajeDeError(error: string): string {
+    if (error === 'barcode_duplicado') {
+      return 'Ya existe un producto con ese código de barras.';
+    }
     return mensajeDeErrorApi(error, {
-      payloadInvalido: 'Revisá los campos del producto.',
-      fallback: 'No se pudo guardar. Intentá de nuevo.',
+      payloadInvalido: 'Revisa los campos del producto.',
+      fallback: 'No se pudo guardar. Intenta de nuevo.',
     });
   }
 
@@ -377,6 +394,9 @@ if (root) {
         keys: [
           { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
           { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+          // plan-camara-barras: an admin pasting a barcode must locate the
+          // product too (same normalized form as the POS catalog index).
+          { name: 'barcode', getFn: (p) => normalizeSearchQuery(p.barcode ?? '') },
         ],
         threshold: 0.35,
       });
@@ -462,6 +482,15 @@ if (root) {
     if (precioInput) precioInput.value = String(producto.precio);
     if (stockInput) stockInput.value = String(producto.stock);
     if (imagenInput) imagenInput.value = producto.imagen_url;
+    // Optional brand — legacy products without one show an empty field.
+    if (marcaInput) marcaInput.value = producto.marca ?? '';
+    // plan-camara-barras: the stored code (string, leading zeros intact) is
+    // shown for editing — or an empty field for legacy products without one.
+    if (barcodeInput) barcodeInput.value = producto.barcode ?? '';
+    if (barcodeOk) {
+      setText(barcodeOk, '');
+      setHidden(barcodeOk, true);
+    }
     ocultarAlertas();
     ocultarEstadoImagen();
     sincronizarImagen();
@@ -477,6 +506,10 @@ if (root) {
     setText(formTitle, 'Nuevo producto');
     setText(submitBtn, 'Guardar producto');
     setHidden(cancelBtn, true);
+    if (barcodeOk) {
+      setText(barcodeOk, '');
+      setHidden(barcodeOk, true);
+    }
     ocultarAlertas();
     ocultarEstadoImagen();
     sincronizarImagen();
@@ -485,12 +518,25 @@ if (root) {
   type DatosForm = {
     nombre: string;
     categoria: string;
+    marca: string;
+    barcode: string;
     precio: number;
     stock: number;
     imagen_url: string;
   };
 
   async function guardar(datos: DatosForm): Promise<void> {
+    // Local duplicate pre-guard (plan-camara-barras): the loaded catalog is
+    // checked BEFORE any network call — same strategy as categorias-admin's
+    // categoria_duplicada pre-guard. The backend validates again (and the
+    // barcode_duplicado error is mapped in mensajeDeError above).
+    const barcode = normalizarBarcode(datos.barcode);
+    if (hayBarcodeDuplicado(productos, barcode, editingId)) {
+      mostrarErrorForm('Ya existe un producto con ese código de barras.');
+      barcodeInput?.focus();
+      return;
+    }
+
     // P0 re-entry guard lives inside createFormManager (enVuelo); the button
     // disable also comes from there (submitBtn option).  We only manage the
     // dynamic text here ("Creando…" / "Guardando…").
@@ -564,25 +610,42 @@ if (root) {
       nombre: {
         el: nombreInput,
         validate: isNonEmpty,
-        error: 'Ingresá el nombre del producto.',
+        error: 'Ingresa el nombre del producto.',
       },
       categoria: {
         el: categoriaInput,
         validate: isNonEmpty,
-        error: 'Elegí la categoría del producto.',
+        error: 'Elige la categoría del producto.',
+      },
+      // Optional field — empty means "no brand" and is stored as ''.
+      marca: {
+        el: marcaInput,
+        validate: isValidMarca,
+        error: 'La marca es demasiado larga.',
+        transform: (raw) => raw.trim(),
+        optional: true,
       },
       precio: {
         el: precioInput,
         // Raw emptiness first: Number('') is 0, which would pass as a valid price.
         validate: (raw) => raw !== '' && isValidPrecio(Number(raw)),
-        error: 'Ingresá un precio igual o mayor a 0.',
+        error: 'Ingresa un precio igual o mayor a 0.',
         transform: (raw) => Number(raw),
       },
       stock: {
         el: stockInput,
         validate: (raw) => raw !== '' && isValidStockValue(Number(raw)),
-        error: 'Ingresá un stock entero igual o mayor a 0.',
+        error: 'Ingresa un stock entero igual o mayor a 0.',
         transform: (raw) => Number(raw),
+      },
+      // plan-camara-barras: optional field — empty means "no code" and is
+      // stored as '' (the string, never a number: leading zeros matter).
+      barcode: {
+        el: barcodeInput,
+        validate: esBarcodeValido,
+        error: 'El código de barras es demasiado largo o tiene caracteres no válidos.',
+        transform: (raw) => normalizarBarcode(raw),
+        optional: true,
       },
       imagen_url: {
         el: imagenInput,
@@ -606,11 +669,11 @@ if (root) {
     imagenFileInput.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      mostrarErrorImagen('Elegí un archivo de imagen (JPG, PNG o WebP).');
+      mostrarErrorImagen('Elige un archivo de imagen (JPG, PNG o WebP).');
       return;
     }
     if (file.size > MAX_IMAGEN_BYTES) {
-      mostrarErrorImagen('La imagen pesa más de 5 MB. Reducí el tamaño e intentá de nuevo.');
+      mostrarErrorImagen('La imagen pesa más de 5 MB. Reduce el tamaño e intenta de nuevo.');
       return;
     }
     void subirImagen(file);
@@ -620,6 +683,29 @@ if (root) {
     if (imagenInput) imagenInput.value = '';
     ocultarEstadoImagen();
     sincronizarImagen();
+  });
+
+  // Camera scan (plan-camara-barras Opción B): the button opens the shared
+  // overlay; on a successful read the SAME input is filled (Opción A state),
+  // its inline error dies and a short confirmation appears. Cancel/Escape in
+  // the overlay just returns here — the form keeps whatever it had.
+  barcodeScanBtn?.addEventListener('click', () => {
+    abrirEscaneoBarcode({
+      onLeido: (codigo) => {
+        if (barcodeInput) {
+          barcodeInput.value = codigo;
+          limpiarErrorCampo(barcodeInput);
+        }
+        setText(barcodeOk, 'Código leído correctamente.');
+        setHidden(barcodeOk, false);
+      },
+    });
+  });
+
+  // The confirmation is ephemeral: retyping anything hides it (the input
+  // itself is the lasting truth).
+  barcodeInput?.addEventListener('input', () => {
+    setHidden(barcodeOk, true);
   });
 
   // ONE delegated listener for BOTH lists (mobile ul + desktop tbody): the

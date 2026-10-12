@@ -6,6 +6,7 @@
 // the island in simple Spanish (§5.7), never raw error codes.
 // ui/ draws, never fetches (astrobase §1).
 import Button from './Button.astro';
+import Icon from './Icon.astro';
 ---
 <form data-product-form novalidate class="flex flex-col gap-4">
 	<h2 data-product-form-title class="text-lg font-bold text-text">Nuevo producto</h2>
@@ -20,8 +21,51 @@ import Button from './Button.astro';
 		     fallback (plan-productos-v2.md Fase 3/D2) — the island rebuilds
 		     the options; ui/ only draws the shell. -->
 		<select data-product-categoria class="input-field">
-			<option value="">Elegí una categoría</option>
+			<option value="">Elige una categoría</option>
 		</select>
+	</label>
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Marca (opcional)
+		<input data-product-marca type="text" class="input-field" autocomplete="off" />
+	</label>
+
+	<!-- Código de barras (plan-camara-barras): manual input (write/paste) OR
+	     camera scan via the icon button — same field stores both paths. The
+	     `relative block` span keeps the camera button pinned to the input AND
+	     lets form-manager's inline error <p> render under the input without
+	     breaking the label layout. Optional field (a product may ship with no
+	     code); always a STRING so leading zeros survive. -->
+	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		Código de barras (opcional)
+		<span class="relative block">
+			<input
+				data-product-barcode
+				type="text"
+				class="input-field pr-14"
+				autocomplete="off"
+				spellcheck="false"
+				inputmode="text"
+				placeholder="Ingresar o pegar el código…"
+			/>
+			<button
+				data-product-barcode-scan
+				type="button"
+				aria-label="Escanear código de barras con la cámara"
+				title="Escanear con la cámara"
+				class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted"
+			>
+				<Icon name="camera" class="h-6 w-6" />
+			</button>
+		</span>
+		<!-- Confirmation after a successful camera read (aria-live: announced
+		     without stealing focus; the island clears it on the next edit). -->
+		<p
+			data-product-barcode-ok
+			hidden
+			aria-live="polite"
+			class="text-base font-semibold text-success"
+		>
+		</p>
 	</label>
 
 	<div class="flex flex-wrap gap-3">

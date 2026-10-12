@@ -31,6 +31,9 @@ import { refreshCatalogoFromApi } from '../../../utils/catalog-cache';
 import { normalizeSearchQuery } from '../../../utils/search-normalize';
 import { createVoiceSearch, isSpeechSupported, type VoiceSearch } from '../../../utils/speech';
 import { mostrarToast } from '../../../utils/toast';
+import { buscarPorBarcode } from '../../../utils/barcode';
+import { addToCart } from '../../../stores/cart';
+import { abrirEscaneoBarcode } from '../runtime/barcode-scanner';
 
 const grid = qs<HTMLElement>(document, '[data-catalog-grid]');
 const template = qs<HTMLTemplateElement>(document, '[data-card-template]');
@@ -49,6 +52,11 @@ const pagination = qs<HTMLElement>(document, '[data-catalog-pagination]');
 const rangeText = qs<HTMLElement>(document, '[data-catalog-range]');
 const prevBtn = qs<HTMLButtonElement>(document, '[data-catalog-prev]');
 const nextBtn = qs<HTMLButtonElement>(document, '[data-catalog-next]');
+// plan-camara-barras: camera scan trigger + the "code not found" recovery.
+const scanBtn = qs<HTMLButtonElement>(document, '[data-catalog-scan]');
+const barcodeAlert = qs<HTMLElement>(document, '[data-alert="barcode-notfound"]');
+const barcodeAlertText = qs<HTMLElement>(document, '[data-barcode-notfound-text]');
+const barcodeSearchBtn = qs<HTMLButtonElement>(document, '[data-barcode-notfound-search]');
 
 // Visual pagination (plan-productos-v2 D1): client-side chunks over the
 // already-filtered list. No API, no storage, no server paging.
@@ -67,15 +75,18 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   let fuse: Fuse<Producto> | null = null;
   let page = 0;
   let selectedCategory = '';
-  // Product id → painted card, so Enter-on-unique-result can click the
-  // card's overlay add button (one code path for adding, guards included).
-  const painted = new Map<string, HTMLElement>();
+  // plan-camara-barras: last code the camera read — the "Buscar por código"
+  // recovery drops it into the search input.
+  let ultimoBarcode = '';
 
   function buildIndex(items: Producto[]): void {
     fuse = new Fuse(items, {
       keys: [
         { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
         { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
+        // plan-camara-barras: a full or partial code also filters the grid
+        // (same normalized form the query goes through below).
+        { name: 'barcode', getFn: (p) => normalizeSearchQuery(p.barcode ?? '') },
       ],
       threshold: 0.35,
     });
@@ -116,7 +127,18 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   }
 
   function visibleProducts(): Producto[] {
-    const query = normalizeSearchQuery(searchEl.value);
+    const crudo = searchEl.value.trim();
+    const query = normalizeSearchQuery(crudo);
+
+    // Exact barcode match wins over fuzzy name results (plan-camara-barras):
+    // keyboard scanners (wedge) type the full code + Enter, and the
+    // "Buscar por código" recovery action lands here too. One visible result
+    // → the Enter handler below adds it through the SAME add path the
+    // camera uses. The exact code also BEATS the category chip: a code is a
+    // unique identifier, and the camera path ignores the chip too — showing
+    // "Sin resultados" here while the scan would add it was inconsistent.
+    const porCodigo = buscarPorBarcode(products, crudo);
+    if (porCodigo) return [porCodigo];
 
     let base = products;
     if (query && fuse) {
@@ -231,14 +253,10 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
     // Remove only previously painted cards — template and coexistents stay.
     qsa(gridEl, '[data-product-card]').forEach((card) => card.remove());
-    painted.clear();
     const start = page * PAGE_SIZE;
     for (const product of list.slice(start, start + PAGE_SIZE)) {
       const card = paintCard(product);
-      if (card) {
-        gridEl.append(card);
-        painted.set(product.id, card);
-      }
+      if (card) gridEl.append(card);
     }
 
     // First real paint done → the loading skeletons have served their purpose
@@ -358,9 +376,19 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
         voice.stop();
         return;
       }
+      // Add the UNIQUE result directly (same guards/toast the camera path
+      // uses). Clicking the painted card raced the 200 ms input debounce —
+      // a wedge scanner types the code + Enter in well under that, so the
+      // card wasn't painted yet and Enter silently did nothing.
       const only = visibleProducts();
       if (only.length === 1) {
-        qs<HTMLButtonElement>(painted.get(only[0].id) ?? null, '[data-add-to-cart]')?.click();
+        agregarAlCarrito(only[0]);
+        // Clear the query: a wedge keeps its buffer otherwise and the NEXT
+        // scan concatenates onto the previous code ("775…17" + "775…18"),
+        // which never matches anything.
+        searchEl.value = '';
+        page = 0;
+        render();
       }
       return;
     }
@@ -403,6 +431,69 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   refreshBtn?.addEventListener('click', () => {
     void refreshFromApi(getCatalogoCache());
   });
+
+  // ── plan-camara-barras: camera scan → cart ────────────────────────────
+  // The read code is looked up by EXACT barcode match (utils/barcode) over
+  // the already-loaded cache — zero network. A hit adds through the SAME
+  // store the cards use (stores/cart → subscribeCart repaints ticket+badge);
+  // a miss reveals the recovery alert (search it here / register it in
+  // /productos). The camera itself is owned by the shared runtime island.
+  function ocultarAlertaBarcode(): void {
+    setHidden(barcodeAlert, true);
+  }
+
+  // Shared add path for BOTH entry points: the camera scan and Enter on a
+  // unique search result. Same guard as the card overlay (plan-refactor-ui
+  // T0.2): agotado never enters the cart, even through a barcode.
+  function agregarAlCarrito(producto: Producto): void {
+    if (producto.stock === 0) {
+      mostrarToast(`"${producto.nombre}" está agotado.`);
+      return;
+    }
+    addToCart(
+      {
+        id: producto.id,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        ...(producto.imagen_url ? { imagen_url: producto.imagen_url } : {}),
+      },
+      1,
+    );
+    mostrarToast(`Agregado: ${producto.nombre}`);
+  }
+
+  function agregarPorBarcode(codigo: string): void {
+    const producto = buscarPorBarcode(products, codigo);
+    if (!producto) {
+      ultimoBarcode = codigo;
+      setText(
+        barcodeAlertText,
+        `No encontramos ningún producto con el código "${codigo}". Si ya existe, actualiza el catálogo; si es nuevo, crea el producto.`,
+      );
+      setHidden(barcodeAlert, false);
+      return;
+    }
+    ocultarAlertaBarcode();
+    agregarAlCarrito(producto);
+  }
+
+  scanBtn?.addEventListener('click', () => {
+    ocultarAlertaBarcode();
+    abrirEscaneoBarcode({ onLeido: agregarPorBarcode });
+  });
+
+  // Recovery actions on the not-found alert: drop the code into the search
+  // input (the exact-match branch in visibleProducts takes over), or go
+  // register the product — the link navigates, this only clears the alert.
+  barcodeSearchBtn?.addEventListener('click', () => {
+    searchEl.value = ultimoBarcode;
+    searchEl.dispatchEvent(new Event('input', { bubbles: true }));
+    searchEl.focus();
+  });
+  qs<HTMLElement>(document, '[data-barcode-notfound-register]')?.addEventListener(
+    'click',
+    ocultarAlertaBarcode,
+  );
 
   void init();
 }

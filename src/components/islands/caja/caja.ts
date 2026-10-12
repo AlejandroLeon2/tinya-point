@@ -155,8 +155,8 @@ if (root) {
 
   function mensajeDeError(error: string): string {
     return mensajeDeErrorApi(error, {
-      payloadInvalido: 'Revisá los datos de la caja.',
-      fallback: 'No se pudo guardar la caja. Intentá de nuevo.',
+      payloadInvalido: 'Revisa los datos de la caja.',
+      fallback: 'No se pudo guardar la caja. Intenta de nuevo.',
     });
   }
 
@@ -273,12 +273,12 @@ if (root) {
     }
 
     // Only ONE open caja (client rule): another-day session blocks the form
-    // and the summary offers closing it first ("Primero cerrá la caja
+    // and the summary offers closing it first ("Primero cierra la caja
     // anterior" + a direct action — spec §5).
     const otroDia = abierta.fecha_dia !== localDayKey(new Date());
     setHidden(avisoAlert, !otroDia);
     if (otroDia) {
-      setText(avisoText, `Primero cerrá la caja anterior (del ${formatDia(abierta.fecha_dia)}).`);
+      setText(avisoText, `Primero cierra la caja anterior (del ${formatDia(abierta.fecha_dia)}).`);
     }
 
     const totales = totalesDelDia(abierta.fecha_dia);
@@ -330,7 +330,7 @@ if (root) {
       monto: {
         el: montoInput,
         validate: (raw) => raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0,
-        error: 'Ingresá un monto igual o mayor a 0.',
+        error: 'Ingresa un monto igual o mayor a 0.',
         transform: (raw) => round2(Number(raw)),
       },
     },
@@ -392,7 +392,7 @@ if (root) {
     if (raw === '' || !Number.isFinite(Number(raw)) || Number(raw) < 0) {
       // P1 (plan-form-ux.md): inline under the field — visible INSIDE the
       // modal (the page-level alert sits behind the overlay anyway).
-      if (conteoInput) mostrarErrorCampo(conteoInput, 'Ingresá el efectivo contado.');
+      if (conteoInput) mostrarErrorCampo(conteoInput, 'Ingresa el efectivo contado.');
       conteoInput?.focus();
       return;
     }

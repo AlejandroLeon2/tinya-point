@@ -208,7 +208,7 @@ if (root) {
     if (status === 'network_failure') return 'Sin conexión — no se pudo actualizar el stock.';
     return mensajeDeErrorApi(error ?? '', {
       payloadInvalido: 'Valor de stock inválido.',
-      fallback: 'No se pudo actualizar el stock. Intentá de nuevo.',
+      fallback: 'No se pudo actualizar el stock. Intenta de nuevo.',
     });
   }
 

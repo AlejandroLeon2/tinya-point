@@ -40,10 +40,16 @@ var HOJAS = [
       { encabezado: 'categoria', tipo: 'texto', ancho: 140 },
       { encabezado: 'precio', tipo: 'numero', ancho: 90 },
       { encabezado: 'stock', tipo: 'entero', ancho: 80 },
-      // Optional and never read by the API — kept so the one-shot seed
-      // (seed-productos.csv) pastes header-aligned (scripts/seed-dummyjson.mjs).
+      // plan-camara-barras: NOW read/written by the API as the wire field
+      // `barcode` (header-driven: the backend also accepts a "barcode"
+      // header). TEXT format keeps leading zeros — never reformat this
+      // column. Also kept so the one-shot seed (seed-productos.csv) pastes
+      // header-aligned (scripts/seed-dummyjson.mjs).
       { encabezado: 'sku/codigo_barras', tipo: 'texto', ancho: 160 },
       { encabezado: 'imagen_url', tipo: 'texto', ancho: 300 },
+      // Optional brand — header-driven like imagen_url (a sheet without the
+      // column simply stores no brand; rerunning setup appends it safely).
+      { encabezado: 'marca', tipo: 'texto', ancho: 140 },
       { encabezado: 'activo', tipo: 'booleano', ancho: 70 },
     ],
   },

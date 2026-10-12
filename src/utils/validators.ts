@@ -24,6 +24,13 @@ export function isValidStockValue(stock: number): boolean {
   return Number.isInteger(stock) && stock >= 0;
 }
 
+// Optional brand: empty is valid ("no brand"); cap the length so a paste
+// never bloats the sheet cell.
+export function isValidMarca(marca: string): boolean {
+  const value = marca.trim();
+  return value === '' || value.length <= 64;
+}
+
 export function isValidImageUrl(url: string): boolean {
   const value = url.trim();
   if (value === '') return true; // optional field — empty clears the image

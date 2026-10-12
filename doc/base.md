@@ -39,7 +39,7 @@ No usar Tina CMS: asume un editor de contenido dedicado, lo cual no aplica cuand
 | categoria | string | |
 | precio | number | |
 | stock | number | se actualiza vía Apps Script al vender |
-| sku / codigo_barras | string | opcional |
+| sku / codigo_barras | string | opcional — es la columna del wire `barcode` (plan-camara-barras): la lee/escribe el backend como string (conserva ceros iniciales) y valida que no esté duplicada en todo el catálogo; el backend también acepta una columna llamada `barcode` |
 | imagen_url | string | opcional |
 | activo | boolean | para ocultar sin borrar |
 
