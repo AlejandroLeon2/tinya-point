@@ -35,6 +35,9 @@ export interface Producto {
   precio: number;
   stock: number;
   imagen_url?: string;
+  // plan-camara-barras: optional product barcode, ALWAYS a string (leading
+  // zeros are part of the code). Absent on caches written before the feature.
+  barcode?: string;
 }
 
 export interface CatalogoCache {

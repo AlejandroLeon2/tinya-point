@@ -8,9 +8,11 @@ import { llamarApi, llamarGet, type ApiResult } from '../client';
 import {
   isNonEmpty,
   isValidImageUrl,
+  isValidMarca,
   isValidPrecio,
   isValidStockValue,
 } from '../../utils/validators';
+import { esBarcodeValido, normalizarBarcode } from '../../utils/barcode';
 import type {
   DatosActualizarProducto,
   DatosCrearProducto,
@@ -31,7 +33,8 @@ export async function productosAdmin(): Promise<ApiResult<RespuestaProductosAdmi
 }
 
 // §4.9 — mirror of the server-side payload_invalido rules (§4.5) so an
-// obvious mistake never pays a round trip.
+// obvious mistake never pays a round trip. barcode: optional, trimmed and
+// sent as a STRING (plan-camara-barras — leading zeros are significant).
 export async function crearProducto(
   data: DatosCrearProducto,
 ): Promise<ApiResult<RespuestaCrearProducto>> {
@@ -40,13 +43,17 @@ export async function crearProducto(
     !isNonEmpty(data.categoria) ||
     !isValidPrecio(data.precio) ||
     !isValidStockValue(data.stock) ||
-    !isValidImageUrl(data.imagen_url ?? '')
+    !isValidImageUrl(data.imagen_url ?? '') ||
+    !isValidMarca(data.marca ?? '') ||
+    !esBarcodeValido(data.barcode ?? '')
   ) {
     return { status: 'api_error', error: 'payload_invalido' };
   }
   return llamarApi<RespuestaCrearProducto>('crearProducto', {
     ...data,
     imagen_url: (data.imagen_url ?? '').trim(),
+    marca: (data.marca ?? '').trim(),
+    barcode: normalizarBarcode(data.barcode ?? ''),
   });
 }
 
@@ -55,7 +62,7 @@ export async function crearProducto(
 export async function actualizarProducto(
   data: DatosActualizarProducto,
 ): Promise<ApiResult<RespuestaOk>> {
-  const { id, nombre, categoria, precio, stock, imagen_url, activo, marca } = data;
+  const { id, nombre, categoria, precio, stock, imagen_url, activo, marca, barcode } = data;
   const tocaAlgo =
     nombre !== undefined ||
     categoria !== undefined ||
@@ -63,7 +70,8 @@ export async function actualizarProducto(
     stock !== undefined ||
     imagen_url !== undefined ||
     activo !== undefined ||
-    marca !== undefined;
+    marca !== undefined ||
+    barcode !== undefined;
   if (
     !id ||
     !tocaAlgo ||
@@ -73,9 +81,14 @@ export async function actualizarProducto(
     (stock !== undefined && !isValidStockValue(stock)) ||
     (imagen_url !== undefined && !isValidImageUrl(imagen_url)) ||
     (activo !== undefined && typeof activo !== 'boolean') ||
-    (marca !== undefined && typeof marca !== 'string')
+    (marca !== undefined && !isValidMarca(marca)) ||
+    (barcode !== undefined && !esBarcodeValido(barcode))
   ) {
     return { status: 'api_error', error: 'payload_invalido' };
   }
-  return llamarApi<RespuestaOk>('actualizarProducto', data);
+  return llamarApi<RespuestaOk>('actualizarProducto', {
+    ...data,
+    ...(marca !== undefined ? { marca: marca.trim() } : {}),
+    ...(barcode !== undefined ? { barcode: normalizarBarcode(barcode) } : {}),
+  });
 }

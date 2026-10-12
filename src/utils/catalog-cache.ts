@@ -17,6 +17,8 @@ export async function refreshCatalogoFromApi(): Promise<boolean> {
         precio: p.precio,
         stock: p.stock,
         imagen_url: p.imagen_url,
+        // Older deployments omit it — the POS treats missing as "no code".
+        ...(p.barcode !== undefined ? { barcode: p.barcode } : {}),
       })),
       timestamp: Date.now(),
     };

@@ -79,19 +79,19 @@ if (root) {
       moneda: {
         el: monedaInput,
         validate: isNonEmpty,
-        error: 'Ingresá el símbolo de la moneda (ej: S/).',
+        error: 'Ingresa el símbolo de la moneda (ej: S/).',
       },
       igv: {
         el: igvInput,
         validate: (raw) => raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 100,
-        error: 'Ingresá un porcentaje de IGV entre 0 y 100.',
+        error: 'Ingresa un porcentaje de IGV entre 0 y 100.',
         transform: (raw) => Number(raw),
       },
       stockAlerta: {
         el: stockAlertaInput,
         validate: (raw) =>
           raw !== '' && Number.isFinite(Number(raw)) && Number(raw) >= 0 && Number(raw) <= 999,
-        error: 'Ingresá un número entre 0 y 999 para la alerta de stock.',
+        error: 'Ingresa un número entre 0 y 999 para la alerta de stock.',
         transform: (raw) => Math.round(Number(raw)),
       },
     },
@@ -107,7 +107,7 @@ if (root) {
       try {
         setAjustes(ajustes);
       } catch {
-        feedback.error('No se pudieron guardar los ajustes. Intentá de nuevo.');
+        feedback.error('No se pudieron guardar los ajustes. Intenta de nuevo.');
         return;
       }
 

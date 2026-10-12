@@ -2,6 +2,97 @@
 // (doc/appscriptbase.md §3.4). Public read (no token): only rows with
 // activo === true, only the light fields of §4.1 — never the full row.
 
+// ── plan-camara-barras: the OPTIONAL barcode column ─────────────────────
+// The wire field is `barcode` (string, leading zeros significant). The
+// sheet column may be named "barcode" (canonical) or carry the legacy seed
+// header "sku/codigo_barras" (doc/base.md §2.1) — whichever exists wins,
+// "barcode" first. Header-driven like everything else: a sheet WITHOUT the
+// column simply stores no code (same leniency as an absent imagen_url).
+
+/**
+ * Normalize a header for barcode-column matching: lowercase, drop accents
+ * and the separators / _ space -, so hand-typed variants like
+ * "SKU/Código_Barras" or "codigo barras" still resolve to the column.
+ * @param {string} nombre raw header
+ * @return {string}
+ */
+function claveBarcodeNormalizada(nombre) {
+  return String(nombre)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\/_\s-]/g, '');
+}
+
+/**
+ * Column index for the barcode, in the SAME base the caller's cols map uses
+ * (0-based on reads, 1-based inside actualizarProducto). -1 = no column.
+ * Matches (case/accent/separator-insensitive): "barcode", "sku/codigo_barras"
+ * and "codigo_barras" — the canonical name wins over the legacy ones.
+ * @param {Object} cols header name -> index
+ * @return {number}
+ */
+function indiceColumnaBarcode(cols) {
+  let legado = -1;
+  const claves = Object.keys(cols);
+  for (let i = 0; i < claves.length; i++) {
+    const norm = claveBarcodeNormalizada(claves[i]);
+    if (norm === 'barcode') return cols[claves[i]];
+    if ((norm === 'skucodigobarras' || norm === 'codigobarras') && legado === -1) {
+      legado = cols[claves[i]];
+    }
+  }
+  return legado;
+}
+
+/**
+ * Barcode cell -> trimmed string (never a number: the code is an identifier,
+ * and String() keeps whatever the Sheet holds).
+ * @param {*} valor raw cell
+ * @return {string}
+ */
+function leerBarcodeCelda(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor).trim();
+}
+
+/**
+ * Validate the optional barcode payload: absent or a short plain string.
+ * @param {*} valor
+ * @return {boolean}
+ */
+function esBarcodeValidoServidor(valor) {
+  if (valor === undefined) return true; // optional field
+  if (typeof valor !== 'string') return false; // numbers would eat leading zeros
+  return String(valor).trim().length <= 64;
+}
+
+/**
+ * Duplicate guard across the WHOLE catalog (active AND inactive rows — a
+ * deactivated product keeps its code). Compares trimmed strings exactly.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} hoja
+ * @param {string} barcode trimmed, non-empty
+ * @param {string=} idExcluir product id being edited (own code never collides)
+ * @return {boolean}
+ */
+function barcodeExisteEnHoja(hoja, barcode, idExcluir) {
+  if (barcode === '') return false;
+  const datos = hoja.getDataRange().getValues();
+  if (datos.length < 2) return false;
+  const cols = {};
+  for (let c = 0; c < datos[0].length; c++) {
+    cols[String(datos[0][c]).trim()] = c;
+  }
+  const idx = indiceColumnaBarcode(cols);
+  if (idx === -1) return false;
+  for (let f = 1; f < datos.length; f++) {
+    const fila = datos[f];
+    if (idExcluir && String(fila[cols.id]) === idExcluir) continue;
+    if (leerBarcodeCelda(fila[idx]) === barcode) return true;
+  }
+  return false;
+}
+
 /**
  * @return {{ok: boolean, productos: Array<Object>}}
  */
@@ -22,6 +113,7 @@ function obtenerProductos() {
   if (cols.id === undefined || cols.nombre === undefined) {
     throw new Error('Productos: missing id/nombre headers');
   }
+  const idxBarcode = indiceColumnaBarcode(cols);
 
   const productos = [];
   for (let f = 1; f < datos.length; f++) {
@@ -35,11 +127,17 @@ function obtenerProductos() {
       nombre: String(fila[cols.nombre]),
       precio: Number(fila[cols.precio]),
       categoria: cols.categoria === undefined ? '' : String(fila[cols.categoria]),
-      marca: cols.marca === undefined ? '' : String(fila[cols.marca]),
       stock: Number(fila[cols.stock]),
       imagen_url: cols.imagen_url === undefined || !fila[cols.imagen_url]
         ? ''
         : String(fila[cols.imagen_url]),
+      // Optional brand: always present, '' when empty/absent (same leniency
+      // as an old sheet without the column).
+      marca: cols.marca === undefined || !fila[cols.marca]
+        ? ''
+        : String(fila[cols.marca]).trim(),
+      // plan-camara-barras (§4.1): always present, '' when empty/absent.
+      barcode: idxBarcode === -1 ? '' : leerBarcodeCelda(fila[idxBarcode]),
     });
   }
 
@@ -77,6 +175,7 @@ function productosAdmin(token, data) {
   if (cols.id === undefined || cols.nombre === undefined) {
     return respuestaError('error_interno', 'productosAdmin: missing id/nombre headers');
   }
+  const idxBarcode = indiceColumnaBarcode(cols);
 
   const productos = [];
   for (let f = 1; f < datos.length; f++) {
@@ -87,11 +186,17 @@ function productosAdmin(token, data) {
       nombre: String(fila[cols.nombre]),
       precio: Number(fila[cols.precio]),
       categoria: cols.categoria === undefined ? '' : String(fila[cols.categoria]),
-      marca: cols.marca === undefined ? '' : String(fila[cols.marca]),
       stock: Number(fila[cols.stock]),
       imagen_url: cols.imagen_url === undefined || !fila[cols.imagen_url]
         ? ''
         : String(fila[cols.imagen_url]),
+      // Optional brand — the edit form needs the stored value (or '').
+      marca: cols.marca === undefined || !fila[cols.marca]
+        ? ''
+        : String(fila[cols.marca]).trim(),
+      // plan-camara-barras (§4.8): admin needs it for the edit form AND the
+      // local duplicate pre-guard.
+      barcode: idxBarcode === -1 ? '' : leerBarcodeCelda(fila[idxBarcode]),
       activo: activo === true || activo === 'TRUE' || activo === 'true',
     });
   }
@@ -104,7 +209,7 @@ function productosAdmin(token, data) {
  * (§4.9) — creating a product is not an offline flow, unlike a sale (whose
  * id_venta comes from the client).
  * @param {string} token
- * @param {{nombre: string, categoria: string, precio: number, stock: number, imagen_url?: string, marca?: string}} data
+ * @param {{nombre: string, categoria: string, precio: number, stock: number, imagen_url?: string, marca?: string, barcode?: string}} data
  * @return {Object} { ok:true, id } | { ok:false, error }
  */
 function crearProducto(token, data) {
@@ -125,31 +230,55 @@ function crearProducto(token, data) {
     !Number.isInteger(data.stock) ||
     data.stock < 0 ||
     (data.imagen_url !== undefined && typeof data.imagen_url !== 'string') ||
-    (data.marca !== undefined && typeof data.marca !== 'string')
+    (data.marca !== undefined &&
+      (typeof data.marca !== 'string' || data.marca.trim().length > 64)) ||
+    !esBarcodeValidoServidor(data.barcode)
   ) {
     return respuestaError('payload_invalido', 'crearProducto: bad data');
   }
 
+  // Optional brand: trimmed once, '' = no brand.
+  const marca = data.marca === undefined ? '' : String(data.marca).trim();
+  // plan-camara-barras: trim ONCE here; the string (leading zeros intact)
+  // travels to the sheet under whichever barcode header exists.
+  const barcode = data.barcode === undefined ? '' : String(data.barcode).trim();
+
   const nuevoId = Utilities.getUuid();
-  const valores = {
-    id: nuevoId,
-    nombre: data.nombre.trim(),
-    categoria: data.categoria,
-    marca: data.marca || '',
-    precio: data.precio,
-    stock: data.stock,
-    imagen_url: data.imagen_url || '',
-    activo: true,
-  };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const hoja = obtenerLibro().getSheetByName('Productos');
+    // Duplicate guard INSIDE the lock (§4.9): two concurrent creates with the
+    // same code must not both pass the check.
+    if (barcodeExisteEnHoja(hoja, barcode)) {
+      return respuestaError('barcode_duplicado', 'crearProducto: barcode already in use');
+    }
     // Header-driven row build: lands in the right column regardless of the
-    // sheet's column order (sku/codigo_barras and any extra column stay
-    // empty) — same robustness as the header lookup in obtenerProductos().
+    // sheet's column order (any extra column stays empty) — same robustness
+    // as the header lookup in obtenerProductos(). The barcode rides the map
+    // under its REAL header name so it never silently misses the column.
     const encabezados = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+    const valores = {
+      id: nuevoId,
+      nombre: data.nombre.trim(),
+      categoria: data.categoria,
+      precio: data.precio,
+      stock: data.stock,
+      imagen_url: data.imagen_url || '',
+      // Wire key matches the sheet header, so the generic row build below
+      // writes it — or drops it when the sheet lacks the column.
+      marca: marca,
+      activo: true,
+    };
+    const cols = {};
+    for (let c = 0; c < encabezados.length; c++) {
+      cols[String(encabezados[c]).trim()] = c;
+    }
+    const idxBarcode = indiceColumnaBarcode(cols);
+    if (idxBarcode !== -1) {
+      valores[String(encabezados[idxBarcode]).trim()] = barcode;
+    }
     const fila = encabezados.map(function (nombreCol) {
       const clave = String(nombreCol).trim();
       return clave in valores ? valores[clave] : '';
@@ -165,7 +294,7 @@ function crearProducto(token, data) {
  * Partial update by id (§4.10). Only the fields present in `data` are
  * written; activo: false is the logical delete — never a hard delete (D2).
  * @param {string} token
- * @param {{id: string, nombre?: string, categoria?: string, precio?: number, stock?: number, imagen_url?: string, activo?: boolean, marca?: string}} data
+ * @param {{id: string, nombre?: string, categoria?: string, precio?: number, stock?: number, imagen_url?: string, activo?: boolean, marca?: string, barcode?: string}} data
  * @return {Object} { ok:true } | { ok:false, error }
  */
 function actualizarProducto(token, data) {
@@ -184,8 +313,11 @@ function actualizarProducto(token, data) {
   if (data.precio !== undefined) campos.precio = data.precio;
   if (data.stock !== undefined) campos.stock = data.stock;
   if (data.imagen_url !== undefined) campos.imagen_url = data.imagen_url;
-  if (data.marca !== undefined) campos.marca = data.marca;
   if (data.activo !== undefined) campos.activo = data.activo;
+  // Optional brand: "" is a legitimate value — it CLEARS the brand.
+  if (data.marca !== undefined) campos.marca = String(data.marca).trim();
+  // plan-camara-barras: "" is a legitimate value — it CLEARS the code.
+  if (data.barcode !== undefined) campos.barcode = String(data.barcode).trim();
 
   if (Object.keys(campos).length === 0) {
     return respuestaError('payload_invalido', 'actualizarProducto: no fields');
@@ -201,8 +333,10 @@ function actualizarProducto(token, data) {
         !Number.isInteger(campos.stock) ||
         campos.stock < 0)) ||
     (campos.imagen_url !== undefined && typeof campos.imagen_url !== 'string') ||
-    (campos.marca !== undefined && typeof campos.marca !== 'string') ||
-    (campos.activo !== undefined && typeof campos.activo !== 'boolean')
+    (campos.activo !== undefined && typeof campos.activo !== 'boolean') ||
+    (campos.marca !== undefined &&
+      (typeof campos.marca !== 'string' || campos.marca.length > 64)) ||
+    (data.barcode !== undefined && !esBarcodeValidoServidor(data.barcode))
   ) {
     return respuestaError('payload_invalido', 'actualizarProducto: bad fields');
   }
@@ -226,9 +360,22 @@ function actualizarProducto(token, data) {
       return respuestaError('payload_invalido', 'actualizarProducto: unknown id ' + data.id);
     }
 
+    // Barcode: duplicate guard under the SAME lock (own row excluded), then
+    // the value is written below through the generic loop — remapped from
+    // the wire key `barcode` to the sheet's real header column.
+    let colBarcode = -1;
+    if (campos.barcode !== undefined) {
+      if (barcodeExisteEnHoja(hoja, campos.barcode, data.id)) {
+        return respuestaError('barcode_duplicado', 'actualizarProducto: barcode already in use');
+      }
+      colBarcode = indiceColumnaBarcode(cols);
+    }
+
     for (const campo in campos) {
-      if (cols[campo] === undefined) continue; // optional column absent (imagen_url)
-      hoja.getRange(filaNum, cols[campo]).setValue(campos[campo]);
+      let col = cols[campo];
+      if (campo === 'barcode') col = colBarcode;
+      if (col === undefined || col === -1) continue; // optional column absent
+      hoja.getRange(filaNum, col).setValue(campos[campo]);
     }
     return { ok: true };
   } finally {

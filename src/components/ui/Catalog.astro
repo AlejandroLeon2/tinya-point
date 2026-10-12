@@ -16,6 +16,8 @@
 import Icon from "./Icon.astro";
 import Kbd from "./Kbd.astro";
 import Skeleton from "./Skeleton.astro";
+import Alert from "./Alert.astro";
+import BarcodeScanner from "./BarcodeScanner.astro";
 ---
 
 <section class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
@@ -33,7 +35,7 @@ import Skeleton from "./Skeleton.astro";
 				data-catalog-search
 				class="input-field pl-11 pr-28"
 				type="search"
-				placeholder="Buscar por nombre, categoría o marca…"
+				placeholder="Buscar por nombre, categoría, marca o código…"
 				autocomplete="off"
 			/>
 			<Kbd
@@ -64,6 +66,32 @@ import Skeleton from "./Skeleton.astro";
 	>
 		<span aria-hidden="true">●</span> Escuchando…
 	</p>
+
+	<!-- Scan with the camera (plan-camara-barras): its own full-width button
+	     instead of a second icon inside the input — thumb-reachable on mobile
+	     and it never fights the Kbd/mic right padding. -->
+	<button data-catalog-scan type="button" class="btn btn-secondary w-full">
+		<Icon name="scan-barcode" class="h-6 w-6" />
+		Escanear código de barras
+	</button>
+
+	<!-- Scanned code with no match (plan-camara-barras): the island reveals
+	     this with the raw code and offers the two ways out — search it or go
+	     register it. Hidden until a scan misses. -->
+	<Alert tone="warning" name="barcode-notfound" hidden>
+		<span data-barcode-notfound-text></span>
+		<button
+			slot="actions"
+			type="button"
+			data-barcode-notfound-search
+			class="btn btn-secondary"
+		>
+			Buscar por código
+		</button>
+		<a slot="actions" href="/productos" class="btn btn-primary" data-barcode-notfound-register>
+			Registrar producto
+		</a>
+	</Alert>
 
 	<!-- Category chips (§4.2D): wrapper KEEPS the data-catalog-category hook
 	     (the island reads the selected data-category-value from it). First
@@ -140,6 +168,11 @@ import Skeleton from "./Skeleton.astro";
 	>
 		<slot />
 	</div>
+
+	<!-- Barcode scanner overlay (plan-camara-barras): fixed z-60 chrome, the
+	     catalog island calls abrirEscaneoBarcode() and looks the read code up
+	     by exact barcode match. -->
+	<BarcodeScanner />
 
 	<!-- Visual pagination, 50/page, client-only (plan-productos-v2 D1): the
 	     island hides it until there is more than one page. No fixed ids —

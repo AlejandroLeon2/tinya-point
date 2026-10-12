@@ -175,11 +175,14 @@ Esta sección es la que debe quedar fija y versionada — el frontend en Astro s
       "categoria": "bebidas",
       "marca": "Coca-Cola",
       "stock": 24,
-      "imagen_url": "https://..."
+      "imagen_url": "https://...",
+      "barcode": "7750000000017"
     }
   ]
 }
 ```
+
+`barcode` (plan-camara-barras): **opcional pero siempre presente** en el backend nuevo (`""` cuando no hay código). Es un **string** — los ceros iniciales son parte del código y jamás se parsea a número. El POS lo usa para el match exacto al escanear. Un despliegue viejo simplemente omite la clave y el cliente la trata como "sin código".
 
 ### 4.2 `POST { action: "login" }`
 
@@ -258,6 +261,7 @@ Esta sección es la que debe quedar fija y versionada — el frontend en Astro s
 | `categoria_en_uso` | Borrado de categoría que al menos un producto referencia (`plan-productos-v2` §4.14) |
 | `marca_duplicada` | Alta o renombre de marca con un nombre ya existente (case-insensitive, espejo de `categoria_duplicada`) |
 | `marca_en_uso` | Borrado de marca que al menos un producto referencia (espejo de `categoria_en_uso`) |
+| `barcode_duplicado` | Alta o edición de producto con un `barcode` que ya usa otra fila del catálogo (activo o inactivo — plan-camara-barras §4.9/§4.10) |
 
 Definir esta tabla ahora evita que cada función invente su propio texto de error y que el frontend tenga que adivinar contra qué comparar.
 
@@ -333,11 +337,14 @@ Handler: `productosAdmin(token)`. Devuelve el catálogo **completo, incluidos `a
       "marca": "Coca-Cola",
       "stock": 24,
       "imagen_url": "https://...",
+      "barcode": "7750000000017",
       "activo": true
     }
   ]
 }
 ```
+
+`barcode`: mismo contrato que §4.1 (string, `""` = sin código) — la isla admin lo necesita para prellenar el formulario de edición y para el pre-chequeo local de duplicados.
 
 ### 4.9 `POST { action: "crearProducto" }` (requiere token)
 
@@ -348,11 +355,13 @@ Handler: `crearProducto(token, data)`.
 {
   "action": "crearProducto",
   "token": "3f2a1c9e-...",
-  "data": { "nombre": "Agua 625ml", "categoria": "bebidas", "marca": "Coca-Cola", "precio": 2.0, "stock": 12, "imagen_url": "https://..." }
+  "data": { "nombre": "Agua 625ml", "categoria": "bebidas", "marca": "Coca-Cola", "precio": 2.0, "stock": 12, "imagen_url": "https://...", "barcode": "7751234500019" }
 }
 ```
 
-`imagen_url` y `marca` opcionales (`marca` vacía o ausente → `''` en la hoja); `precio ≥ 0`; `stock` entero ≥ 0 — validados también en cliente (`payload_invalido` si falta un campo requerido o el JSON no parsea).
+`imagen_url`, `marca` y `barcode` opcionales (`marca` vacía o ausente → `''` en la hoja); `precio ≥ 0`; `stock` entero ≥ 0 — validados también en cliente (`payload_invalido` si falta un campo requerido o el JSON no parsea).
+
+`barcode` (plan-camara-barras): string recortado, ≤ 64 caracteres. El servidor lo guarda como texto en la columna `sku/codigo_barras` (o `barcode`, la que exista) y rechaza el alta con `barcode_duplicado` si **cualquier** otra fila del catálogo — activa o inactiva — ya lo usa. El chequeo corre dentro del `LockService`.
 
 **Response — éxito:**
 ```json
@@ -379,7 +388,7 @@ Handler: `actualizarProducto(token, data)`. Edita por `id` solo los campos envia
 { "ok": true }
 ```
 
-Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a editar. `marca` es editable igual que el resto (string; `''` deja el producto "sin marca").
+Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a editar; `barcode_duplicado` si el nuevo `barcode` ya usa otra fila del catálogo (activa o inactiva, la fila propia se excluye). `marca` es editable igual que el resto (string; `''` deja el producto "sin marca"). `barcode: ""` **limpia** el código guardado.
 
 ### 4.11 `GET ?action=categorias` (pública, sin token)
 

@@ -67,8 +67,8 @@ if (root) {
     if (error === 'categoria_en_uso')
       return 'Hay productos usando esta categoría — cambialos o desactivalos antes de borrarla.';
     return mensajeDeErrorApi(error, {
-      payloadInvalido: 'Revisá el nombre de la categoría.',
-      fallback: 'No se pudo guardar. Intentá de nuevo.',
+      payloadInvalido: 'Revisa el nombre de la categoría.',
+      fallback: 'No se pudo guardar. Intenta de nuevo.',
     });
   }
 
@@ -243,7 +243,7 @@ if (root) {
       nombre: {
         el: nombreInput,
         validate: isNonEmpty,
-        error: 'Ingresá el nombre de la categoría.',
+        error: 'Ingresa el nombre de la categoría.',
       },
     },
     onSubmit: async (datos) => {

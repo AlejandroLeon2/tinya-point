@@ -28,7 +28,7 @@ export function mensajeDeErrorApi(error: string, opciones: MensajeDeErrorOpcione
     case 'payload_invalido':
       return opciones.payloadInvalido;
     case 'accion_no_soportada':
-      return 'El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.';
+      return 'El servidor todavía no tiene esta función. Actualiza el despliegue de Apps Script.';
     default:
       return opciones.fallback;
   }

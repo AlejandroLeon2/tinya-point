@@ -6,7 +6,8 @@ import type { MetodoPago } from '../utils/storage';
 
 // §4.5 — closed union of server error codes; the same strings everywhere.
 // categoria_* added by plan-productos-v2 Fase 2 (§4.12–§4.14); marca_* by
-// the brand field (same rules, mirrored actions).
+// the brand field (same rules, mirrored actions); barcode_duplicado by
+// plan-camara-barras (§4.9/§4.10 duplicate guard).
 export type ErrorCode =
   | 'credenciales_invalidas'
   | 'unauthorized'
@@ -16,7 +17,8 @@ export type ErrorCode =
   | 'categoria_duplicada'
   | 'categoria_en_uso'
   | 'marca_duplicada'
-  | 'marca_en_uso';
+  | 'marca_en_uso'
+  | 'barcode_duplicado';
 
 // Router actions (§3.2). login carries its own body shape — see PeticionLogin.
 // productosAdmin/crearProducto/actualizarProducto added by plan-mejoras-2 Fase 1
@@ -53,6 +55,10 @@ export interface ProductoApi {
   marca: string;
   stock: number;
   imagen_url: string;
+  // Optional since plan-camara-barras: a deployed backend that predates the
+  // feature simply omits it, and every consumer treats missing as "no code".
+  // ALWAYS a string when present — leading zeros are part of the code.
+  barcode?: string;
 }
 
 export interface RespuestaProductos {
@@ -211,6 +217,8 @@ export interface DatosCrearProducto {
   stock: number;
   imagen_url?: string;
   marca?: string;
+  // Optional (plan-camara-barras): empty string = no code, stored as string.
+  barcode?: string;
 }
 
 export interface PeticionCrearProducto {
@@ -236,6 +244,8 @@ export interface DatosActualizarProducto {
   imagen_url?: string;
   activo?: boolean;
   marca?: string;
+  // Optional since plan-camara-barras; "" clears the stored code.
+  barcode?: string;
 }
 
 export interface PeticionActualizarProducto {

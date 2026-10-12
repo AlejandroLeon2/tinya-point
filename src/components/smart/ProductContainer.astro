@@ -17,6 +17,7 @@
 // contract (stilesbase §5.5). SyncStatusIndicator + OfflineBanner ride along
 // like every app page (extras.md §6 — none of them blocks the sale).
 import Alert from '../ui/Alert.astro';
+import BarcodeScanner from '../ui/BarcodeScanner.astro';
 import Chip from '../ui/Chip.astro';
 import ChipGroup from '../ui/ChipGroup.astro';
 import DataTable from '../ui/DataTable.astro';
@@ -42,7 +43,7 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 				data-product-search
 				type="search"
 				class="input-field pr-14"
-				placeholder="Buscar por nombre, categoría o marca…"
+				placeholder="Buscar por nombre, categoría, marca o código…"
 				aria-label="Buscar productos"
 				autocomplete="off"
 			/>
@@ -127,7 +128,7 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 
 	<Modal modalKey="confirmar-desactivar" title="¿Desactivar producto?">
 		<p>
-			El producto va a dejar de aparecer en la venta. Podés restaurarlo cuando
+			El producto va a dejar de aparecer en la venta. Puedes restaurarlo cuando
 			quieras.
 		</p>
 		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
@@ -143,6 +144,12 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 			Sí, desactivar
 		</button>
 	</Modal>
+
+	<!-- Barcode scanner overlay (plan-camara-barras): page-level chrome, OUTSIDE
+	     the drawer modal (z-60 sits above it — utils/modal allows one active
+	     modal, so the scanner owns its own contract). The product-admin island
+	     calls abrirEscaneoBarcode() and fills the form input on a read. -->
+	<BarcodeScanner />
 </section>
 
 <script>
