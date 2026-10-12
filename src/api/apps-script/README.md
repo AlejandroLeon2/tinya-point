@@ -82,21 +82,28 @@ forcing `-X POST` through the redirect returns Google's HTML error page.
 Human-only steps (account/Google required) live in `doc/plan.md`
 (Fase 6 — "Checklist humano") and `doc/extras.md` §3:
 
-1. **Sheets** — run `crearHojas()` (see [`../setup/README.md`](../setup/README.md)):
+1. **Sheets** — run `instalarTodo()` (see [`../setup/README.md`](../setup/README.md)):
    creates `Productos`, `Categorias`, `Marcas`, `Ventas`, `Cajas` and
-   `Sesiones` with their exact headers, idempotently.
-2. **Script Properties** — `SPREADSHEET_ID` (or `vincularLibroActivo()`),
+   `Sesiones` with their exact headers, idempotently, then verifies the
+   result and lists whatever is still pending.
+2. **Script Properties** — `SPREADSHEET_ID` (auto-filled by `instalarTodo()`
+   when the editor is container-bound, or `vincularLibroActivo()`), then
    `USUARIO`, `CLAVE` (or run `../setup/credenciales.gs` →
    `guardarCredenciales()`; the file is gitignored, the pair lives only in
-   Script Properties).
+   Script Properties). Re-run `instalarTodo()` — it turns `ok: true` once
+   they are stored.
 3. Web-app deploy as "Anyone", seed, first login.
 
 ## Sheet bootstrap (`../setup/`)
 
 `../setup/setup.gs` owns the spreadsheet **schema** (sheet names + header
-rows, mirroring `doc/base.md` §2.1–§2.6). Run `crearHojas()` from the editor
-to create everything a fresh spreadsheet needs; `estadoSetup()` reports what
-is missing without writing. Full details in [`../setup/README.md`](../setup/README.md).
+rows, mirroring `doc/base.md` §2.1–§2.6). Run **`instalarTodo()`** from the
+editor: it audits the schema, creates what is missing, then re-reads every
+sheet to report missing/duplicated/out-of-order headers, unpushed handlers
+and missing Script Properties in one `{ok, pasos, pendientes}` report.
+`crearHojas()` (write) and `estadoSetup()` / `verificarEstado()` (read-only)
+are still there for when you want only one of those steps. Full details in
+[`../setup/README.md`](../setup/README.md).
 
 ## One-shot seed
 

@@ -49,9 +49,6 @@ var HOJAS = [
       // header-aligned (scripts/seed-dummyjson.mjs).
       { encabezado: 'sku/codigo_barras', tipo: 'texto', ancho: 160 },
       { encabezado: 'imagen_url', tipo: 'texto', ancho: 300 },
-      // Optional brand — header-driven like imagen_url (a sheet without the
-      // column simply stores no brand; rerunning setup appends it safely).
-      { encabezado: 'marca', tipo: 'texto', ancho: 140 },
       { encabezado: 'activo', tipo: 'booleano', ancho: 70 },
     ],
   },
@@ -78,7 +75,11 @@ var HOJAS = [
     // [fecha_hora, id_venta, items, total, metodo_pago, sincronizado].
     // Append-only log, respaldo/reporte (the operational history is the
     // device's localStorage `historial_ventas`).
+    // `posicional: true` makes instalarTodo() verify the header ORDER too —
+    // for these sheets the order IS the contract, appending at the end would
+    // shift it.
     nombre: 'Ventas',
+    posicional: true,
     columnas: [
       { encabezado: 'fecha_hora', tipo: 'fecha', ancho: 150 },
       { encabezado: 'id_venta', tipo: 'texto', ancho: 300 },
@@ -114,7 +115,9 @@ var HOJAS = [
     // and validarToken() reads fila[0]/fila[1]/fila[2] while SKIPPING row 1
     // (it assumes a header). A Sesiones sheet without a header row would
     // make the first token invisible to the router.
+    // `posicional: true` → instalarTodo() also checks the header ORDER.
     nombre: 'Sesiones',
+    posicional: true,
     columnas: [
       { encabezado: 'token', tipo: 'texto', ancho: 340 },
       { encabezado: 'creado', tipo: 'fecha', ancho: 150 },
@@ -206,11 +209,312 @@ function estadoSetup() {
       hoja: def.nombre,
       existe: info.existe,
       encabezadosFaltantes: info.faltantes,
+      encabezadosDuplicados: info.encabezadosDuplicados,
       fila1NoEsEncabezado: info.fila1NoEsEncabezado,
       filasDeDatos: info.filasDeDatos,
     };
   });
   Logger.log('estadoSetup →\n' + JSON.stringify(reporte, null, 2));
+  return reporte;
+}
+
+/**
+ * ONE function: run this and nothing else. Audits the schema, creates every
+ * missing sheet/column, then VERIFIES the result and reports what still
+ * needs a human (Script Properties, credentials, positional order).
+ *
+ * Idempotent like crearHojas() — a rerun only ever adds what is missing.
+ * Nothing here is destructive: no rename, no move, no delete, no data touch.
+ *
+ * @return {{ok: boolean, pasos: Array<Object>, pendientes: Array<string>}}
+ */
+function instalarTodo() {
+  const pasos = [];
+  const pendientes = [];
+
+  // ── 1. Schema self-audit (pure, no spreadsheet access) ────────────────
+  // Catches a broken HOJAS BEFORE it writes anything — e.g. a merge that
+  // duplicated a column definition, which would produce a duplicate header.
+  const problemas = auditarEsquema();
+  pasos.push({
+    paso: 'esquema',
+    ok: problemas.length === 0,
+    detalle: problemas.length === 0 ? 'HOJAS consistente' : problemas,
+  });
+  if (esquemaBloqueante(problemas)) {
+    pendientes.push('El esquema HOJAS es inválido: ' + problemas.join(' | '));
+    return cerrarReporte(pasos, pendientes);
+  }
+
+  // ── 2. SPREADSHEET_ID ────────────────────────────────────────────────
+  const props = PropertiesService.getScriptProperties();
+  let id = props.getProperty('SPREADSHEET_ID');
+  if (!id) {
+    // Container-bound editors can fill it automatically; standalone cannot.
+    const vinculado = vincularLibroActivo();
+    id = props.getProperty('SPREADSHEET_ID');
+    pasos.push({ paso: 'spreadsheet_id', ok: !!id, detalle: vinculado.detalle });
+  } else {
+    pasos.push({ paso: 'spreadsheet_id', ok: true, detalle: 'SPREADSHEET_ID presente' });
+  }
+  if (!id) {
+    pendientes.push(
+      'Falta la propiedad SPREADSHEET_ID: abrí el editor desde el Sheet y volvé a ' +
+        'correr instalarTodo(), o guardala a mano en Propiedades del script.',
+    );
+    return cerrarReporte(pasos, pendientes);
+  }
+
+  // ── 3. Sheets + headers ──────────────────────────────────────────────
+  let creacion;
+  try {
+    creacion = crearHojas();
+  } catch (e) {
+    pasos.push({ paso: 'hojas', ok: false, detalle: String(e) });
+    pendientes.push('crearHojas() falló: ' + String(e));
+    return cerrarReporte(pasos, pendientes);
+  }
+  const incidencias = creacion.filter(function (r) {
+    return r.estado !== 'creada' && r.estado !== 'ya_existia_completa' && r.estado !== 'columnas_agregadas';
+  });
+  pasos.push({
+    paso: 'hojas',
+    ok: incidencias.length === 0,
+    detalle: creacion.map(function (r) {
+      return r.hoja + ': ' + r.estado + (r.columnasAgregadas.length ? ' [' + r.columnasAgregadas.join(', ') + ']' : '');
+    }),
+  });
+  for (let i = 0; i < incidencias.length; i++) {
+    pendientes.push(incidencias[i].hoja + ' — ' + (incidencias[i].detalle || incidencias[i].estado));
+  }
+
+  // ── 4. Verification pass (read-only) ─────────────────────────────────
+  // crearHojas() reports what it DID; this reports what IS — including the
+  // things it never touches (duplicate headers, wrong positional order).
+  const verificacion = verificarEstado();
+  pasos.push({ paso: 'verificacion', ok: verificacion.ok, detalle: verificacion.detalle });
+  for (let v = 0; v < verificacion.pendientes.length; v++) {
+    pendientes.push(verificacion.pendientes[v]);
+  }
+
+  // ── 5. Backend wiring ────────────────────────────────────────────────
+  const faltan = faltanFunciones();
+  pasos.push({
+    paso: 'handlers',
+    ok: faltan.length === 0,
+    detalle: faltan.length === 0 ? 'doGet/doPost y todas las acciones responden' : faltan,
+  });
+  if (faltan.length > 0) {
+    pendientes.push('Faltan handlers: ' + faltan.join(', ') + '. ¿Falta un clasp push?');
+  }
+
+  // ── 6. Script Properties (read-only — credentials stay manual) ───────
+  const sinCredenciales = [];
+  if (!props.getProperty('USUARIO')) sinCredenciales.push('USUARIO');
+  if (!props.getProperty('CLAVE')) sinCredenciales.push('CLAVE');
+  pasos.push({
+    paso: 'propiedades',
+    ok: sinCredenciales.length === 0,
+    detalle:
+      sinCredenciales.length === 0
+        ? 'USUARIO y CLAVE guardadas (valores no se muestran)'
+        : 'Faltan: ' + sinCredenciales.join(', '),
+  });
+  if (sinCredenciales.length > 0) {
+    pendientes.push(
+      'Falta ' + sinCredenciales.join(' y ') + ' en Propiedades del script — el login ' +
+        'devolverá credenciales_invalidas hasta que las guardes (guardarCredenciales()).',
+    );
+  }
+
+  return cerrarReporte(pasos, pendientes);
+}
+
+/**
+ * Pure schema audit of HOJAS — no spreadsheet access, safe to call anywhere.
+ * Returns one message per problem; empty array = consistent.
+ * @return {Array<string>}
+ */
+function auditarEsquema() {
+  const problemas = [];
+  const hojasVistas = {};
+
+  for (let i = 0; i < HOJAS.length; i++) {
+    const def = HOJAS[i];
+
+    if (!def.nombre) {
+      problemas.push('HOJAS[' + i + '] sin nombre');
+      continue;
+    }
+    if (hojasVistas[def.nombre]) problemas.push('hoja duplicada en HOJAS: ' + def.nombre);
+    hojasVistas[def.nombre] = true;
+
+    if (!def.columnas || def.columnas.length === 0) {
+      problemas.push(def.nombre + ': sin columnas');
+      continue;
+    }
+
+    const vistas = {};
+    for (let c = 0; c < def.columnas.length; c++) {
+      const col = def.columnas[c];
+      const enc = col.encabezado;
+      if (!enc) {
+        problemas.push(def.nombre + ': columna[' + c + '] sin encabezado');
+        continue;
+      }
+      if (vistas[enc]) problemas.push(def.nombre + ': encabezado duplicado en el esquema → ' + enc);
+      vistas[enc] = true;
+      if (!FORMATO_COLUMNA[col.tipo]) {
+        problemas.push(def.nombre + '.' + enc + ': tipo desconocido "' + col.tipo + '"');
+      }
+    }
+  }
+
+  return problemas;
+}
+
+/**
+ * Read-only verification of every sheet AGAINST the schema: missing headers,
+ * duplicated headers in row 1, and header ORDER for the positional sheets.
+ * This is what a rerun of crearHojas() can NOT detect by itself.
+ * @return {{ok: boolean, detalle: Array<string>, pendientes: Array<string>}}
+ */
+function verificarEstado() {
+  const libro = obtenerLibro();
+  const detalle = [];
+  const pendientes = [];
+
+  for (let i = 0; i < HOJAS.length; i++) {
+    const def = HOJAS[i];
+    const info = inspeccionarHoja(libro, def);
+    const marca = def.nombre + ': ';
+
+    if (!info.existe) {
+      pendientes.push(marca + 'no existe');
+      detalle.push(marca + 'FALTA');
+      continue;
+    }
+    if (info.fila1NoEsEncabezado) {
+      pendientes.push(marca + 'la fila 1 no es un encabezado — mirala a mano');
+      detalle.push(marca + 'FILA1_NO_ES_ENCABEZADO');
+      continue;
+    }
+    // Duplicates FIRST: a repeated header eats one of the expected columns,
+    // so the "missing column" check would fire first and hide the real cause.
+    // Header-name lookup always resolves to the FIRST occurrence and turns
+    // the rest into dead columns — silent corruption.
+    const problemas = [];
+    if (info.encabezadosDuplicados.length > 0) {
+      problemas.push(
+        marca + 'encabezado repetido en la fila 1 → ' + info.encabezadosDuplicados.join(', ') +
+          ' (borrá la columna repetida a mano)',
+      );
+      detalle.push(marca + 'DUPLICADO ' + info.encabezadosDuplicados.join(', '));
+    }
+    if (info.faltantes.length > 0) {
+      problemas.push(marca + 'faltan columnas → ' + info.faltantes.join(', '));
+      if (info.encabezadosDuplicados.length === 0) {
+        detalle.push(marca + 'FALTAN ' + info.faltantes.join(', '));
+      }
+    }
+    if (problemas.length > 0) {
+      for (let p = 0; p < problemas.length; p++) pendientes.push(problemas[p]);
+      continue;
+    }
+
+    // Positional contract: order IS the schema (Ventas, Sesiones).
+    if (def.posicional) {
+      const esperados = def.columnas.map(function (col) {
+        return col.encabezado;
+      });
+      const actuales = info.encabezadosActuales.slice(0, esperados.length);
+      const desalineados = [];
+      for (let e = 0; e < esperados.length; e++) {
+        if (actuales[e] !== esperados[e]) {
+          desalineados.push('pos ' + (e + 1) + ': esperado "' + esperados[e] + '", hay "' + (actuales[e] || '') + '"');
+        }
+      }
+      if (desalineados.length > 0) {
+        pendientes.push(
+          marca + 'el orden de los encabezados rompe el contrato → ' + desalineados.join('; '),
+        );
+        detalle.push(marca + 'ORDEN_INCORRECTO');
+        continue;
+      }
+    }
+
+    detalle.push(marca + 'ok' + (info.filasDeDatos ? ' (' + info.filasDeDatos + ' filas)' : ' (vacía)'));
+  }
+
+  return { ok: pendientes.length === 0, detalle: detalle, pendientes: pendientes };
+}
+
+/**
+ * Every global the router (Code.gs) and the setup flow depend on. Checked
+ * with `typeof` so a MISSING function is reported instead of throwing.
+ * Mirror Code.gs when adding an action — a handler that never got pushed is
+ * otherwise only visible as `accion_no_soportada` at runtime.
+ * @return {Array<string>} names of the functions that are NOT defined
+ */
+function faltanFunciones() {
+  // `typeof <name>` never throws for an undeclared identifier, so a missing
+  // handler is reported instead of blowing up the audit.
+  const faltan = [];
+  if (typeof doGet !== 'function') faltan.push('doGet');
+  if (typeof doPost !== 'function') faltan.push('doPost');
+  if (typeof despacharAccion !== 'function') faltan.push('despacharAccion');
+  if (typeof manejarLogin !== 'function') faltan.push('manejarLogin');
+  if (typeof obtenerProductos !== 'function') faltan.push('obtenerProductos');
+  if (typeof productosAdmin !== 'function') faltan.push('productosAdmin');
+  if (typeof crearProducto !== 'function') faltan.push('crearProducto');
+  if (typeof actualizarProducto !== 'function') faltan.push('actualizarProducto');
+  if (typeof obtenerCategorias !== 'function') faltan.push('obtenerCategorias');
+  if (typeof crearCategoria !== 'function') faltan.push('crearCategoria');
+  if (typeof actualizarCategoria !== 'function') faltan.push('actualizarCategoria');
+  if (typeof borrarCategoria !== 'function') faltan.push('borrarCategoria');
+  if (typeof obtenerMarcas !== 'function') faltan.push('obtenerMarcas');
+  if (typeof crearMarca !== 'function') faltan.push('crearMarca');
+  if (typeof actualizarMarca !== 'function') faltan.push('actualizarMarca');
+  if (typeof borrarMarca !== 'function') faltan.push('borrarMarca');
+  if (typeof registrarVenta !== 'function') faltan.push('registrarVenta');
+  if (typeof actualizarStock !== 'function') faltan.push('actualizarStock');
+  if (typeof historialVentas !== 'function') faltan.push('historialVentas');
+  if (typeof abrirCaja !== 'function') faltan.push('abrirCaja');
+  if (typeof cerrarCaja !== 'function') faltan.push('cerrarCaja');
+  if (typeof validarToken !== 'function') faltan.push('validarToken');
+  if (typeof obtenerLibro !== 'function') faltan.push('obtenerLibro');
+  if (typeof respuestaError !== 'function') faltan.push('respuestaError');
+  return faltan;
+}
+
+/**
+ * Fatal schema problems block the run: writing a broken schema is worse
+ * than writing nothing. Non-fatal ones (e.g. unknown column type) still get
+ * reported but let the sheet work proceed.
+ * @param {Array<string>} problemas
+ * @return {boolean}
+ */
+function esquemaBloqueante(problemas) {
+  for (let i = 0; i < problemas.length; i++) {
+    const p = problemas[i];
+    if (p.indexOf('duplicada') !== -1) return true;
+    if (p.indexOf('sin encabezado') !== -1) return true;
+    if (p.indexOf('sin columnas') !== -1) return true;
+    if (p.indexOf('sin nombre') !== -1) return true;
+  }
+  return false;
+}
+
+/**
+ * Log + shape the final report of instalarTodo().
+ * @param {Array<Object>} pasos
+ * @param {Array<string>} pendientes
+ * @return {{ok: boolean, pasos: Array<Object>, pendientes: Array<string>}}
+ */
+function cerrarReporte(pasos, pendientes) {
+  const ok = pendientes.length === 0;
+  const reporte = { ok: ok, pasos: pasos, pendientes: pendientes };
+  Logger.log('instalarTodo → ' + (ok ? 'TODO OK' : 'PENDIENTES') + '\n' + JSON.stringify(reporte, null, 2));
   return reporte;
 }
 
@@ -244,7 +548,7 @@ function vincularLibroActivo() {
  * Inspect one sheet WITHOUT writing. Shared by crearHojas() and estadoSetup().
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} libro
  * @param {{nombre: string, columnas: Array}} def
- * @return {{hoja: ?GoogleAppsScript.Spreadsheet.Sheet, existe: boolean, faltantes: Array<string>, fila1NoEsEncabezado: boolean, encabezadosActuales: Array<string>, filasDeDatos: number}}
+ * @return {{hoja: ?GoogleAppsScript.Spreadsheet.Sheet, existe: boolean, faltantes: Array<string>, fila1NoEsEncabezado: boolean, encabezadosActuales: Array<string>, encabezadosDuplicados: Array<string>, filasDeDatos: number}}
  */
 function inspeccionarHoja(libro, def) {
   const hoja = libro.getSheetByName(def.nombre);
@@ -257,6 +561,7 @@ function inspeccionarHoja(libro, def) {
       }),
       fila1NoEsEncabezado: false,
       encabezadosActuales: [],
+      encabezadosDuplicados: [],
       filasDeDatos: 0,
     };
   }
@@ -281,8 +586,23 @@ function inspeccionarHoja(libro, def) {
     });
 
   const filasDeDatos = Math.max(hoja.getLastRow() - 1, 0);
-  const vacia = hoja.getLastRow() === 0;
+  const vacia = hoja.getLastColumn() === 0 || hoja.getLastRow() === 0;
   const fila1NoEsEncabezado = !vacia && faltantes.length === def.columnas.length;
+
+  // A repeated header in row 1 is silent corruption: header-name lookup
+  // (productos.gs, marcas.gs, …) always resolves to the FIRST match, so the
+  // later duplicate is unreadable/unwritable. Reported, never auto-fixed —
+  // deciding which of two columns holds the real data needs a human.
+  const duplicados = [];
+  const vistos = {};
+  for (let h = 0; h < fila1.length; h++) {
+    const nombre = fila1[h];
+    if (!nombre) continue;
+    if (vistos[nombre] === true) {
+      if (duplicados.indexOf(nombre) === -1) duplicados.push(nombre);
+    }
+    vistos[nombre] = true;
+  }
 
   return {
     hoja: hoja,
@@ -290,6 +610,7 @@ function inspeccionarHoja(libro, def) {
     faltantes: faltantes,
     fila1NoEsEncabezado: fila1NoEsEncabezado,
     encabezadosActuales: fila1,
+    encabezadosDuplicados: duplicados,
     filasDeDatos: filasDeDatos,
   };
 }

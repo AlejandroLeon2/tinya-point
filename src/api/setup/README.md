@@ -13,23 +13,33 @@ them with the rest of the backend. The README itself is ignored by
 
 1. `cd src/api && clasp push` — upload the `.gs` sources.
 2. Open the Apps Script editor bound to the script.
-3. *(Optional, container-bound only)* run `vincularLibroActivo()` — stores
-   `SPREADSHEET_ID` in the Script Properties. A standalone script has no
-   active spreadsheet: set that property by hand instead.
-4. Run **`crearHojas()`**.
-5. Set the remaining Script Properties: `USUARIO`, `CLAVE` — run
+3. Run **`instalarTodo()`** — the only function you need for schema setup.
+   It audits `HOJAS`, resolves `SPREADSHEET_ID` (auto-filling it from the open
+   spreadsheet when the editor is container-bound), creates every missing
+   sheet/column, then re-reads the result and reports anything still pending.
+4. Set the remaining Script Properties: `USUARIO`, `CLAVE` — run
    **`guardarCredenciales()`** (local, gitignored `credenciales.gs`, so the
    password never reaches git) or set them by hand in
    `Configuración del proyecto → Propiedades del script`.
+5. Run **`instalarTodo()`** again — it goes green once the credentials are
+   stored.
 6. Deploy the Web App and smoke-test `?action=productos`.
 
 | Function | Effect |
 |---|---|
+| **`instalarTodo()`** | **Run this one.** Schema audit → sheets → verification → wiring → properties, with a single `{ok, pasos, pendientes}` report. |
 | `crearHojas()` | Creates missing sheets + headers, appends missing columns. Idempotent. |
 | `estadoSetup()` | Read-only: what exists, what is missing, what will change. |
+| `verificarEstado()` | Read-only: re-reads every sheet and checks missing/duplicated/order of headers. |
+| `auditarEsquema()` | Pure: consistency of the `HOJAS` schema itself. No spreadsheet access. |
 | `vincularLibroActivo()` | Writes `SPREADSHEET_ID` from the currently open spreadsheet. |
 | `guardarCredenciales()` | Writes `USUARIO`/`CLAVE` Script Properties (never deletes the others). |
 | `estadoCredenciales()` | Read-only: are `USUARIO`/`CLAVE` stored? Values stay masked. |
+
+`instalarTodo()` is **read-only about credentials**: it reports whether
+`USUARIO`/`CLAVE` are *present* as booleans and never returns, logs or echoes
+their values. It never writes them either — that stays `guardarCredenciales()`'s
+job, so no credential-handling code ends up in the deployable schema module.
 
 ## Sheets created
 
@@ -71,11 +81,28 @@ data — reformatting a parsed date column would turn it into a serial number.
 ## Verify
 
 ```js
-estadoSetup(); // → one entry per sheet: existe / encabezadosFaltantes / ...
-crearHojas();  // → estado: 'creada' | 'ya_existia_completa' | 'columnas_agregadas' | 'FILA1_NO_ES_ENCABEZADO'
+instalarTodo(); // → { ok, pasos[], pendientes[] } — the one that matters
+estadoSetup();  // → one entry per sheet: existe / encabezadosFaltantes / ...
+crearHojas();   // → estado: 'creada' | 'ya_existia_completa' | 'columnas_agregadas' | 'FILA1_NO_ES_ENCABEZADO'
 ```
 
-Both return the report array and mirror it to `Logger` (Execution log).
+All three return the report and mirror it to `Logger` (Execution log).
+`instalarTodo()` runs six independent checks, each reported as its own
+`pasos` entry:
+
+| `paso` | What it proves |
+|---|---|
+| `esquema` | `HOJAS` itself is consistent — no duplicated column definition, no unknown `tipo`. Runs before anything is written. |
+| `spreadsheet_id` | A `SPREADSHEET_ID` resolves (property, or the open spreadsheet). |
+| `hojas` | `crearHojas()` finished without `FILA1_NO_ES_ENCABEZADO`. |
+| `verificacion` | The sheets **as they now exist** have every expected header, **no duplicated header in row 1**, and the positional sheets (`Ventas`, `Sesiones`) match the contract **in order**. |
+| `handlers` | Every global the router depends on is actually defined — a handler that never got pushed shows up here instead of as `accion_no_soportada` at runtime. |
+| `propiedades` | `USUARIO` and `CLAVE` are stored (booleans only — values are never read back). |
+
+The duplication check runs **before** the missing-columns check on purpose.
+A repeated header eats one of the expected columns, so reporting "missing
+column" first would hide the actual cause; both are surfaced together, cause
+first.
 
 ## After the sheets exist
 
