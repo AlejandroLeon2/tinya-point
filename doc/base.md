@@ -37,6 +37,7 @@ No usar Tina CMS: asume un editor de contenido dedicado, lo cual no aplica cuand
 | id | string | único, no editable por UI |
 | nombre | string | |
 | categoria | string | |
+| marca | string | opcional — vocabulario controlado por la hoja "Marcas" |
 | precio | number | |
 | stock | number | se actualiza vía Apps Script al vender |
 | sku / codigo_barras | string | opcional |
@@ -96,6 +97,15 @@ Mismo patrón que "Ventas": la fuente operativa vive en localStorage (llave `caj
 | nombre | string | único (case-insensitive) |
 
 CRUD con token; borrar solo si ningún producto la usa (`categoria_en_uso`). El filtro del catálogo sigue derivándose de los productos; el form de productos pasa a `<select>` alimentado por esta hoja.
+
+### 2.6 Google Sheet — hoja "Marcas" *(espejo de "Categorias", implementada 25/09/2026 — requiere crear la hoja + redeploy del backend)*
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | string | uuid generado en servidor |
+| nombre | string | único (case-insensitive) |
+
+CRUD con token; borrar solo si ningún producto la usa (`marca_en_uso`); renombrar hace cascada a `Productos.marca`. El `<select>` de marca del form de productos se alimenta de esta hoja (con fallback derivado de los productos). La lectura pública es `GET ?action=marcas`.
 
 ---
 

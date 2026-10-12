@@ -38,7 +38,8 @@ const { title } = Astro.props;
 // Navigation groups = §3.2 Operación / Inventario / Sistema, item order =
 // order of use for the cashier (plan-sidebar.md §1.2; Caja between Historial
 // and Productos — plan-mejoras-2 Fase 2; Categorías trails Productos —
-// plan-productos-v2 Fase 2, D-C2; Stock is the inventory follow-up —
+// plan-productos-v2 Fase 2, D-C2; Marcas trails Categorías — same D-C2
+// pattern for the brand field; Stock is the inventory follow-up —
 // plan-stock.md Fase 3).
 const navGroups = [
 	{
@@ -54,6 +55,7 @@ const navGroups = [
 		items: [
 			{ href: '/productos', label: 'Productos', icon: 'productos' },
 			{ href: '/categorias', label: 'Categorías', icon: 'categorias' },
+			{ href: '/marcas', label: 'Marcas', icon: 'marcas' },
 			{ href: '/stock', label: 'Stock', icon: 'stock', badge: 'stock' },
 		],
 	},
@@ -206,6 +208,7 @@ const isActive = (href: string) => normalize(href) === current;
 					[
 						{ href: '/productos', label: 'Productos', icon: 'productos' },
 						{ href: '/categorias', label: 'Categorías', icon: 'categorias' },
+						{ href: '/marcas', label: 'Marcas', icon: 'marcas' },
 						{ href: '/stock', label: 'Stock', icon: 'stock' },
 						{ href: '/ajustes', label: 'Ajustes', icon: 'ajustes' },
 					].map((item) => (

@@ -1,0 +1,18 @@
+---
+import LayoutApp from '../layouts/LayoutApp.astro';
+import OfflineBanner from '../components/ui/OfflineBanner.astro';
+import SyncStatusIndicator from '../components/smart/SyncStatusIndicator.astro';
+import BrandContainer from '../components/smart/BrandContainer.astro';
+
+// Brands admin page — same shell as /categorias: LayoutApp owns <main>,
+// route-guard already covers every non-/login route, banner + sync indicator
+// ride every app page (extras §6).
+---
+<LayoutApp title="Marcas">
+	<SyncStatusIndicator slot="header" />
+	<OfflineBanner />
+	<BrandContainer />
+</LayoutApp>
+<script>
+	import '../components/islands/runtime/offline-banner';
+</script>

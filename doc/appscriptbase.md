@@ -51,7 +51,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.1 Punto de entrada
 
 - **`doGet(e)`**
-  Atiende únicamente lecturas públicas. Lee `e.parameter.action`. Si `action === "productos"`, delega a `obtenerProductos()`; si `action === "categorias"`, a `obtenerCategorias()`. Cualquier otro valor devuelve error de acción no soportada. No requiere token.
+  Atiende únicamente lecturas públicas. Lee `e.parameter.action`. Si `action === "productos"`, delega a `obtenerProductos()`; si `action === "categorias"`, a `obtenerCategorias()`; si `action === "marcas"`, a `obtenerMarcas()`. Cualquier otro valor devuelve error de acción no soportada. No requiere token.
 
 - **`doPost(e)`**
   Punto de entrada único para login y escrituras. Lee `e.postData.contents` (string plano, ver sección 1 sobre CORS), lo parsea con `JSON.parse`, y despacha según `body.action` a la función correspondiente. Nunca ejecuta lógica de negocio directamente aquí — solo parsea, valida forma básica del payload, y delega.
@@ -59,7 +59,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.2 Router interno
 
 - **`despacharAccion(action, body)`**
-  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10), `"crearCategoria"`, `"actualizarCategoria"`, `"borrarCategoria"` (§4.12–§4.14) y `"historialVentas"` (§4.15 — **lectura** protegida, va por POST porque el token no puede viajar en el query string, ver §5.3). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
+  Un `switch`/mapa de `action → función handler`. Centraliza el enrutamiento para que `doPost` no crezca con `if/else` infinitos. Acciones esperadas: `"login"`, `"registrarVenta"`, `"actualizarStock"`, `"abrirCaja"`, `"cerrarCaja"`, `"productosAdmin"`, `"crearProducto"`, `"actualizarProducto"` (contratos en §4.6–§4.10), `"crearCategoria"`, `"actualizarCategoria"`, `"borrarCategoria"` (§4.12–§4.14), `"crearMarca"`, `"actualizarMarca"`, `"borrarMarca"` (§4.17–§4.19) y `"historialVentas"` (§4.15 — **lectura** protegida, va por POST porque el token no puede viajar en el query string, ver §5.3). Cualquier `action` no reconocida devuelve `{ ok: false, error: "accion_no_soportada" }`.
 
 ### 3.3 Autenticación
 
@@ -78,7 +78,7 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 ### 3.4 Catálogo (lectura pública)
 
 - **`obtenerProductos()`**
-  Lee la hoja "Productos", filtra `activo === true`, y devuelve solo los campos livianos (`id`, `nombre`, `precio`, `categoria`, `stock`, `imagen_url`) — nunca la fila completa si hay columnas pesadas. Si `CacheService` está en uso, primero intenta leer de cache antes de tocar el Sheet.
+  Lee la hoja "Productos", filtra `activo === true`, y devuelve solo los campos livianos (`id`, `nombre`, `precio`, `categoria`, `marca`, `stock`, `imagen_url`) — nunca la fila completa si hay columnas pesadas. `marca` se lee **por nombre de encabezado**: si la columna no existe en la hoja, cada producto sale con `marca: ''` (la hoja nunca rompe la lectura). Si `CacheService` está en uso, primero intenta leer de cache antes de tocar el Sheet.
 
 ### 3.5 Ventas y stock (escritura, requieren token)
 
@@ -136,6 +136,23 @@ No se necesita `HtmlService` (no hay UI servida desde Apps Script, el frontend v
 - **`mapaNombresProductos()` / `parsearItemsVenta(celda, nombres)`** (helpers internos)
   Header-driven (busca las columnas `id`/`nombre` por encabezado, tolera hojas ausentes) y tolerante a fila malformada, respectivamente.
 
+### 3.9 Marcas (espejo de §3.7, contratos §4.16–§4.19)
+
+- **`obtenerMarcas()`**
+  Lee la hoja "Marcas" y devuelve `{ ok: true, marcas: [{ id, nombre }] }` ordenado por nombre — lectura pública vía `doGet(?action=marcas)` (§4.16), misma luz que `obtenerCategorias()`.
+
+- **`crearMarca(token, data)`** (§4.17)
+  Mismos pasos que `crearCategoria`: `validarToken(token)` → `nombre` no vacío (`payload_invalido`) → duplicado case-insensitive (`marca_duplicada`) → `LockService` + `appendRow` con `id` de `Utilities.getUuid()`.
+
+- **`actualizarMarca(token, data)`** (§4.18)
+  Renombra por `id` con **cascada** a `Productos.marca` (productos que usaban el nombre viejo pasan al nuevo), dentro del mismo lock.
+
+- **`borrarMarca(token, data)`** (§4.19)
+  Borra por `id`; si algún producto la referencia → `marca_en_uso` y la fila queda. `payload_invalido` si el `id` no existe. Sin soft delete (espejo de `borrarCategoria`).
+
+- **`marcaEnUso(nombre)` / `renombrarMarcaEnProductos(viejo, nuevo)`** (helpers internos)
+  Comparten `existeNombreEn(hoja, nombre, exceptoId)` con `categorias.gs` — ambos son genéricos por encabezados `id`/`nombre`.
+
 ---
 
 ## 4. Mapeo de requests y responses (contrato JSON)
@@ -156,6 +173,7 @@ Esta sección es la que debe quedar fija y versionada — el frontend en Astro s
       "nombre": "Coca-Cola 500ml",
       "precio": 3.5,
       "categoria": "bebidas",
+      "marca": "Coca-Cola",
       "stock": 24,
       "imagen_url": "https://..."
     }
@@ -238,6 +256,8 @@ Esta sección es la que debe quedar fija y versionada — el frontend en Astro s
 | `error_interno` | Cualquier excepción no controlada (se loggea el detalle real con `Logger.log`, pero el cliente solo recibe este código genérico) |
 | `categoria_duplicada` | Alta o renombre de categoría con un nombre ya existente (case-insensitive) |
 | `categoria_en_uso` | Borrado de categoría que al menos un producto referencia (`plan-productos-v2` §4.14) |
+| `marca_duplicada` | Alta o renombre de marca con un nombre ya existente (case-insensitive, espejo de `categoria_duplicada`) |
+| `marca_en_uso` | Borrado de marca que al menos un producto referencia (espejo de `categoria_en_uso`) |
 
 Definir esta tabla ahora evita que cada función invente su propio texto de error y que el frontend tenga que adivinar contra qué comparar.
 
@@ -310,6 +330,7 @@ Handler: `productosAdmin(token)`. Devuelve el catálogo **completo, incluidos `a
       "nombre": "Coca-Cola 500ml",
       "precio": 3.5,
       "categoria": "bebidas",
+      "marca": "Coca-Cola",
       "stock": 24,
       "imagen_url": "https://...",
       "activo": true
@@ -327,11 +348,11 @@ Handler: `crearProducto(token, data)`.
 {
   "action": "crearProducto",
   "token": "3f2a1c9e-...",
-  "data": { "nombre": "Agua 625ml", "categoria": "bebidas", "precio": 2.0, "stock": 12, "imagen_url": "https://..." }
+  "data": { "nombre": "Agua 625ml", "categoria": "bebidas", "marca": "Coca-Cola", "precio": 2.0, "stock": 12, "imagen_url": "https://..." }
 }
 ```
 
-`imagen_url` opcional; `precio ≥ 0`; `stock` entero ≥ 0 — validados también en cliente (`payload_invalido` si falta un campo requerido o el JSON no parsea).
+`imagen_url` y `marca` opcionales (`marca` vacía o ausente → `''` en la hoja); `precio ≥ 0`; `stock` entero ≥ 0 — validados también en cliente (`payload_invalido` si falta un campo requerido o el JSON no parsea).
 
 **Response — éxito:**
 ```json
@@ -358,7 +379,7 @@ Handler: `actualizarProducto(token, data)`. Edita por `id` solo los campos envia
 { "ok": true }
 ```
 
-Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a editar.
+Errores: `payload_invalido` si falta `id` o si `data` no trae ningún campo a editar. `marca` es editable igual que el resto (string; `''` deja el producto "sin marca").
 
 ### 4.11 `GET ?action=categorias` (pública, sin token)
 
@@ -438,7 +459,7 @@ Errores: `payload_invalido` (`id` inexistente), `categoria_en_uso` (algún produ
 
 ### 4.15 `POST { action: "historialVentas" }` (requiere token)
 
-Handler: `historialVentas(token, data)` (§3.8). **Es una lectura y va por POST** a propósito: el token no puede viajar en un query string (§5.3), y las lecturas públicas de catálogo (§4.1/§4.11) son las únicas que se permiten en GET.
+Handler: `historialVentas(token, data)` (§3.8). **Es una lectura y va por POST** a propósito: el token no puede viajar en un query string (§5.3), y las lecturas públicas de catálogo (§4.1/§4.11/§4.16) son las únicas que se permiten en GET.
 
 **Request:**
 ```json
@@ -472,9 +493,89 @@ Errores: `unauthorized` (token ausente/vencido), `error_interno`. Nunca `accion_
 Notas de contrato:
 
 - El orden es **indiferente**: el cliente ordena por `fecha_hora` descendente tras el merge.
-- `fecha_hora` es el instante en que el servidor **recibió** la venta (reloj del servidor, §4.3), no el instante en que el cajero la cerró. Por eso el cliente conserva su propio timestamp cuando lo tiene: una venta encolada offline durante días no debe saltar al día en que por fin subió.
+- `fecha_hora` es el instante en que el servidor **recibió** la venta (reloj del servidor, §4.3), no el instante en que el cajero cerró. Por eso el cliente conserva su propio timestamp cuando lo tiene: una venta encolada offline durante días no debe saltar al día en que por fin subió.
 - `metodo_pago` llega **sin validar** (es un string crudo de la hoja); el cliente lo filtra en el merge contra `METODOS` y si no calza conserva el valor local que sí es válido.
 - `subtotal` **no** existe en el Sheet (snapshot local-only, gotcha G9): una venta traída desde otro dispositivo se muestra sin fila de subtotal y con el IGV derivado de `total` — el mismo comportamiento que ya tiene para ventas antiguas.
+
+### 4.16 `GET ?action=marcas` (pública, sin token)
+
+Espejo exacto de §4.11 sobre la hoja "Marcas" (`doc/base.md` §2.6).
+
+**Request:** sin body, solo query string.
+
+**Response (200, siempre):**
+```json
+{
+  "ok": true,
+  "marcas": [
+    { "id": "3f2a1c9e-...", "nombre": "Coca-Cola" }
+  ]
+}
+```
+
+Lista liviana (`id`, `nombre`) ordenada por nombre — alimenta el `<select>` de marca del form de productos y la pantalla `/marcas`.
+
+Errores: `accion_no_soportada` mientras el Web App no esté redesplegado con `marcas.gs` (un backend anterior no conoce la acción; el cliente muestra "El servidor todavía no tiene esta función. Actualizá el despliegue de Apps Script.") y `error_interno`. Sin token, igual que §4.11.
+
+### 4.17 `POST { action: "crearMarca" }` (requiere token)
+
+Handler: `crearMarca(token, data)`.
+
+**Request:**
+```json
+{
+  "action": "crearMarca",
+  "token": "3f2a1c9e-...",
+  "data": { "nombre": "Coca-Cola" }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true, "id": "uuid-generado-en-servidor" }
+```
+
+Errores: `payload_invalido` (nombre vacío), `marca_duplicada` (nombre ya existente, case-insensitive). `id` lo genera el servidor con `Utilities.getUuid()`; `LockService` alrededor de la escritura.
+
+### 4.18 `POST { action: "actualizarMarca" }` (requiere token)
+
+Handler: `actualizarMarca(token, data)`. Renombra por `id` y aplica el cambio **en cascada** a los productos que usaban el nombre viejo, dentro del mismo lock.
+
+**Request:**
+```json
+{
+  "action": "actualizarMarca",
+  "token": "3f2a1c9e-...",
+  "data": { "id": "3f2a1c9e-...", "nombre": "Coca Cola" }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true }
+```
+
+Errores: `payload_invalido` (falta `id`/`nombre` o `id` inexistente), `marca_duplicada`.
+
+### 4.19 `POST { action: "borrarMarca" }` (requiere token)
+
+Handler: `borrarMarca(token, data)`.
+
+**Request:**
+```json
+{
+  "action": "borrarMarca",
+  "token": "3f2a1c9e-...",
+  "data": { "id": "3f2a1c9e-..." }
+}
+```
+
+**Response — éxito:**
+```json
+{ "ok": true }
+```
+
+Errores: `payload_invalido` (`id` inexistente), `marca_en_uso` (algún producto la referencia — renombralos o desactivalos antes). Sin soft delete: la fila se borra de verdad cuando está libre.
 
 ---
 

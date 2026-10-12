@@ -55,14 +55,15 @@ export async function crearProducto(
 export async function actualizarProducto(
   data: DatosActualizarProducto,
 ): Promise<ApiResult<RespuestaOk>> {
-  const { id, nombre, categoria, precio, stock, imagen_url, activo } = data;
+  const { id, nombre, categoria, precio, stock, imagen_url, activo, marca } = data;
   const tocaAlgo =
     nombre !== undefined ||
     categoria !== undefined ||
     precio !== undefined ||
     stock !== undefined ||
     imagen_url !== undefined ||
-    activo !== undefined;
+    activo !== undefined ||
+    marca !== undefined;
   if (
     !id ||
     !tocaAlgo ||
@@ -71,7 +72,8 @@ export async function actualizarProducto(
     (precio !== undefined && !isValidPrecio(precio)) ||
     (stock !== undefined && !isValidStockValue(stock)) ||
     (imagen_url !== undefined && !isValidImageUrl(imagen_url)) ||
-    (activo !== undefined && typeof activo !== 'boolean')
+    (activo !== undefined && typeof activo !== 'boolean') ||
+    (marca !== undefined && typeof marca !== 'string')
   ) {
     return { status: 'api_error', error: 'payload_invalido' };
   }

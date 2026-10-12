@@ -1,0 +1,27 @@
+---
+// Brand create/rename form — ui draws only; all behavior belongs to
+// islands/brands-admin.ts (astrobase §3.3/§1). Same contract as
+// ui/CategoriaForm.astro: the title and submit label flip between "Nueva"
+// and "Renombrar" via textContent from the island.
+import Button from './Button.astro';
+---
+<form data-marca-form class="flex flex-col gap-3 sm:flex-row sm:items-end">
+	<label class="flex flex-1 flex-col gap-1 text-base font-semibold text-text">
+		<span data-marca-form-title>Nueva marca</span>
+		<input
+			data-marca-nombre
+			class="input-field"
+			type="text"
+			placeholder="Ej: Nestlé"
+			autocomplete="off"
+		/>
+	</label>
+	<span class="flex gap-3">
+		<Button type="submit" variant="primary" data-marca-submit>
+			Guardar marca
+		</Button>
+		<button type="button" data-marca-cancel class="btn btn-secondary" hidden>
+			Cancelar
+		</button>
+	</span>
+</form>

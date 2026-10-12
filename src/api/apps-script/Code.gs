@@ -5,8 +5,8 @@
 // page (that would break the client's JSON.parse — §6).
 
 /**
- * Public reads. ?action=productos and ?action=categorias (no token), per
- * §3.1/§4.1/§4.11.
+ * Public reads. ?action=productos, ?action=categorias and ?action=marcas
+ * (no token), per §3.1/§4.1/§4.11.
  * @param {{parameter: Object}} e
  * @return {GoogleAppsScript.ContentService.TextOutput}
  */
@@ -18,6 +18,9 @@ function doGet(e) {
     }
     if (action === 'categorias') {
       return respuestaJson(obtenerCategorias());
+    }
+    if (action === 'marcas') {
+      return respuestaJson(obtenerMarcas());
     }
     return respuestaJson(respuestaError('accion_no_soportada', 'doGet: ' + action));
   } catch (err) {
@@ -82,6 +85,13 @@ function despacharAccion(action, body) {
       return actualizarCategoria(body.token, body.data);
     case 'borrarCategoria':
       return borrarCategoria(body.token, body.data);
+    // Brand CRUD — mirror of the categorías block (marcas.gs).
+    case 'crearMarca':
+      return crearMarca(body.token, body.data);
+    case 'actualizarMarca':
+      return actualizarMarca(body.token, body.data);
+    case 'borrarMarca':
+      return borrarMarca(body.token, body.data);
     default:
       return respuestaError('accion_no_soportada', 'despacharAccion: ' + action);
   }

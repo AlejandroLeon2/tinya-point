@@ -14,10 +14,11 @@ Services used (all built-ins of `appsscript.json`, no external libraries):
 |---|---|
 | `Code.gs` | `doGet`/`doPost` entry points + `despacharAccion` router |
 | `auth.gs` | login, session creation (+12h), token validation + expired-row cleanup |
-| `productos.gs` | public catalog read (active rows, light fields) |
+| `productos.gs` | catalog read (active rows, light fields) + `crearProducto`/`actualizarProducto` |
+| `categorias.gs` | `obtenerCategorias` (public read) + `Categorias` sheet CRUD (create/rename with cascade, usage-guarded delete) |
+| `marcas.gs` | `Marcas` sheet CRUD (mirror of `categorias.gs`, cascade to `Productos.marca`) |
 | `ventas.gs` | `registrarVenta` / `actualizarStock` (token + lock) + `buscarFilaPorId` + `historialVentas` (token-gated **read** of the whole log, §4.15) |
 | `caja.gs` | `abrirCaja` / `cerrarCaja` (token + lock, upsert por `id_caja`) |
-| `categorias.gs` | `obtenerCategorias` + CRUD de categorías con cascade a Productos |
 | `utils.gs` | `obtenerLibro()` spreadsheet access (standalone + container-bound) + `respuestaJson` / `respuestaError` (internal detail → Logger only) |
 | `appsscript.json` | manifest (V8, `America/Lima`, web app `ANYONE_ANONYMOUS` / `USER_DEPLOYING`) — lives in the clasp root `src/api/` |
 
@@ -82,16 +83,18 @@ Human-only steps (account/Google required) live in `doc/plan.md`
 (Fase 6 — "Checklist humano") and `doc/extras.md` §3:
 
 1. **Sheets** — run `crearHojas()` (see [`../setup/README.md`](../setup/README.md)):
-   creates `Productos`, `Categorias`, `Ventas`, `Cajas` and `Sesiones` with
-   their exact headers, idempotently.
+   creates `Productos`, `Categorias`, `Marcas`, `Ventas`, `Cajas` and
+   `Sesiones` with their exact headers, idempotently.
 2. **Script Properties** — `SPREADSHEET_ID` (or `vincularLibroActivo()`),
-   `USUARIO`, `CLAVE`.
+   `USUARIO`, `CLAVE` (or run `../setup/credenciales.gs` →
+   `guardarCredenciales()`; the file is gitignored, the pair lives only in
+   Script Properties).
 3. Web-app deploy as "Anyone", seed, first login.
 
 ## Sheet bootstrap (`../setup/`)
 
 `../setup/setup.gs` owns the spreadsheet **schema** (sheet names + header
-rows, mirroring `doc/base.md` §2.1–§2.5). Run `crearHojas()` from the editor
+rows, mirroring `doc/base.md` §2.1–§2.6). Run `crearHojas()` from the editor
 to create everything a fresh spreadsheet needs; `estadoSetup()` reports what
 is missing without writing. Full details in [`../setup/README.md`](../setup/README.md).
 
@@ -102,5 +105,11 @@ node scripts/seed-dummyjson.mjs > seed-productos.csv
 ```
 
 Paste the CSV into the `Productos` sheet (header row included). Columns are
-exactly `doc/base.md` §2.1. After that the Sheet is the real source —
-DummyJSON is never touched again (`doc/base.md` §4).
+exactly `doc/base.md` §2.1 (including the optional `marca`). After that the
+Sheet is the real source — DummyJSON is never touched again (`doc/base.md` §4).
+
+The companion sheets are seeded the same way (paste into `Categorias` /
+`Marcas`, headers `id`,`nombre`): `seed-categorias.csv` and
+`seed-marcas.csv` are derived FROM the product seed — distinct values,
+deduped, sorted — so every `categoria`/`marca` a product references already
+exists in its companion sheet (same one-time setup, `doc/base.md` §2.5/§2.6).
