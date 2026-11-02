@@ -3,14 +3,21 @@
 // smart layer composes chrome + ui/ and wires islands/stock/stock.ts (astrobase
 // §3.3). Read-only over the cached catalog: the restock writes happen in the
 // rows themselves (actualizarProducto inline, plan-reponer-buscar Fase 1).
-// T3.8: StatCard KPIs replace the old stats paragraph, chips
-// filter/sort the list, rows gain batch +5/+10/+24 and a "Bajo" tag, and
-// the freshness stamp sits ALWAYS next to Actualizar (warning when stale).
+// 2026-11-01 owner pass: the card list became a REUSABLE ui/DataTable
+// (desktop, shared with /productos + /historial) + the mobile card twin,
+// with a search input (shared utils/search pipeline), chips + a categoría
+// select, and prev/next pagination. Controls: ± icon stepper + direct
+// number entry ONLY (batch +5/+10/+24 removed) and an explicit "Guardar"
+// button per row — edits stay local until saved.
 import Alert from '../ui/Alert.astro';
 import Chip from '../ui/Chip.astro';
 import ChipGroup from '../ui/ChipGroup.astro';
+import DataTable from '../ui/DataTable.astro';
 import EmptyState from '../ui/EmptyState.astro';
+import Icon from '../ui/Icon.astro';
 import StatCard from '../ui/StatCard.astro';
+import StockRow from '../ui/StockRow.astro';
+import StockRowDesktop from '../ui/StockRowDesktop.astro';
 ---
 <section data-stock-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
 	<!-- The h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1). -->
@@ -31,12 +38,12 @@ import StatCard from '../ui/StatCard.astro';
 			class="col-span-2 md:col-span-1"
 		/>
 	</div>
-	<p data-stock-umbral class="text-base text-text-muted">
+	<p data-stock-umbral class="text-xs text-text-muted">
 		Mostrando productos con stock menor a 5.
 	</p>
 
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<h2 class="text-lg font-bold text-text">Productos por reponer</h2>
+		<h2 class="text-base font-semibold text-text">Productos por reponer</h2>
 		<div class="flex flex-wrap items-center gap-3">
 			<!-- "Actualizado hace N min" SIEMPRE junto a Actualizar (spec §9);
 			     tono warning cuando la caché superó el TTL. Dos nodos porque
@@ -51,76 +58,82 @@ import StatCard from '../ui/StatCard.astro';
 		</div>
 	</div>
 
-	<!-- Filtros (spec §9): el hook vive en el wrapper, los chips llevan el valor -->
-	<div data-stock-filter>
-		<ChipGroup label="Filtros de stock">
-			<Chip data-stock-filter-value="todos" aria-pressed="true">Todos los bajos</Chip>
-			<Chip data-stock-filter-value="agotados" aria-pressed="false">Solo agotados</Chip>
-			<Chip data-stock-filter-value="categoria" aria-pressed="false">Por categoría</Chip>
-		</ChipGroup>
+	<!-- Search on its own row ALWAYS, filters below — same toolbar layout
+	     as /productos (owner request 2026-11-01). Local-only, zero network. -->
+	<span class="relative block w-full">
+		<Icon
+			name="buscar"
+			class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted"
+		/>
+		<input
+			data-stock-search
+			type="search"
+			class="input-field pl-10"
+			placeholder="Buscar por nombre, categoría o marca…"
+			aria-label="Buscar productos con stock bajo"
+			autocomplete="off"
+		/>
+	</span>
+
+	<div class="flex flex-wrap items-center gap-3">
+		<!-- Filtros (spec §9): el hook vive en el wrapper, los chips llevan
+		     el valor — ahora complementados por el select de categoría. -->
+		<div data-stock-filter>
+			<ChipGroup label="Filtros de stock">
+				<Chip data-stock-filter-value="todos" aria-pressed="true">Todos los bajos</Chip>
+				<Chip data-stock-filter-value="agotados" aria-pressed="false">Solo agotados</Chip>
+			</ChipGroup>
+		</div>
+		<label class="flex items-center gap-2 text-sm font-medium text-text">
+			Categoría
+			<select data-stock-catfilter class="input-field max-w-48">
+				<option value="">Todas</option>
+			</select>
+		</label>
 	</div>
 
-	<template data-stock-row-template>
-		<div
-			data-stock-row
-			class="card flex flex-wrap items-center justify-between gap-3 p-4"
-		>
-			<div class="flex min-w-0 flex-col gap-1">
-				<p data-stock-nombre class="truncate text-lg font-semibold text-text"></p>
-				<p data-stock-categoria class="text-base text-text-muted"></p>
-			</div>
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<p data-stock-precio class="text-lg font-semibold text-text"></p>
-				<!-- Inline restock stepper (plan-reponer-buscar Fase 1): the input
-				     saves on change (blur/Enter); ±1 plus the batch buttons below
-				     step with the SAME 500 ms debounce (spec §9). Batch sizes are
-				     configured via data-stock-step. -->
-				<div data-stock-stepper class="flex justify-between items-center gap-1">
-					<button
-						type="button"
-						data-stock-step="-1"
-						class="btn btn-secondary px-3"
-						aria-label="Restar una unidad"
-					>
-						−
-					</button>
-					<input
-						data-stock-input
-						type="number"
-						min="0"
-						max="9999"
-						step="1"
-						inputmode="numeric"
-						class="input-field w-20 text-center text-lg font-bold"
-					/>
-					<button
-						type="button"
-						data-stock-step="1"
-						class="btn btn-secondary px-3"
-						aria-label="Sumar una unidad"
-					>
-						+
-					</button>
-				</div>
-				<div class="flex items-center justify-between gap-1">
-					<button type="button" data-stock-step="5" class="btn btn-secondary px-3" aria-label="Sumar 5 unidades">+5</button>
-					<button type="button" data-stock-step="10" class="btn btn-secondary px-3" aria-label="Sumar 10 unidades">+10</button>
-					<button type="button" data-stock-step="24" class="btn btn-secondary px-3" aria-label="Sumar 24 unidades">+24</button>
-				</div>
-				<!-- Tags: tono por visibilidad (§0.4) — la isla pinta el título
-				     con el umbral configurado en /ajustes. -->
-				<span data-stock-bajo hidden class="font-bold text-warning">Bajo</span>
-				<span data-stock-agotado hidden class="font-bold text-danger">Agotado</span>
-			</div>
-		</div>
-	</template>
+	<!-- Desktop (≥md): the SHARED DataTable — same component /productos and
+	     /historial use. The wrapper carries the hook so the island can hide
+	     the empty table alongside the list (a header-only table is noise). -->
+	<div data-stock-table-wrap>
+		<!-- hiddenBelowLg={[3]} (Precio): 5 columns overflow the md–lg range by
+		     66px at 810px (DataTable.astro Props) — price is the least critical
+		     cell for restocking; the valorizado KPI keeps the total in view. -->
+		<DataTable
+			columns={['Producto', 'Categoría', 'Estado', 'Precio', 'Ajuste']}
+			hiddenBelowLg={[3]}
+		/>
+	</div>
 
-	<div data-stock-list class="flex flex-col gap-2"></div>
+	<!-- Mobile (<md): the card twin -->
+	<div data-stock-list class="flex flex-col gap-2 md:hidden"></div>
+
+	<StockRow />
+	<StockRowDesktop />
+
+	<!-- Visual pagination, 25/page, client-only — island hides it until
+	     there is more than one page (same pattern as the POS catalog). -->
+	<nav
+		data-stock-pagination
+		hidden
+		aria-label="Paginación de stock"
+		class="flex items-center justify-between gap-3"
+	>
+		<button data-stock-prev type="button" class="btn btn-secondary">Anterior</button>
+		<p data-stock-range aria-live="polite" class="text-sm text-text-muted"></p>
+		<button data-stock-next type="button" class="btn btn-secondary">Siguiente</button>
+	</nav>
 
 	<!-- All good: nothing under the threshold (icon comes with EmptyState) -->
 	<EmptyState
 		state="stock-ok"
 		mensaje="Ningún producto bajo el umbral. ¡Todo en orden!"
+		hidden
+	/>
+	<!-- Search / filter active but nothing matches -->
+	<EmptyState
+		state="stock-noresults"
+		mensaje="Sin resultados para la búsqueda o el filtro actual."
 		hidden
 	/>
 	<!-- No cache AND fetch failed: never invent numbers — Reintentar is a
