@@ -9,13 +9,13 @@ import Button from './Button.astro';
 import Icon from './Icon.astro';
 ---
 <form data-product-form novalidate class="flex flex-col gap-4">
-	<h2 data-product-form-title class="text-lg font-bold text-text">Nuevo producto</h2>
+	<h2 data-product-form-title class="text-base font-semibold text-text">Nuevo producto</h2>
 
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Nombre
 		<input data-product-nombre type="text" class="input-field" autocomplete="off" />
 	</label>
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Categoría
 		<!-- <select> fed from GET ?action=categorias with a products-derived
 		     fallback (plan-productos-v2.md Fase 3/D2) — the island rebuilds
@@ -24,7 +24,7 @@ import Icon from './Icon.astro';
 			<option value="">Elige una categoría</option>
 		</select>
 	</label>
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Marca
 		<!-- Same contract as Categoría: GET ?action=marcas with a products-
 		     derived fallback; marca is optional so the blank option leads. -->
@@ -39,7 +39,7 @@ import Icon from './Icon.astro';
 	     lets form-manager's inline error <p> render under the input without
 	     breaking the label layout. Optional field (a product may ship with no
 	     code); always a STRING so leading zeros survive. -->
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Código de barras (opcional)
 		<span class="relative block">
 			<input
@@ -67,13 +67,13 @@ import Icon from './Icon.astro';
 			data-product-barcode-ok
 			hidden
 			aria-live="polite"
-			class="text-base font-semibold text-success"
+			class="text-sm font-medium text-success"
 		>
 		</p>
 	</label>
 
 	<div class="flex flex-wrap gap-3">
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-text">
 			Precio (S/)
 			<input
 				data-product-precio
@@ -84,7 +84,7 @@ import Icon from './Icon.astro';
 				inputmode="decimal"
 			/>
 		</label>
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-text">
 			Stock
 			<input
 				data-product-stock
@@ -103,7 +103,7 @@ import Icon from './Icon.astro';
 	     input that leerFormulario() already validates. Preview + states are
 	     pure markup; the island fills them (ui/ draws, never fetches). -->
 	<div class="flex flex-col gap-2">
-		<span class="text-base font-semibold text-text">Imagen (opcional)</span>
+		<span class="text-sm font-medium text-text">Imagen (opcional)</span>
 		<img
 			data-product-imagen-preview
 			alt=""
@@ -127,8 +127,8 @@ import Icon from './Icon.astro';
 				Quitar imagen
 			</button>
 		</div>
-		<p data-product-imagen-estado class="text-base text-text-muted" aria-live="polite" hidden></p>
-		<p data-product-imagen-error class="text-base text-danger" role="alert" hidden></p>
+		<p data-product-imagen-estado class="text-xs text-text-muted" aria-live="polite" hidden></p>
+		<p data-product-imagen-error class="text-sm text-danger" role="alert" hidden></p>
 	</div>
 
 	<div class="flex flex-wrap gap-3">

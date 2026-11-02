@@ -6,14 +6,26 @@
    preload <link>s (they must live in HTML anyway).
    ============================================================ */
 @font-face {
-  font-family: "Atkinson Hyperlegible";
-  src: url("/fonts/AtkinsonHyperlegible-Regular.woff2") format("woff2");
+  font-family: "Inter";
+  src: url("/fonts/Inter-400.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
-  font-family: "Atkinson Hyperlegible";
-  src: url("/fonts/AtkinsonHyperlegible-Bold.woff2") format("woff2");
+  font-family: "Inter";
+  src: url("/fonts/Inter-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-700.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
 }
@@ -66,23 +78,27 @@
   --shadow-modal: 0 8px 32px rgb(0 0 0 / 0.25);
 
   /* Fuente única de toda la app */
-  --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
 
-  /* Escala tipográfica — piso de 18px, nada más chico (§3.2) */
-  --text-base: 1.125rem;
-  --text-base--line-height: 1.6;
+  /* Escala tipográfica — estilo SaaS compacto (base 16px).
+     Cuerpo 400, títulos 600/700. Piso de uso: text-sm (14px). */
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
 
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.55;
 
-  --text-xl: 1.5rem;
-  --text-xl--line-height: 1.4;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.45;
 
-  --text-2xl: 1.875rem;
-  --text-2xl--line-height: 1.3;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.35;
 
-  --text-3xl: 2.25rem;
-  --text-3xl--line-height: 1.2;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.25;
+
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 1.15;
 }
 
 /* ============================================================
@@ -90,13 +106,13 @@
    ============================================================ */
 @layer base {
   body {
-    @apply bg-bg text-text text-base font-sans;
+    @apply bg-bg text-text text-base font-sans antialiased;
   }
 
-  /* TopBar height = border-b-2 + py-2(16) + row content 44 (min-h-11 pills)
-     — single source for the POS two-column calc (refactorUI §4.2B). */
+  /* TopBar height = border-b(1) + py-2(16) + row content 32 (min-h-8 pills)
+     — single source for sticky offsets (DataTable thead). */
   :root {
-    --topbar-h: 62px;
+    --topbar-h: 49px;
   }
 }
 
@@ -127,8 +143,8 @@
    ============================================================ */
 @utility btn {
   @apply inline-flex items-center justify-center gap-2
-         rounded-lg px-4 py-2 text-lg font-semibold
-         min-h-12 min-w-12
+         rounded-lg px-4 text-sm font-medium
+         min-h-11 min-w-11
          transition-colors
          focus-visible:outline focus-visible:outline-2
          focus-visible:outline-offset-2 focus-visible:outline-primary
@@ -141,27 +157,31 @@
    floor, §2.1). Tone classes below add color in @layer components; state
    is always text + icon + tone, never color alone (§0.9). */
 @utility pill {
-  @apply inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3
-         text-base font-semibold whitespace-nowrap
+  @apply inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5
+         text-xs font-medium whitespace-nowrap
          focus-visible:outline focus-visible:outline-2
          focus-visible:outline-offset-2 focus-visible:outline-primary;
 }
 
 @layer components {
   .btn-primary {
-    @apply btn bg-primary text-primary-content active:bg-primary-hover;
+    @apply btn bg-primary text-primary-content
+           hover:bg-primary-hover active:bg-primary-hover;
   }
 
   .btn-success {
-    @apply btn bg-success text-success-content active:bg-success-hover;
+    @apply btn bg-success text-success-content
+           hover:bg-success-hover active:bg-success-hover;
   }
 
   .btn-danger {
-    @apply btn bg-danger text-danger-content active:bg-danger-hover;
+    @apply btn bg-danger text-danger-content
+           hover:bg-danger-hover active:bg-danger-hover;
   }
 
   .btn-secondary {
-    @apply btn bg-surface text-text border-2 border-border active:bg-bg;
+    @apply btn bg-surface text-text border border-border
+           hover:bg-bg active:bg-bg;
   }
 
   /* Cancel-sale TRIGGER (refactorUI §4.2G — Fase 2): danger outline sitting
@@ -170,24 +190,40 @@
      danger styling only ever appears in the explicit cancel context.
      Utilities inlined (v4 @apply cannot resolve @layer components classes). */
   .btn-cancel-sale {
-    @apply btn border-2 border-danger bg-transparent text-danger
-           active:bg-danger/10 min-h-11 px-3 py-2 text-base;
+    @apply btn border border-danger bg-transparent text-danger
+           hover:bg-danger/10 active:bg-danger/10 min-h-9 px-3 text-xs;
   }
 
   .input-field {
-    @apply w-full rounded-lg border-2 border-border bg-surface
-           px-4 py-2 text-lg text-text
+    @apply w-full min-h-11 rounded-lg border border-border bg-surface
+           px-3.5 py-2 text-base text-text
+           placeholder:text-text-muted/70
+           hover:border-border
            focus-visible:outline focus-visible:outline-2
            focus-visible:outline-offset-2 focus-visible:outline-primary;
   }
 
+  /* Selects inside .input-field: kill the OS arrow (appearance-none) and
+     paint our own chevron with real breathing room (pr-10 + background
+     at right 0.75rem) — the native dropdown button was stuck to the
+     border (owner request 2026-11-01). Applies to filter selects AND
+     form selects (ProductForm) automatically. */
+  .input-field:where(select) {
+    appearance: none;
+    padding-right: 2.5rem; /* pr-10 — room for the chevron */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234B4B46' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+  }
+
   .card {
-    @apply rounded-xl border border-border bg-surface p-5;
+    @apply rounded-xl border border-border bg-surface p-4;
   }
 
   .badge-warning {
-    @apply inline-block rounded-full bg-warning px-3 py-1
-           text-base font-semibold text-warning-content;
+    @apply inline-block rounded-full bg-warning px-2.5 py-0.5
+           text-xs font-medium text-warning-content;
   }
 
   /* StatusPill tones (refactorUI §2.2 — Fase 1): color over the @utility

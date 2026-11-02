@@ -45,7 +45,7 @@ import StatCard from '../ui/StatCard.astro';
 
 		<!-- Búsqueda local por número/producto/método (T3.4) — visible
 		     label (stilesbase §5), island debounces 200 ms. -->
-		<label class="flex flex-1 flex-col gap-1 text-base font-semibold text-text md:max-w-72">
+		<label class="flex flex-1 flex-col gap-1 text-sm font-medium text-text md:max-w-72">
 			Buscar
 			<input
 				data-hist-search
@@ -59,11 +59,11 @@ import StatCard from '../ui/StatCard.astro';
 		<!-- Date filter (base.md §7 "filtrable por fecha"): visible labels,
 		     .input-field 18px (stilesbase §5). Island applies it on change. -->
 		<div data-hist-dates class="flex flex-wrap items-end gap-3 md:flex">
-			<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			<label class="flex flex-col gap-1 text-sm font-medium text-text">
 				Desde
 				<input data-hist-from type="date" class="input-field" />
 			</label>
-			<label class="flex flex-col gap-1 text-base font-semibold text-text">
+			<label class="flex flex-col gap-1 text-sm font-medium text-text">
 				Hasta
 				<input data-hist-to type="date" class="input-field" />
 			</label>

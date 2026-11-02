@@ -19,12 +19,12 @@ import Button from '../ui/Button.astro';
 		</div>
 
 		<!-- §11: shown ⇔ navigator.onLine is false (island toggles `hidden`). -->
-		<p data-login-offline hidden class="text-base font-semibold text-warning" role="status">
+		<p data-login-offline hidden class="text-xs font-medium text-warning" role="status">
 			Necesitás conexión para iniciar sesión
 		</p>
 
 		<form data-login-form class="flex flex-col gap-3" novalidate>
-			<label class="flex flex-col gap-1 text-base font-semibold">
+			<label class="flex flex-col gap-1 text-sm font-medium">
 				Usuario
 				<input
 					class="input-field"
@@ -35,7 +35,7 @@ import Button from '../ui/Button.astro';
 				/>
 			</label>
 			<div class="flex flex-col gap-1">
-				<span class="text-base font-semibold">Contraseña</span>
+				<span class="text-sm font-medium">Contraseña</span>
 				<div class="relative">
 					<input
 						class="input-field pr-24"
@@ -51,13 +51,13 @@ import Button from '../ui/Button.astro';
 						type="button"
 						data-login-toggle
 						aria-pressed="false"
-						class="absolute inset-y-0 right-0 min-w-20 px-3 text-base font-semibold text-text-muted"
+						class="absolute inset-y-0 right-0 min-w-20 px-3 text-sm font-medium text-text-muted"
 					>
 						Mostrar
 					</button>
 				</div>
 			</div>
-			<p data-login-error class="text-base text-danger" role="alert" hidden></p>
+			<p data-login-error class="text-sm text-danger" role="alert" hidden></p>
 			<Button type="submit" variant="primary" data-login-submit>Ingresar</Button>
 		</form>
 	</div>

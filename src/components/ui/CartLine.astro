@@ -7,21 +7,25 @@
 // fetches (astrobase.md §1).
 ---
 <template data-cart-line-template>
-	<li class="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-3" data-cart-line="">
-		<div class="min-w-36 flex-1">
-			<p data-line-name class="text-base font-semibold text-text"></p>
-			<p data-line-unit class="text-base text-text-muted"></p>
+	<li class="flex flex-col gap-1.5 rounded-lg border border-border bg-surface p-2.5" data-cart-line="">
+		<div class="flex min-w-0 items-baseline justify-between gap-2">
+			<div class="min-w-0">
+				<p data-line-name class="truncate text-sm font-medium text-text"></p>
+				<p data-line-unit class="text-xs text-text-muted"></p>
+			</div>
+			<p data-line-importe class="shrink-0 text-sm font-semibold tabular-nums text-text"></p>
 		</div>
-		<div class="flex items-center gap-3">
-			<button type="button" class="btn btn-secondary" data-cart-qty-step="down" data-cart-action="step-down" aria-label="Restar una unidad">
-				−
-			</button>
-			<span data-line-qty class="text-lg font-semibold text-text">1</span>
-			<button type="button" class="btn btn-secondary" data-cart-qty-step="up" data-cart-action="step-up" aria-label="Sumar una unidad">
-				+
-			</button>
+		<div class="flex items-center justify-between gap-2">
+			<div class="flex items-center gap-2">
+				<button type="button" class="btn btn-secondary" data-cart-qty-step="down" data-cart-action="step-down" aria-label="Restar una unidad">
+					−
+				</button>
+				<span data-line-qty class="min-w-6 text-center text-sm font-semibold text-text">1</span>
+				<button type="button" class="btn btn-secondary" data-cart-qty-step="up" data-cart-action="step-up" aria-label="Sumar una unidad">
+					+
+				</button>
+			</div>
+			<button type="button" class="btn btn-secondary" data-cart-remove data-cart-action="remove">Quitar</button>
 		</div>
-		<p data-line-importe class="w-28 text-right text-base font-bold text-text"></p>
-		<button type="button" class="btn btn-secondary" data-cart-remove data-cart-action="remove">Quitar</button>
 	</li>
 </template>

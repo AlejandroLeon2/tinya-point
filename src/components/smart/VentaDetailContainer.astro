@@ -24,9 +24,9 @@ const taxLabel = etiquetaIgv();
 	<div data-venta-contenido class="flex flex-col gap-4">
 		<!-- Comprobante header (T3.6): local name + fecha/hora + método pill
 		     + sync pill (three states toggled by `hidden`, never color alone). -->
-		<div class="card flex flex-col gap-2 text-base">
+		<div class="card flex flex-col gap-2 text-sm">
 			<div class="flex flex-wrap items-center justify-between gap-3">
-				<span data-venta-local class="text-lg font-bold text-text">Tienda</span>
+				<span data-venta-local class="text-base font-semibold text-text">Tienda</span>
 				<span data-venta-sync class="flex items-center">
 					<StatusPill tone="ok" data-venta-sync-state="sincronizada">Sincronizada</StatusPill>
 					<StatusPill tone="warn" data-venta-sync-state="pendiente" hidden>Pendiente</StatusPill>
@@ -43,9 +43,9 @@ const taxLabel = etiquetaIgv();
 		<!-- Líneas del comprobante en tabla (T3.6): importes tabulares a la
 		     derecha; rows arrive from ui/VentaLine via islands/venta-detail. -->
 		<div class="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
-			<table class="w-full text-base text-text">
+			<table class="w-full text-sm text-text">
 				<thead>
-					<tr class="border-b-2 border-border text-left text-text-muted">
+					<tr class="border-b border-border text-left text-text-muted">
 						<th scope="col" class="px-4 py-3 font-semibold">Producto</th>
 						<th scope="col" class="px-4 py-3 font-semibold">Cantidad</th>
 						<th scope="col" class="px-4 py-3 text-right font-semibold">Importe</th>
@@ -57,7 +57,7 @@ const taxLabel = etiquetaIgv();
 		<VentaLine />
 
 		<!-- Totales alineados a la derecha + total destacado (T3.6). -->
-		<div class="card flex flex-col gap-2 text-base">
+		<div class="card flex flex-col gap-2 text-sm">
 			<div data-venta-subtotal-fila class="flex justify-between gap-3 tabular-nums" hidden>
 				<span class="text-text-muted">Subtotal</span>
 				<span data-venta-subtotal class="font-semibold text-text"></span>
@@ -66,14 +66,14 @@ const taxLabel = etiquetaIgv();
 				<span data-venta-tax-label class="text-text-muted">{taxLabel}</span>
 				<span data-venta-igv class="font-semibold text-text"></span>
 			</div>
-			<div class="flex items-center justify-between gap-3 border-t border-border pt-2 text-lg tabular-nums">
+			<div class="flex items-center justify-between gap-3 border-t border-border pt-2 text-base tabular-nums">
 				<span class="font-bold text-text">Total</span>
 				<span data-venta-total class="font-bold text-text"></span>
 			</div>
 			<!-- Nota discreta (T3.6): visible ⇔ NO hay snapshot de subtotal
 			     (IGV derivado con la tasa actual — limitación conocida, hoy
 		     silenciosa). Island toggles it. -->
-			<p data-venta-igv-nota class="text-base text-text-muted" hidden>
+			<p data-venta-igv-nota class="text-xs text-text-muted" hidden>
 				Estimado con la tasa actual
 			</p>
 		</div>

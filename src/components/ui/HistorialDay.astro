@@ -18,11 +18,11 @@ import StatusPill from './StatusPill.astro';
 		class="rounded-lg border border-border bg-surface"
 	>
 		<summary
-			class="flex cursor-pointer flex-col gap-1 p-3 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+			class="flex cursor-pointer flex-col gap-1 p-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 		>
 			<span class="flex w-full flex-wrap items-center justify-between gap-3">
 				<span class="flex flex-wrap items-center gap-3">
-					<span data-hist-dia class="font-semibold text-text"></span>
+					<span data-hist-dia class="font-medium text-text"></span>
 					<span data-hist-n class="text-text-muted"></span>
 					<!-- Método más usado del día en pill neutro (T3.5) — toggled
 					     by `hidden`, text painted by the island. -->
@@ -34,7 +34,7 @@ import StatusPill from './StatusPill.astro';
 				</span>
 				<span class="flex flex-wrap items-center justify-end gap-3">
 					<span data-hist-desglose class="text-text-muted"></span>
-					<span data-hist-total class="font-bold text-text tabular-nums"></span>
+					<span data-hist-total class="font-semibold text-text tabular-nums"></span>
 				</span>
 			</span>
 			<!-- "Productos más vendidos" of the day (base.md §7, plan-cierre
@@ -48,13 +48,13 @@ import StatusPill from './StatusPill.astro';
 		<!-- Caja del día card (Fase 4): text-only summary of the local caja
 		     session of this fecha_dia — revealed by the island when a record
 		     exists (stilesbase §5.2: the words carry the meaning). -->
-		<div data-hist-caja class="border-t border-border p-3 text-base text-text-muted" hidden>
+		<div data-hist-caja class="border-t border-border p-3 text-xs text-text-muted" hidden>
 			<span data-hist-caja-texto></span>
 		</div>
 		<!-- <md: sale cards. ≥md: this list is replaced by the DataTable
 		     below (both render the same ventas — painted by one shared
 		     paintLine(), §0.4 breakpoint rule). -->
-		<ul data-hist-lines class="flex flex-col gap-3 border-t border-border p-3 md:hidden"></ul>
+		<ul data-hist-lines class="flex flex-col gap-2 border-t border-border p-3 md:hidden"></ul>
 		<div class="hidden border-t border-border md:block">
 			<!-- md: variants sort AFTER base utilities in the generated
 			     stylesheet (same pattern as Modal's lg:border-0): the table

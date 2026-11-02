@@ -12,12 +12,12 @@ interface Props {
 }
 const { etiqueta, valor, subtexto, class: cls = '', ...rest } = Astro.props;
 ---
-<div class={`card flex flex-col gap-1 p-4 ${cls}`} {...rest}>
-  <span class="text-base font-semibold text-text-muted">{etiqueta}</span>
+<div class={`card flex flex-col gap-0.5 p-4 ${cls}`} {...rest}>
+  <span class="text-sm font-medium text-text-muted">{etiqueta}</span>
   <!-- tabular-nums (§2.1): every KPI value aligns as digits. data-stat-value
        = repaint hook (T3.4: islands rewrite KPI values after each filter);
        data-stat-sub = the optional subtext repaint hook (T3.7 /caja —
        "N ventas" recomputes with the day's sales). hidden ⇔ no subtexto. -->
   <span data-stat-value class="text-2xl font-bold text-text tabular-nums">{valor}</span>
-  <span data-stat-sub class="text-base text-text-muted tabular-nums" hidden={!subtexto}>{subtexto}</span>
+  <span data-stat-sub class="text-sm text-text-muted tabular-nums" hidden={!subtexto}>{subtexto}</span>
 </div>

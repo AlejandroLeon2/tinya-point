@@ -1,5 +1,5 @@
 ---
-// TabBar (refactorUI §3.4 — Fase 1): fixed bottom navigation for <md —
+// TabBar (refactorUI §3.4 — Fase 1): fixed bottom navigation for <lg —
 // Venta | Historial | Caja | Más. Targets ≥56 px (§0.9); z-40 (below
 // sheets/modals z-50, §3.4); safe-area inset so it never covers content.
 // Items: href → anchor (build-time aria-current, same rule as the sidebar);
@@ -26,7 +26,7 @@ const isActive = (href: string) => normalize(href) === current;
 <nav
   data-tabbar
   aria-label="Navegación principal"
-  class="fixed inset-x-0 bottom-0 z-40 flex border-t-2 border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
+  class="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
 >
   {
     items.map((item) =>
@@ -35,24 +35,24 @@ const isActive = (href: string) => normalize(href) === current;
           href={item.href}
           aria-current={isActive(item.href) ? 'page' : undefined}
           class:list={[
-            'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-base',
+            'flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 text-xs',
             // Active state: weight + background + aria-current — never color alone (§0.9).
             isActive(item.href)
-              ? 'bg-bg font-bold text-primary'
-              : 'font-semibold text-text hover:bg-bg/60',
+              ? 'bg-bg font-semibold text-primary'
+              : 'font-medium text-text hover:bg-bg/60',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary',
           ]}
         >
-          <Icon name={item.icon} class="h-6 w-6" />
+          <Icon name={item.icon} class="h-5 w-5" />
           <span class="truncate">{item.label}</span>
         </a>
       ) : (
         <button
           type="button"
           data-modal-open={item.modal}
-          class="flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 text-base font-semibold text-text hover:bg-bg/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+          class="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 text-xs font-medium text-text hover:bg-bg/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
         >
-          <Icon name={item.icon} class="h-6 w-6" />
+          <Icon name={item.icon} class="h-5 w-5" />
           <span>{item.label}</span>
         </button>
       ),

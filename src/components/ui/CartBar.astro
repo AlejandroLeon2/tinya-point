@@ -10,17 +10,17 @@ import Icon from './Icon.astro';
 <div
 	data-cart-bar
 	hidden
-	class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 flex min-h-14 items-center justify-between gap-3 border-t-2 border-border bg-surface px-4 lg:hidden"
+	class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 flex min-h-14 items-center justify-between gap-3 border-t border-border bg-surface px-4 lg:hidden"
 >
-	<p class="flex min-w-0 items-center gap-2 text-base font-semibold text-text">
-		<Icon name="carrito" class="h-6 w-6 shrink-0 text-text-muted" />
+	<p class="flex min-w-0 items-center gap-2 text-sm font-semibold text-text">
+		<Icon name="carrito" class="h-5 w-5 shrink-0 text-text-muted" />
 		<span class="truncate">
 			<span data-cart-bar-count>0</span>
 			ítems ·
 			<span data-cart-bar-total class="tabular-nums">S/ 0.00</span>
 		</span>
 	</p>
-	<button type="button" data-modal-open="ticket" class="btn btn-primary min-h-11 px-4 py-2 text-base">
+	<button type="button" data-modal-open="ticket" class="btn btn-primary min-h-11 px-4">
 		Ver ticket
 	</button>
 </div>

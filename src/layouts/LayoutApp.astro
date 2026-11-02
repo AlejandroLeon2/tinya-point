@@ -89,8 +89,8 @@ const isActive = (href: string) => normalize(href) === current;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="generator" content={Astro.generator} />
-		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.woff2" as="font" type="font/woff2" crossorigin>
-		<link rel="preload" href="/fonts/AtkinsonHyperlegible-Bold.woff2" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="/fonts/Inter-400.woff2" as="font" type="font/woff2" crossorigin>
+		<link rel="preload" href="/fonts/Inter-600.woff2" as="font" type="font/woff2" crossorigin>
 		<title>{title} — Tinya Point</title>
 		<script src="/src/pwa.ts"></script>
 		{pwaInfo && <Fragment set:html={pwaInfo.webManifest.linkTag} />}
@@ -123,7 +123,7 @@ const isActive = (href: string) => normalize(href) === current;
 				     owns the ONE h1; the pills reflect local runtime state via
 				     `hidden` — islands repaint text/visibility, never classes. -->
 				<header
-					class="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b-2 border-border bg-surface px-3 py-2 sm:flex-nowrap md:px-4"
+					class="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border bg-surface px-3 py-2 sm:flex-nowrap md:px-4"
 				>
 					<!-- flex-wrap <sm (T4.4/§15 "nada se corta"): short titles keep the
 					     §3.3 mock's single row (☰ Título ●Caja ⟳); long titles
@@ -137,9 +137,9 @@ const isActive = (href: string) => normalize(href) === current;
 						aria-expanded="false"
 						aria-controls="sidebar-principal"
 						aria-label="Menú"
-						class="flex min-h-11 items-center gap-2 rounded-lg border-2 border-border bg-surface px-3 text-base font-semibold text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
-					>
-						<Icon name="menu" class="h-6 w-6" />
+					class="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:hidden"
+				>
+					<Icon name="menu" class="h-5 w-5" />
 						<span class="hidden sm:inline">Menú</span>
 					</button>
 
@@ -192,7 +192,7 @@ const isActive = (href: string) => normalize(href) === current;
 				<slot name="header" />
 				<main
 					id="contenido"
-					class="flex flex-1 flex-col pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:pb-0 lg:min-h-0"
+					class="flex flex-1 flex-col pb-[calc(5rem_+_env(safe-area-inset-bottom))] lg:min-h-0 lg:pb-0"
 				>
 					<slot />
 				</main>
@@ -215,15 +215,15 @@ const isActive = (href: string) => normalize(href) === current;
 						<a
 							href={item.href}
 							aria-current={isActive(item.href) ? 'page' : undefined}
-							class:list={[
-								'flex min-h-14 items-center gap-3 rounded-lg px-3 text-lg',
-								isActive(item.href)
-									? 'bg-bg font-bold text-text'
-									: 'font-semibold text-text hover:bg-bg active:bg-border',
-								'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-							]}
-						>
-							<Icon name={item.icon} class="h-6 w-6 shrink-0" />
+						class:list={[
+							'flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm',
+							isActive(item.href)
+								? 'bg-bg font-semibold text-text'
+								: 'font-medium text-text hover:bg-bg active:bg-border',
+							'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+						]}
+					>
+						<Icon name={item.icon} class="h-5 w-5 shrink-0" />
 							{item.label}
 						</a>
 					))

@@ -12,7 +12,7 @@
 ---
 <template data-card-template>
 	<article
-		class="card relative flex flex-col gap-3 overflow-hidden transition-shadow hover:border-primary/60 hover:shadow-card"
+		class="card relative flex flex-col gap-2 overflow-hidden transition-shadow hover:border-primary/60 hover:shadow-card"
 		data-product-card
 	>
 		<button
@@ -59,14 +59,14 @@
 				</svg>
 			</div>
 		</div>
-		<h3 data-card-name class="relative line-clamp-2 text-lg font-semibold text-text"></h3>
+		<h3 data-card-name class="relative line-clamp-2 text-sm font-medium text-text"></h3>
 		<!-- Brand — hidden ⇔ the product has no marca (painted by the island);
 		     muted, it qualifies the name without competing with the price. -->
-		<p data-card-brand hidden class="relative text-base text-text-muted"></p>
-		<p data-card-price class="relative text-lg font-bold tabular-nums text-text"></p>
+		<p data-card-brand hidden class="relative text-xs text-text-muted"></p>
+		<p data-card-price class="relative text-base font-semibold tabular-nums text-text"></p>
 		<!-- Tags: text + tone, never color alone (stilesbase §5.2). Both
 		     start hidden — the island reveals the matching one. -->
-		<p data-card-stock class="hidden text-base font-semibold text-danger">Agotado</p>
+		<p data-card-stock class="hidden text-xs font-semibold text-danger">Agotado</p>
 		<p data-card-low class="badge-warning hidden"></p>
 	</article>
 </template>

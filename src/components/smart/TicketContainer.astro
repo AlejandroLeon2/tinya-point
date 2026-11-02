@@ -34,20 +34,20 @@ const metodos = [
 	<section
 		data-ticket
 		data-checkout-root
-		class="flex flex-col gap-4 lg:h-full lg:min-h-0"
+		class="flex flex-col gap-3 lg:h-full lg:min-h-0"
 		aria-label="Ticket de compra"
 	>
 		<!-- Header (§4.2A/G): badge count + cancel as danger OUTLINE — the
 		     mobile close ✕ only exists when the modal is a sheet (<lg). -->
 		<div class="flex items-center justify-between gap-3">
-			<h2 class="text-xl font-bold text-text">
+			<h2 class="text-base font-semibold text-text">
 				Ticket (<span data-cart-badge>0</span>)
 			</h2>
 			<div class="flex shrink-0 items-center gap-2">
 				<CancelSale />
 				<button
 					type="button"
-					class="btn btn-secondary min-h-11 px-3 py-2 lg:hidden"
+					class="btn btn-secondary min-h-11 px-3 lg:hidden"
 					data-modal-close
 					aria-label="Cerrar ticket"
 				>
@@ -57,20 +57,20 @@ const metodos = [
 		</div>
 
 		<!-- Lines: scroll zone on desktop (§4.2B) — painted by cart-actions. -->
-		<ul data-cart-lines class="flex flex-col gap-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"></ul>
+		<ul data-cart-lines class="flex flex-col gap-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"></ul>
 		<CartLine />
 
 		<!-- Payment half stays anchored at the bottom of the column (§4.2B). -->
-		<div class="flex shrink-0 flex-col gap-4">
+		<div class="flex shrink-0 flex-col gap-3">
 			<CartTotals taxLabel={taxLabel} />
 
-			<fieldset class="flex flex-col gap-3 rounded-lg border-2 border-border p-4">
-				<legend class="px-1 text-base font-bold text-text">Método de pago</legend>
+			<fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3">
+				<legend class="px-1 text-sm font-semibold text-text">Método de pago</legend>
 				<div role="radiogroup" aria-label="Método de pago" class="grid grid-cols-3 gap-2">
 					{
 						metodos.map((metodo, index) => (
 							<label
-								class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-border bg-surface px-2 py-2 text-center text-base font-semibold text-text has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-content focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+								class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-center text-sm font-medium text-text has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-content focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
 							>
 								<input
 									type="radio"
@@ -79,7 +79,7 @@ const metodos = [
 									checked={index === 0}
 									class="sr-only"
 								/>
-								<Icon name={metodo.icon} class="h-6 w-6" />
+								<Icon name={metodo.icon} class="h-5 w-5" />
 								{metodo.label}
 							</label>
 						))
@@ -89,8 +89,8 @@ const metodos = [
 				<!-- Cash only: Recibido → quick amounts → vuelto (base.md §7).
 				     Island toggles/fills; the group starts EMPTY (painted by
 				     checkout.ts with the current total). -->
-				<div data-checkout-cash class="flex flex-col gap-3">
-					<label class="flex flex-col gap-1 text-base font-semibold text-text">
+				<div data-checkout-cash class="flex flex-col gap-2.5">
+					<label class="flex flex-col gap-1 text-sm font-medium text-text">
 						Recibido
 						<input
 							data-checkout-recibido
@@ -114,22 +114,22 @@ const metodos = [
 					<p
 						data-checkout-vuelto
 						hidden
-						class="flex flex-col items-center gap-1 rounded-lg border-2 border-success/50 bg-success/10 p-3 text-success"
+						class="flex flex-col items-center gap-0.5 rounded-lg border border-success/50 bg-success/10 p-2.5 text-success"
 					>
-						<span class="text-base font-semibold">Vuelto</span>
+						<span class="text-sm font-semibold">Vuelto</span>
 						<span data-checkout-vuelto-amount class="text-2xl font-bold tabular-nums">S/ 0.00</span>
 					</p>
 					<p
 						data-checkout-faltan
 						hidden
-						class="rounded-lg border-2 border-warning/50 bg-warning/10 p-3 text-center font-semibold text-warning"
+						class="rounded-lg border border-warning/50 bg-warning/10 p-2.5 text-center text-sm font-semibold text-warning"
 					>
 						Faltan <span data-checkout-faltan-amount class="tabular-nums">S/ 0.00</span>
 					</p>
 				</div>
 			</fieldset>
 
-			<!-- 64px full-width charge (§4.2E); disabled ⇔ empty cart ∨ cash
+			<!-- 56px full-width charge (§4.2E); disabled ⇔ empty cart ∨ cash
 			     shortfall; the reason rides aria-describedby (single static
 			     instance — same status as sidebar-principal). -->
 			<button
@@ -137,11 +137,11 @@ const metodos = [
 				data-checkout-charge
 				aria-describedby="checkout-reason"
 				disabled
-				class="btn btn-primary min-h-16 w-full text-xl"
+				class="btn btn-primary min-h-14 w-full text-base font-semibold"
 			>
 				Cobrar
 			</button>
-			<p id="checkout-reason" data-checkout-reason hidden class="text-base font-semibold text-warning">
+			<p id="checkout-reason" data-checkout-reason hidden class="text-sm font-medium text-warning">
 				Faltan S/ 0.00 para poder cobrar.
 			</p>
 
@@ -162,9 +162,9 @@ const metodos = [
 		>
 			<Icon name="check" class="h-8 w-8" />
 		</span>
-		<p class="text-base text-text-muted">Total</p>
+		<p class="text-sm text-text-muted">Total</p>
 		<p data-venta-ok-total class="text-2xl font-bold tabular-nums text-text">S/ 0.00</p>
-		<p data-venta-ok-vuelto hidden class="text-base text-text-muted">
+		<p data-venta-ok-vuelto hidden class="text-sm text-text-muted">
 			Vuelto
 			<span data-venta-ok-vuelto-amount class="ml-1 text-3xl font-bold tabular-nums text-success"></span>
 		</p>
