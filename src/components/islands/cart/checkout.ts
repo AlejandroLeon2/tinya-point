@@ -38,7 +38,7 @@ import {
 import { calcTotal } from '../../../utils/tax';
 import type { MetodoPago } from '../../../utils/storage';
 import { qs, qsa, setText, setHidden } from '../../../utils/dom';
-import { esDesktop } from '../../../utils/media';
+import { esTicketFijo } from '../../../utils/media';
 import { debeEncolar } from '../../../utils/api-result';
 
 const root = qs<HTMLElement>(document, '[data-checkout-root]');
@@ -289,9 +289,10 @@ if (root) {
     search?.select();
   });
 
-  // F9 = charge (desktop only, §4.2E).
+  // F9 = charge (only when the ticket is the visible ≥lg column — below that
+  // it is a bottom sheet and the charge button is not on screen, §4.2C/E).
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'F9' || !esDesktop()) return;
+    if (event.key !== 'F9' || !esTicketFijo()) return;
     event.preventDefault();
     if (chargeBtn && !chargeBtn.disabled) chargeBtn.click();
   });
