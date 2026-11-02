@@ -5,11 +5,15 @@
 // in islands/product-admin.ts serves both. `hidden md:table-row` = static
 // breakpoint styling (§0.4); runtime state keeps using `hidden`.
 // Numeric columns right-aligned, sticky header lives in ui/DataTable.
+// Actions are ICON buttons (lucide pencil / eye-off / eye, owner request
+// 2026-11-01): icon-only → the visible name is replaced by aria-label +
+// title; the data-product-action dispatch keys are unchanged.
 // ui/ draws, never fetches or reads local data (astrobase §1).
+import Icon from './Icon.astro';
 ---
 <template data-product-row-desktop-template>
 	<tr class="hidden border-b border-border md:table-row" data-product-row="">
-		<td class="hidden px-4 py-3 lg:table-cell">
+		<td class="hidden px-4 py-2.5 lg:table-cell">
 			<!-- Decorative thumb (name beside it carries the meaning).
 			     hidden lg:table-cell mirrors the Miniatura column header
 			     (DataTable hiddenBelowLg=[0]) so md–lg fits beside the
@@ -18,52 +22,69 @@
 				data-product-img
 				alt=""
 				loading="lazy"
-				class="h-40 w-40 rounded-lg border border-border object-cover opacity-0"
+				class="h-14 w-14 rounded-lg border border-border object-cover opacity-0"
 			/>
 		</td>
-		<td class="px-4 py-3">
-			<span data-product-nombre class="font-semibold text-text"></span>
+		<td class="px-4 py-2.5">
+			<span data-product-nombre class="font-medium text-text"></span>
 			<!-- Brand line — hidden ⇔ the product has no marca (island). -->
-			<span data-product-marca hidden class="block text-base text-text-muted"></span>
-			<span data-product-categoria class="block text-base text-text-muted"></span>
+			<span data-product-marca hidden class="block text-xs text-text-muted"></span>
+			<span data-product-categoria class="block text-xs text-text-muted"></span>
 		</td>
-		<td data-product-precio class="px-4 py-3 text-right font-bold text-text tabular-nums">
+		<td data-product-precio class="px-4 py-2.5 text-right font-semibold text-text tabular-nums">
 		</td>
-		<td class="px-4 py-3 text-right tabular-nums">
+		<td class="px-4 py-2.5 text-right tabular-nums">
 			<!-- Plain number: the column header already says "Stock" (the mobile
 			     card's hook writes the prefixed "Stock: N" instead). -->
 			<span data-product-stock-plain></span>
 			<!-- Tags: text + tone, never color alone (stilesbase §5.2) —
 			     painted by the island from ajustes.stock_alerta_min. -->
-			<span data-product-low hidden class="ml-2 rounded-full bg-warning px-2 py-1 text-base font-semibold text-warning-content">
+			<span data-product-low hidden class="ml-2 rounded-full bg-warning px-2 py-0.5 text-xs font-medium text-warning-content">
 				Bajo
 			</span>
-			<span data-product-agotado hidden class="ml-2 rounded-full bg-danger px-2 py-1 text-base font-semibold text-danger-content">
+			<span data-product-agotado hidden class="ml-2 rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-danger-content">
 				Agotado
 			</span>
 		</td>
-		<td class="px-4 py-3">
+		<td class="px-4 py-2.5">
 			<span
 				data-product-badge
-				class="inline-block rounded-full px-3 py-1 text-base font-semibold"
+				class="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
 			></span>
 		</td>
-		<td class="px-4 py-3">
-			<span class="flex flex-wrap gap-2">
-				<button type="button" class="btn btn-secondary" data-product-edit="" data-product-action="edit">
-					Editar
+		<td class="px-4 py-2.5">
+			<span class="flex flex-wrap gap-1.5">
+				<button
+					type="button"
+					class="btn btn-secondary px-3"
+					data-product-edit=""
+					data-product-action="edit"
+					aria-label="Editar"
+					title="Editar"
+				>
+					<Icon name="pencil" class="h-5 w-5" />
 				</button>
 				<button
 					type="button"
-					class="btn btn-danger"
+					class="btn btn-danger px-3"
 					data-product-deactivate=""
 					data-product-action="deactivate"
 					data-modal-open="confirmar-desactivar"
+					aria-label="Deshabilitar"
+					title="Deshabilitar"
 				>
-					Desactivar
+					<Icon name="eye-off" class="h-5 w-5" />
 				</button>
-				<button type="button" class="btn btn-secondary" data-product-restore="" data-product-action="restore" hidden>
-					Restaurar
+				<button
+					type="button"
+					class="btn btn-secondary px-3"
+					data-product-restore=""
+					data-product-action="restore"
+					aria-label="Habilitar"
+					title="Habilitar"
+					hidden
+				>
+					<Icon name="eye" class="h-5 w-5" />
 				</button>
 			</span>
 		</td>

@@ -35,10 +35,11 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 		<span data-alert-error-text></span>
 	</Alert>
 
-	<!-- Toolbar (T3.2): search + estado chips + categoría + orden + counter.
-	     Todos los filtros locales, cero red (appscriptbase §5.3). -->
-	<div class="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
-		<span class="relative w-full md:max-w-64">
+	<!-- Toolbar (T3.2): search on its own row ALWAYS; estado chips +
+	     categoría + orden + counter ALWAYS below it (no md breakpoint —
+	     owner request 2026-11-01). All local filters, zero network. -->
+	<div class="flex flex-col gap-3">
+		<span class="relative w-full">
 			<input
 				data-product-search
 				type="search"
@@ -60,30 +61,37 @@ import ProductRowDesktop from '../ui/ProductRowDesktop.astro';
 				<Icon name="mic" class="h-6 w-6" />
 			</button>
 		</span>
-		<div data-product-filter class="min-w-0">
-			<ChipGroup label="Filtrar por estado">
-				<Chip data-filter-value="" aria-pressed="true">Todos</Chip>
-				<Chip data-filter-value="activo">Activos</Chip>
-				<Chip data-filter-value="inactivo">Inactivos</Chip>
-				<Chip data-filter-value="bajo">Stock bajo</Chip>
-				<Chip data-filter-value="agotado">Agotados</Chip>
-			</ChipGroup>
+		<!-- Quick chips on their OWN line; Categoría + Orden + count always
+		     BELOW them (owner request 2026-11-01) — on every screen size,
+		     never inline with the quick filters. -->
+		<div class="flex flex-col gap-3">
+			<div data-product-filter class="min-w-0">
+				<ChipGroup label="Filtrar por estado">
+					<Chip data-filter-value="" aria-pressed="true">Todos</Chip>
+					<Chip data-filter-value="activo">Activos</Chip>
+					<Chip data-filter-value="inactivo">Inactivos</Chip>
+					<Chip data-filter-value="bajo">Stock bajo</Chip>
+					<Chip data-filter-value="agotado">Agotados</Chip>
+				</ChipGroup>
+			</div>
+			<div class="flex flex-wrap items-center gap-3">
+				<label class="flex items-center gap-2 text-sm font-medium text-text">
+					Categoría
+					<select data-product-catfilter class="input-field max-w-48">
+						<option value="">Todos</option>
+					</select>
+				</label>
+				<label class="flex items-center gap-2 text-sm font-medium text-text">
+					Orden
+					<select data-product-sort class="input-field">
+						<option value="nombre">Nombre</option>
+						<option value="precio">Precio</option>
+						<option value="stock">Stock</option>
+					</select>
+				</label>
+				<span data-product-count class="text-xs text-text-muted"></span>
+			</div>
 		</div>
-		<label class="flex items-center gap-2 text-base font-semibold text-text">
-			Categoría
-			<select data-product-catfilter class="input-field md:max-w-48">
-				<option value="">Todos</option>
-			</select>
-		</label>
-		<label class="flex items-center gap-2 text-base font-semibold text-text">
-			Orden
-			<select data-product-sort class="input-field">
-				<option value="nombre">Nombre</option>
-				<option value="precio">Precio</option>
-				<option value="stock">Stock</option>
-			</select>
-		</label>
-		<span data-product-count class="text-base text-text-muted"></span>
 	</div>
 
 	<!-- Mobile list (<md) — the island paints BOTH lists from templates. -->

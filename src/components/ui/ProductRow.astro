@@ -2,9 +2,12 @@
 // Admin product row — SINGLE template cloned per product by
 // islands/product-admin.ts (same mechanism as ui/HistorialLine.astro).
 // State is never color-only (stilesbase §5.2): the badge carries the word
-// "Activo"/"Inactivo" next to its tone, and the row's toggle button names
-// its action. Deactivate opens the shared confirm modal (§5.5); restore is
-// safe and direct. ui/ draws, never fetches or reads local data (astrobase §1).
+// "Activo"/"Inactivo" next to its tone. Actions are ICON buttons (lucide
+// pencil / eye-off / eye, owner request 2026-11-01): icon-only → aria-label
+// + title carry the action name; dispatch keys unchanged. Deactivate opens
+// the shared confirm modal (§5.5); restore is safe and direct.
+// ui/ draws, never fetches or reads local data (astrobase §1).
+import Icon from './Icon.astro';
 ---
 <template data-product-row-template>
 	<!-- md:hidden: ≥md shows the DataTable row (ProductRowDesktop template) -->
@@ -12,7 +15,7 @@
 		class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 md:hidden"
 		data-product-row=""
 	>
-		<span class="flex min-w-0 items-center gap-2">
+		<span class="flex min-w-0 items-center gap-2.5">
 			<!-- Admin thumbnail (plan-productos-v2.md Fase 4, D3): decorative
 			     (the name beside it carries the meaning → alt=""), lazy, and
 			     opacity-0 until it loads — same T4.4 fix as Card.astro:
@@ -22,37 +25,54 @@
 				data-product-img
 				alt=""
 				loading="lazy"
-				class="h-20 w-20  shrink-0 rounded-lg border border-border object-cover opacity-0"
+				class="h-14 w-14 shrink-0 rounded-lg border border-border object-cover opacity-0"
 			/>
-			<span class="flex min-w-0 flex-col gap-1">
-				<span data-product-nombre class="text-base font-semibold text-text"></span>
+			<span class="flex min-w-0 flex-col gap-0.5">
+				<span data-product-nombre class="text-sm font-medium text-text"></span>
 				<!-- Brand line — hidden ⇔ the product has no marca (island). -->
-				<span data-product-marca hidden class="text-base text-text-muted"></span>
-				<span class="flex flex-wrap items-center gap-3 text-base text-text-muted">
-					<span data-product-precio class="font-bold text-text"></span>
+				<span data-product-marca hidden class="text-xs text-text-muted"></span>
+				<span class="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+					<span data-product-precio class="font-semibold text-text"></span>
 					<span data-product-stock></span>
 					<span
 						data-product-badge
-						class="inline-block rounded-full px-3 py-1 text-base font-semibold"
+						class="inline-block rounded-full px-2 py-0.5 text-xs font-medium"
 					></span>
 				</span>
 			</span>
 		</span>
-		<span class="flex flex-wrap gap-3">
-			<button type="button" class="btn btn-secondary" data-product-edit="" data-product-action="edit">
-				Editar
+		<span class="flex gap-1.5">
+			<button
+				type="button"
+				class="btn btn-secondary px-3"
+				data-product-edit=""
+				data-product-action="edit"
+				aria-label="Editar"
+				title="Editar"
+			>
+				<Icon name="pencil" class="h-5 w-5" />
 			</button>
 			<button
 				type="button"
-				class="btn btn-danger"
+				class="btn btn-danger px-3"
 				data-product-deactivate=""
 				data-product-action="deactivate"
 				data-modal-open="confirmar-desactivar"
+				aria-label="Deshabilitar"
+				title="Deshabilitar"
 			>
-				Desactivar
+				<Icon name="eye-off" class="h-5 w-5" />
 			</button>
-			<button type="button" class="btn btn-secondary" data-product-restore="" data-product-action="restore" hidden>
-				Restaurar
+			<button
+				type="button"
+				class="btn btn-secondary px-3"
+				data-product-restore=""
+				data-product-action="restore"
+				aria-label="Habilitar"
+				title="Habilitar"
+				hidden
+			>
+				<Icon name="eye" class="h-5 w-5" />
 			</button>
 		</span>
 	</li>
