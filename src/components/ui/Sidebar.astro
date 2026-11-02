@@ -45,11 +45,11 @@ const isActive = (href: string) => normalize(href) === current;
 	id={id}
 	data-sidebar-root
 	aria-label="Principal"
-	class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r-2 border-border bg-surface p-4"
+	class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-surface p-4"
 >
 	{/* Brand row + collapse toggle (≥md; the toggle is static-hidden <md). */}
 	<div class="flex items-center justify-between gap-2">
-		<span data-sidebar-brand class="sidebar-label truncate text-lg font-bold text-text">
+		<span data-sidebar-brand class="sidebar-label truncate text-base font-bold text-text">
 			Tinya Point
 		</span>
 		<button
@@ -65,31 +65,31 @@ const isActive = (href: string) => normalize(href) === current;
 
 	{
 		groups.map((group) => (
-			<div class="flex flex-col gap-2">
-				<p class="sidebar-label px-2 text-base font-semibold text-text-muted">{group.label}</p>
-				<ul class="flex flex-col gap-1">
+			<div class="flex flex-col gap-1.5">
+				<p class="sidebar-label px-3 text-xs font-semibold text-text-muted">{group.label}</p>
+				<ul class="flex flex-col gap-0.5">
 					{group.items.map((item) => (
 						<li>
 							<a
 								href={item.href}
 								aria-current={isActive(item.href) ? 'page' : undefined}
 								class:list={[
-									'flex min-h-14 items-center gap-3 rounded-lg px-3 text-lg',
+									'flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm',
 									// Active state never relies on color alone (stilesbase §5.2):
 									// background + heavier weight + aria-current="page".
 									isActive(item.href)
-										? 'bg-primary font-bold text-primary-content'
-										: 'font-semibold text-text hover:bg-bg active:bg-border',
+										? 'bg-primary font-semibold text-primary-content'
+										: 'font-medium text-text hover:bg-bg active:bg-border',
 									'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
 								]}
 							>
-								<Icon name={item.icon} class="h-6 w-6 shrink-0" />
+								<Icon name={item.icon} class="h-5 w-5 shrink-0" />
 								<span class="sidebar-label truncate">{item.label}</span>
 								{/* Count badge (plan-stock.md Fase 3): ui only — islands/
 								    stock-badge.ts reveals it with the number when > 0.
 								    Hidden by default so zero-stock shows no pill. */}
 								{item.badge && (
-									<span data-nav-badge={item.badge} hidden class="ml-auto rounded-full bg-warning px-2.5 py-0.5 font-bold text-warning-content">
+									<span data-nav-badge={item.badge} hidden class="ml-auto rounded-full bg-warning px-2 py-0.5 text-xs font-semibold text-warning-content">
 										<span class="sr-only">productos con stock bajo: </span>
 										<span data-nav-badge-count></span>
 									</span>

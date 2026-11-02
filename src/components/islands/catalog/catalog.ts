@@ -1,8 +1,9 @@
 // Catalog runtime — implements the astrobase.md §3.3 decision ("use cache or
 // fetch") on the client, per option A of plan-features Fase 2 (2026-09-22):
 // the shell renders at build time and THIS module paints product cards by
-// cloning the ui/Card <template>>, then wires Fuse.js search, the category
-// CHIPS, the manual refresh and the POS shortcuts (refactorUI §4.2D).
+// cloning the ui/Card <template>>, then wires the shared product search
+// (utils/search.ts), the category CHIPS, the manual refresh and the POS
+// shortcuts (refactorUI §4.2D).
 //
 // Rules honored here:
 //   - Search NEVER calls the API (appscriptbase.md §5.3, base.md §9): it only
@@ -15,7 +16,6 @@
 //     the quantity stepper was deleted — quantity lives in the ticket only.
 //     Enter with a UNIQUE result adds it (barcode readers emulate keyboards).
 
-import Fuse from 'fuse.js';
 import { formatCurrency, formatNumero } from '../../../utils/format';
 import { resolveImageUrl } from '../../../utils/cloudinary';
 import {
@@ -28,9 +28,14 @@ import {
 import { qs, qsa, setText, setHidden, cloneTemplate, selectChip, debounce } from '../../../utils/dom';
 import { esDesktop } from '../../../utils/media';
 import { refreshCatalogoFromApi } from '../../../utils/catalog-cache';
-import { normalizeSearchQuery } from '../../../utils/search-normalize';
+// Shared product search (owner request 2026-11-01): barcode exact →
+// substring (nombre/categoria/marca) → fuzzy nombre-only. Same pipeline
+// as /productos (utils/search.ts) so both screens stay in sync.
+import { buscarProductos } from '../../../utils/search';
 import { createVoiceSearch, isSpeechSupported, type VoiceSearch } from '../../../utils/speech';
 import { mostrarToast } from '../../../utils/toast';
+// Camera scan needs a STRICT exact-code lookup (agregarPorBarcode) — the
+// shared pipeline's barcode step uses this same helper underneath.
 import { buscarPorBarcode } from '../../../utils/barcode';
 import { addToCart } from '../../../stores/cart';
 import { abrirEscaneoBarcode } from '../runtime/barcode-scanner';
@@ -72,28 +77,11 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
   const chipTpl = chipTemplate;
 
   let products: Producto[] = [];
-  let fuse: Fuse<Producto> | null = null;
   let page = 0;
   let selectedCategory = '';
   // plan-camara-barras: last code the camera read — the "Buscar por código"
   // recovery drops it into the search input.
   let ultimoBarcode = '';
-
-  function buildIndex(items: Producto[]): void {
-    fuse = new Fuse(items, {
-      keys: [
-        { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
-        { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
-        // Brand is searchable (typed AND voiced — the mic writes into the
-        // same input and this index does the matching).
-        { name: 'marca', getFn: (p) => normalizeSearchQuery(p.marca ?? '') },
-        // plan-camara-barras: a full or partial code also filters the grid
-        // (same normalized form the query goes through below).
-        { name: 'barcode', getFn: (p) => normalizeSearchQuery(p.barcode ?? '') },
-      ],
-      threshold: 0.35,
-    });
-  }
 
   function paintChipSelection(): void {
     selectChip(chipsEl, 'data-category-value', selectedCategory);
@@ -131,23 +119,12 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
   function visibleProducts(): Producto[] {
     const crudo = searchEl.value.trim();
-    const query = normalizeSearchQuery(crudo);
-
-    // Exact barcode match wins over fuzzy name results (plan-camara-barras):
-    // keyboard scanners (wedge) type the full code + Enter, and the
-    // "Buscar por código" recovery action lands here too. One visible result
-    // → the Enter handler below adds it through the SAME add path the
-    // camera uses. The exact code also BEATS the category chip: a code is a
-    // unique identifier, and the camera path ignores the chip too — showing
-    // "Sin resultados" here while the scan would add it was inconsistent.
-    const porCodigo = buscarPorBarcode(products, crudo);
-    if (porCodigo) return [porCodigo];
-
-    let base = products;
-    if (query && fuse) {
-      const matches = new Set(fuse.search(query).map((result) => result.item));
-      base = base.filter((p) => matches.has(p));
-    }
+    // Shared pipeline (utils/search): exact barcode wins (beats the category
+    // chip — a code is a unique identifier; camera path ignores the chip
+    // too, so "Sin resultados" here while a scan would add it was
+    // inconsistent). Otherwise substring on nombre/categoria/marca, then a
+    // strict fuzzy fallback on nombre for typos.
+    let base = buscarProductos(products, crudo);
     if (selectedCategory) base = base.filter((p) => p.categoria === selectedCategory);
     return base;
   }
@@ -291,7 +268,6 @@ if (grid && template && searchInput && categoryGroup && chipTemplate) {
 
   function setData(items: Producto[]): void {
     products = items;
-    buildIndex(items);
     populateCategories(items);
     render();
   }

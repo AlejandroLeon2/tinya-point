@@ -25,23 +25,23 @@ import Modal from '../ui/Modal.astro';
 	<!-- T3.10: Sesión y dispositivo — local reads only (cola_sync, version). -->
 	<section class="card flex flex-col gap-3">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-lg font-bold text-text">Sesión y dispositivo</h2>
-			<p class="text-base text-text-muted">Estado local de sincronización.</p>
+			<h2 class="text-base font-semibold text-text">Sesión y dispositivo</h2>
+			<p class="text-xs text-text-muted">Estado local de sincronización.</p>
 		</div>
 
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<span class="text-base text-text-muted">Cola de sincronización</span>
-			<span data-ajustes-cola class="text-base font-semibold tabular-nums text-text">
+			<span class="text-xs text-text-muted">Cola de sincronización</span>
+			<span data-ajustes-cola class="text-sm font-semibold tabular-nums text-text">
 				—
 			</span>
 		</div>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<span class="text-base text-text-muted">Última sincronización</span>
-			<span data-ajustes-ultima-sync class="text-base tabular-nums text-text">—</span>
+			<span class="text-xs text-text-muted">Última sincronización</span>
+			<span data-ajustes-ultima-sync class="text-sm tabular-nums text-text">—</span>
 		</div>
 		<div class="flex flex-wrap items-center justify-between gap-2">
-			<span class="text-base text-text-muted">Versión de la app</span>
-			<span data-ajustes-version class="text-base tabular-nums text-text">—</span>
+			<span class="text-xs text-text-muted">Versión de la app</span>
+			<span data-ajustes-version class="text-sm tabular-nums text-text">—</span>
 		</div>
 
 		<div class="mt-1 flex flex-wrap gap-3">
@@ -56,12 +56,12 @@ import Modal from '../ui/Modal.astro';
 				data-modal-open="confirmar-limpiar-cache"
 				class="btn btn-secondary">Limpiar caché</button>
 		</div>
-		<p class="text-base text-text-muted">
+		<p class="text-xs text-text-muted">
 			Vacía el catálogo y la frescura del historial guardados en este
 			dispositivo — se vuelven a descargar solos. No toca tu sesión, tus
 			ajustes, tus ventas ni la cola de sincronización.
 		</p>
-		<p data-ajustes-cache-offline hidden class="text-base font-semibold text-warning">
+		<p data-ajustes-cache-offline hidden class="text-xs font-medium text-warning">
 			Necesitás conexión para limpiar la caché
 		</p>
 	</section>
@@ -75,7 +75,7 @@ import Modal from '../ui/Modal.astro';
 		class="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface px-4 py-3 md:bottom-0"
 	>
 		<div class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3">
-			<p class="text-base font-semibold text-text">Cambios sin guardar</p>
+			<p class="text-sm font-medium text-text">Cambios sin guardar</p>
 			<div class="flex flex-wrap gap-3">
 				<button type="button" data-ajustes-descartar class="btn btn-secondary">
 					Descartar cambios
@@ -92,11 +92,11 @@ import Modal from '../ui/Modal.astro';
 	     Center variant, primary (not danger) action: nothing business-critical
 	     is lost — both keys rebuild from the API. -->
 	<Modal modalKey="confirmar-limpiar-cache" title="¿Limpiar la caché?">
-		<p class="text-base text-text">
+		<p class="text-sm text-text">
 			Se descarga de vuelta el catálogo y la frescura del historial la
 			proxima vez que abras cada pantalla.
 		</p>
-		<p class="text-base text-text-muted">
+		<p class="text-xs text-text-muted">
 			No se borran tus ventas, la cola de sincronización, la sesión ni
 			tus ajustes.
 		</p>

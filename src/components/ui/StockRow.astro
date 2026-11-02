@@ -1,0 +1,73 @@
+---
+// Stock card row (mobile) — SINGLE template cloned per product by
+// islands/stock/stock.ts, the mobile twin of ui/StockRowDesktop.astro:
+// same data hooks so ONE paintRow() serves both (same pattern as
+// ui/ProductRow ↔ ProductRowDesktop).
+// Controls (owner request 2026-11-01): stepper = ± icon buttons + direct
+// number input ONLY (batch +5/+10/+24 removed), and a "Guardar" button on
+// the side that commits the input over the stock — no auto-save debounce.
+// ui/ draws, never fetches or reads local data (astrobase §1).
+import Icon from './Icon.astro';
+---
+<template data-stock-row-template>
+	<div data-stock-row class="card flex flex-col gap-3 p-4">
+		<div class="flex flex-wrap items-start justify-between gap-2">
+			<div class="flex min-w-0 flex-col gap-1">
+				<p data-stock-nombre class="truncate text-sm font-medium text-text"></p>
+				<span class="flex flex-wrap items-center gap-1.5">
+					<p data-stock-categoria class="text-xs text-text-muted"></p>
+					<!-- Tags: text + tone, never color alone (stilesbase §5.2) —
+					     the island paints them from ajustes.stock_alerta_min. -->
+					<span
+						data-stock-bajo
+						hidden
+						class="rounded-full bg-warning px-2 py-0.5 text-xs font-medium text-warning-content"
+						>Bajo</span
+					>
+					<span
+						data-stock-agotado
+						hidden
+						class="rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-danger-content"
+						>Agotado</span
+					>
+				</span>
+			</div>
+			<p data-stock-precio class="text-sm font-semibold text-text tabular-nums"></p>
+		</div>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<!-- Inline restock stepper: ± icon buttons step the number, the
+			     input takes direct entry — changes stay LOCAL until Guardar. -->
+			<div data-stock-stepper class="flex items-center gap-1.5">
+				<button
+					type="button"
+					data-stock-step="-1"
+					class="btn btn-secondary px-3"
+					aria-label="Restar una unidad"
+				>
+					<Icon name="minus" class="h-5 w-5" />
+				</button>
+				<input
+					data-stock-input
+					type="number"
+					min="0"
+					max="9999"
+					step="1"
+					inputmode="numeric"
+					class="input-field w-20 text-center text-base font-semibold"
+				/>
+				<button
+					type="button"
+					data-stock-step="1"
+					class="btn btn-secondary px-3"
+					aria-label="Sumar una unidad"
+				>
+					<Icon name="plus" class="h-5 w-5" />
+				</button>
+			</div>
+			<button type="button" data-stock-save="" class="btn btn-primary" disabled>
+				<Icon name="save" class="h-4 w-4" />
+				Guardar
+			</button>
+		</div>
+	</div>
+</template>

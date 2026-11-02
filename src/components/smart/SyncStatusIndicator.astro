@@ -22,7 +22,7 @@ import Modal from '../ui/Modal.astro';
 	<!-- Discard confirmation AND the item detail live in the same modal —
 	     the human sees exactly what they are about to discard (§5.5). -->
 	<Modal modalKey="sync-detail" title="Detalle de sincronización">
-		<p data-sync-detail class="whitespace-pre-line text-base text-text"></p>
+		<p data-sync-detail class="whitespace-pre-line text-sm text-text"></p>
 		<Button slot="actions" variant="secondary" data-modal-close>Cancelar</Button>
 		<Button slot="actions" variant="danger" data-sync-confirm-discard>Sí, descartar</Button>
 	</Modal>

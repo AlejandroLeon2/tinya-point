@@ -11,7 +11,7 @@ import Button from './Button.astro';
 	novalidate
 	class="card mx-auto flex w-full max-w-md flex-col gap-4"
 >
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Monto de apertura (S/)
 		<input
 			data-caja-monto
@@ -25,7 +25,7 @@ import Button from './Button.astro';
 	<!-- montos sugeridos = último monto de apertura (spec §5) — island paints
 	     the amount and reveals the block ⇔ there is a previous session. -->
 	<div data-caja-sugerencias class="flex flex-wrap items-center gap-2" hidden>
-		<span class="text-base text-text-muted">Sugerido:</span>
+		<span class="text-xs text-text-muted">Sugerido:</span>
 		<button
 			type="button"
 			data-caja-sugerencia

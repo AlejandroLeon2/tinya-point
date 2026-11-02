@@ -16,15 +16,15 @@ import StatusPill from './StatusPill.astro';
 		<a
 			data-hist-link
 			href="/historial/venta/"
-			class="flex min-h-14 flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-3 text-base no-underline text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+			class="flex min-h-12 flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface p-2.5 text-sm no-underline text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 		>
 			<span class="flex flex-wrap items-center gap-3">
-				<span data-hist-hora class="font-semibold text-text"></span>
+				<span data-hist-hora class="font-medium text-text"></span>
 				<span data-hist-metodo class="text-text-muted"></span>
 				<span data-hist-items class="text-text-muted"></span>
 			</span>
 			<span class="flex items-center gap-3">
-				<span data-hist-total class="font-bold text-text tabular-nums"></span>
+				<span data-hist-total class="font-semibold text-text tabular-nums"></span>
 				<span data-hist-sync class="flex items-center">
 					<StatusPill tone="ok" data-hist-sync-state="sincronizada">Sincronizada</StatusPill>
 					<StatusPill tone="warn" data-hist-sync-state="pendiente" hidden>Pendiente</StatusPill>

@@ -56,10 +56,12 @@ import {
 } from '../../../utils/barcode';
 import { abrirEscaneoBarcode } from '../runtime/barcode-scanner';
 
-// Local admin search (plan-reponer-buscar.md Fase 2): Fuse over the loaded
-// list — same policy as the POS catalog (appscriptbase.md §5.3): the input
-// handler NEVER touches the network, it only re-filters in memory.
-import Fuse from 'fuse.js';
+// Local admin search (plan-reponer-buscar.md Fase 2): shared pipeline in
+// utils/search.ts — same policy as the POS catalog (appscriptbase.md §5.3):
+// the input handler NEVER touches the network, it only re-filters in memory.
+// Owner request 2026-11-01: barcode exact → substring → fuzzy-nombre-only,
+// so "aceite" no longer fuzzy-matches Lácteos/Maceta/Aretes.
+import { buscarProductos } from '../../../utils/search';
 import { normalizeSearchQuery } from '../../../utils/search-normalize';
 import { createVoiceSearch, isSpeechSupported } from '../../../utils/speech';
 
@@ -423,26 +425,10 @@ if (root) {
     rowsEl.replaceChildren();
     tbody?.replaceChildren();
 
-    // Search filter (plan-reponer-buscar.md): index rebuilt here so every
-    // mutation (create/edit/restore) is searchable without extra wiring.
-    const consulta = busqueda;
-    let fuse: Fuse<ProductoAdmin> | null = null;
-    if (consulta) {
-      fuse = new Fuse(productos, {
-        keys: [
-          { name: 'nombre', getFn: (p) => normalizeSearchQuery(p.nombre) },
-          { name: 'categoria', getFn: (p) => normalizeSearchQuery(p.categoria) },
-          // Brand is searchable (typed AND voiced — the mic writes into the
-          // same input and this index does the matching).
-          { name: 'marca', getFn: (p) => normalizeSearchQuery(p.marca ?? '') },
-          // plan-camara-barras: an admin pasting a barcode must locate the
-          // product too (same normalized form as the POS catalog index).
-          { name: 'barcode', getFn: (p) => normalizeSearchQuery(p.barcode ?? '') },
-        ],
-        threshold: 0.35,
-      });
-    }
-    const base = consulta && fuse ? fuse.search(consulta).map((r) => r.item) : productos;
+    // Search filter (plan-reponer-buscar.md): shared pipeline (utils/search)
+    // — rebuilt call is cheap; every mutation (create/edit/restore) stays
+    // searchable without extra wiring.
+    const base = busqueda ? buscarProductos(productos, busqueda) : productos;
 
     // Estado chips (T3.2): "bajo"/"agotado" reason about LIVE products only
     // (an inactive product's stock doesn't need attention on this screen).
@@ -494,7 +480,7 @@ if (root) {
     setHidden(moreBtn, visibles.length <= visibleCount);
 
     setHidden(emptyState, productos.length > 0);
-    setHidden(sinResultados, !(consulta !== '' && productos.length > 0 && visibles.length === 0));
+    setHidden(sinResultados, !(busqueda !== '' && productos.length > 0 && visibles.length === 0));
   }
 
   function editarProducto(id: string): void {

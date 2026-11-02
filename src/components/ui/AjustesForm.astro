@@ -14,11 +14,11 @@
 	<!-- ── Sección: Negocio ─────────────────────────────────────────── -->
 	<section class="card flex flex-col gap-3">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-lg font-bold text-text">Negocio</h2>
-			<p class="text-base text-text-muted">Nombre y moneda que se muestran en toda la app.</p>
+			<h2 class="text-base font-semibold text-text">Negocio</h2>
+			<p class="text-xs text-text-muted">Nombre y moneda que se muestran en toda la app.</p>
 		</div>
 
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
 			Nombre del local
 			<input
 				data-ajustes-nombre
@@ -27,12 +27,12 @@
 				placeholder="Ej: Tienda de la esquina"
 				autocomplete="organization"
 			/>
-			<span class="text-base font-normal text-text-muted">
+			<span class="text-xs font-normal text-text-muted">
 				Se muestra en el comprobante y el TopBar.
 			</span>
 		</label>
 
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
 			Moneda (símbolo)
 			<input
 				data-ajustes-moneda
@@ -42,7 +42,7 @@
 				autocomplete="off"
 				maxlength="6"
 			/>
-			<span class="text-base font-normal text-text-muted">
+			<span class="text-xs font-normal text-text-muted">
 				Se usa en precios, totales y tickets.
 			</span>
 		</label>
@@ -51,11 +51,11 @@
 	<!-- ── Sección: Impuestos ───────────────────────────────────────── -->
 	<section class="card flex flex-col gap-3">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-lg font-bold text-text">Impuestos</h2>
-			<p class="text-base text-text-muted">IGV aplicado a las ventas nuevas.</p>
+			<h2 class="text-base font-semibold text-text">Impuestos</h2>
+			<p class="text-xs text-text-muted">IGV aplicado a las ventas nuevas.</p>
 		</div>
 
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
 			IGV (%)
 			<input
 				data-ajustes-igv
@@ -66,24 +66,24 @@
 				step="0.5"
 				inputmode="decimal"
 			/>
-			<span class="text-base font-normal text-text-muted">
+			<span class="text-xs font-normal text-text-muted">
 				Las ventas antiguas conservan su IGV original.
 			</span>
 		</label>
 
 		<!-- Live preview: typed moneda + tasa, recomputed on input by the
 		     island (never reads storage mid-typing). -->
-		<p data-ajustes-preview class="text-base font-semibold tabular-nums text-text"></p>
+		<p data-ajustes-preview class="text-sm font-semibold tabular-nums text-text"></p>
 	</section>
 
 	<!-- ── Sección: Inventario ──────────────────────────────────────── -->
 	<section class="card flex flex-col gap-3">
 		<div class="flex flex-col gap-1">
-			<h2 class="text-lg font-bold text-text">Inventario</h2>
-			<p class="text-base text-text-muted">Avisos de stock bajo en el panel de /stock.</p>
+			<h2 class="text-base font-semibold text-text">Inventario</h2>
+			<p class="text-xs text-text-muted">Avisos de stock bajo en el panel de /stock.</p>
 		</div>
 
-		<label class="flex flex-col gap-1 text-base font-semibold text-text">
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
 			Alerta de stock (unidades)
 			<input
 				data-ajustes-stock-alerta
@@ -95,13 +95,13 @@
 				inputmode="numeric"
 				placeholder="5"
 			/>
-			<span class="text-base font-normal text-text-muted">
+			<span class="text-xs font-normal text-text-muted">
 				Los productos con menos de estas unidades aparecen como "Bajo".
 			</span>
 		</label>
 	</section>
 
-	<p class="text-base text-text-muted">
+	<p class="text-xs text-text-muted">
 		Los cambios se aplican a precios y totales al guardar.
 	</p>
 

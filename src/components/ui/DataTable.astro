@@ -21,14 +21,14 @@ const { columns, class: cls = '', hiddenBelowLg = [] } = Astro.props;
      the LayoutApp column, which is the ≥lg scroll container; below lg the
      table is kept narrow via hiddenBelowLg (see Props). -->
 <div class={`hidden rounded-xl border border-border bg-surface shadow-card md:block ${cls}`}>
-  <table class="w-full text-base text-text">
-    <!-- top-[62px] = below the sticky TopBar (--topbar-h) in either scrollport. -->
-    <thead class="sticky top-[62px] z-10 bg-surface">
-      <tr class="border-b-2 border-border text-left text-text-muted">
+  <table class="w-full text-sm text-text">
+    <!-- top-[49px] = below the sticky TopBar (--topbar-h) in either scrollport. -->
+    <thead class="sticky top-[49px] z-10 bg-bg">
+      <tr class="border-b border-border text-left text-text-muted">
         {columns.map((column, index) => (
           <th
             scope="col"
-            class:list={['px-4 py-3 font-semibold', hiddenBelowLg.includes(index) && 'hidden lg:table-cell']}
+            class:list={['px-4 py-2.5 text-xs font-semibold', hiddenBelowLg.includes(index) && 'hidden lg:table-cell']}
           >
             {column}
           </th>

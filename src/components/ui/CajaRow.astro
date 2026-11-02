@@ -8,8 +8,8 @@ import StatusPill from './StatusPill.astro';
 ---
 <li class="flex items-center justify-between gap-3 border-b border-border py-3 last:border-b-0">
 	<div class="flex min-w-0 flex-col gap-1">
-		<span data-caja-row-fecha class="text-base font-semibold text-text tabular-nums"></span>
-		<span data-caja-row-montos class="text-base text-text-muted tabular-nums"></span>
+		<span data-caja-row-fecha class="text-sm font-medium text-text tabular-nums"></span>
+		<span data-caja-row-montos class="text-xs text-text-muted tabular-nums"></span>
 	</div>
 	<div class="flex shrink-0 items-center gap-2">
 		<StatusPill tone="muted" data-caja-row-diff="curso" hidden>En curso</StatusPill>

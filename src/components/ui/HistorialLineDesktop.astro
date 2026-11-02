@@ -10,21 +10,21 @@ import StatusPill from './StatusPill.astro';
 ---
 <template data-hist-line-desktop-template>
 	<tr data-hist-line="" class="border-b border-border">
-		<td class="px-4 py-3">
+		<td class="px-4 py-2.5">
 			<a
 				data-hist-link
 				href="/historial/venta/"
-				class="font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+				class="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
 			>
 				<span data-hist-hora></span>
 			</a>
 		</td>
-		<td class="px-4 py-3"><span data-hist-metodo class="text-text-muted"></span></td>
-		<td class="px-4 py-3"><span data-hist-items class="text-text-muted"></span></td>
-		<td class="px-4 py-3 text-right">
-			<span data-hist-total class="font-bold tabular-nums"></span>
+		<td class="px-4 py-2.5"><span data-hist-metodo class="text-text-muted"></span></td>
+		<td class="px-4 py-2.5"><span data-hist-items class="text-text-muted"></span></td>
+		<td class="px-4 py-2.5 text-right">
+			<span data-hist-total class="font-semibold tabular-nums"></span>
 		</td>
-		<td class="px-4 py-3">
+		<td class="px-4 py-2.5">
 			<span data-hist-sync class="flex items-center">
 				<StatusPill tone="ok" data-hist-sync-state="sincronizada">Sincronizada</StatusPill>
 				<StatusPill tone="warn" data-hist-sync-state="pendiente" hidden>Pendiente</StatusPill>

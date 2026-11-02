@@ -5,8 +5,8 @@
 // islands/catalog.ts — this file only draws, props/DOM only (ui/ rule).
 //
 // refactorUI §4.2D (Fase 2):
-//   - search: icon + big input + Kbd F2 (desktop), Esc clears, Enter adds a
-//     unique result (island).
+//   - search: icon + big input, Esc clears, Enter adds a unique result
+//     (island).
 //   - categories: ChipGroup-style horizontal chips replace the old <select>
 //     (hook data-catalog-category stays on the WRAPPER, data-category-value
 //     on each chip; first chip "Todas" is static).
@@ -14,7 +14,6 @@
 //   - skeleton: 8 cards while the first paint decision runs (island hides it
 //     on the first render()).
 import Icon from "./Icon.astro";
-import Kbd from "./Kbd.astro";
 import Skeleton from "./Skeleton.astro";
 import Alert from "./Alert.astro";
 import BarcodeScanner from "./BarcodeScanner.astro";
@@ -24,24 +23,20 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 	<!-- No h1 here anymore: the ONE page title ("Venta") is rendered by the
 	     LayoutApp TopBar (refactorUI §3.1 Fase 1). -->
 
-	<label class="flex flex-col gap-1 text-base font-semibold text-text">
+	<label class="flex flex-col gap-1 text-sm font-medium text-text">
 		Buscar producto
 		<span class="relative">
 			<Icon
 				name="buscar"
-				class="pointer-events-none absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-text-muted"
+				class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted"
 			/>
 			<input
 				data-catalog-search
-				class="input-field pl-11 pr-28"
+				class="input-field pl-10 pr-12"
 				type="search"
 				placeholder="Buscar por nombre, categoría, marca o código…"
 				autocomplete="off"
 			/>
-			<Kbd
-				class="absolute right-14 top-1/2 hidden -translate-y-1/2 md:inline-flex"
-				>F2</Kbd
-			>
 			<!-- Voice search (plan-speak-search.md Fase 3): hidden until the
 			     island confirms Speech Recognition support (D8). -->
 			<button
@@ -50,9 +45,9 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 				hidden
 				aria-label="Buscar por voz"
 				title="Buscar por voz"
-				class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted"
+				class="absolute right-1.5 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted hover:bg-bg"
 			>
-				<Icon name="mic" class="h-6 w-6" />
+				<Icon name="mic" class="h-5 w-5" />
 			</button>
 		</span>
 	</label>
@@ -62,16 +57,16 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 		data-catalog-voice-status
 		hidden
 		aria-live="polite"
-		class="flex items-center gap-2 text-base text-text-muted"
+		class="flex items-center gap-2 text-sm text-text-muted"
 	>
 		<span aria-hidden="true">●</span> Escuchando…
 	</p>
 
 	<!-- Scan with the camera (plan-camara-barras): its own full-width button
 	     instead of a second icon inside the input — thumb-reachable on mobile
-	     and it never fights the Kbd/mic right padding. -->
+	     and it never fights the mic right padding. -->
 	<button data-catalog-scan type="button" class="btn btn-secondary w-full">
-		<Icon name="scan-barcode" class="h-6 w-6" />
+		<Icon name="scan-barcode" class="h-5 w-5" />
 		Escanear código de barras
 	</button>
 
@@ -106,7 +101,7 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 			type="button"
 			data-category-value=""
 			aria-pressed="true"
-			class="btn btn-secondary w-full min-w-30 min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
+			class="btn btn-secondary w-full min-w-24 min-h-9 rounded-full px-3.5 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
 		>
 			Todas
 		</button>
@@ -116,7 +111,7 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 			type="button"
 			data-category-value=""
 			aria-pressed="false"
-			class="btn btn-secondary w-full min-w-30 min-h-11 rounded-full px-4 py-2 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
+			class="btn btn-secondary w-full min-w-24 min-h-9 rounded-full px-3.5 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
 		>
 			<span data-chip-label></span>
 		</button>
@@ -128,13 +123,13 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 	<div
 		data-catalog-stale
 		hidden
-		class="flex flex-wrap items-center gap-2 text-base text-text-muted"
+		class="flex flex-wrap items-center gap-2 text-sm text-text-muted"
 	>
 		<p data-catalog-stale-text></p>
 		<button
 			data-catalog-refresh
 			type="button"
-			class="btn btn-secondary min-h-11 px-3 py-1.5 text-base"
+			class="btn btn-secondary min-h-9 px-3"
 		>
 			Actualizar
 		</button>
@@ -148,15 +143,15 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 	     finishes the first render() — no premature EmptyState flash. -->
 	<div
 		data-catalog-skeleton
-		class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4"
+		class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
 		aria-hidden="true"
 	>
 		{
 			Array.from({ length: 8 }).map(() => (
-				<div class="flex flex-col gap-3">
+				<div class="flex flex-col gap-2">
 					<Skeleton class="aspect-[4/3]" />
-					<Skeleton class="h-6 w-3/4" />
-					<Skeleton class="h-6 w-1/3" />
+					<Skeleton class="h-4 w-3/4" />
+					<Skeleton class="h-4 w-1/3" />
 				</div>
 			))
 		}
@@ -164,7 +159,7 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 
 	<div
 		data-catalog-grid
-		class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4"
+		class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
 	>
 		<slot />
 	</div>
@@ -189,7 +184,7 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 		<p
 			data-catalog-range
 			aria-live="polite"
-			class="text-base text-text-muted"
+			class="text-sm text-text-muted"
 		>
 		</p>
 		<button data-catalog-next type="button" class="btn btn-secondary"

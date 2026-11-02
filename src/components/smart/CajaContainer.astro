@@ -55,11 +55,11 @@ import StatusPill from '../ui/StatusPill.astro';
 	<CajaHistorial />
 
 	<Modal modalKey="cerrar-caja" title="Cerrar caja">
-		<p class="text-base text-text-muted">
+		<p class="text-xs text-text-muted">
 			Esperado:
 			<span data-caja-esperado-modal class="font-semibold text-text tabular-nums"></span>
 		</p>
-		<label class="mt-3 flex flex-col gap-1 text-base font-semibold text-text">
+		<label class="mt-3 flex flex-col gap-1 text-sm font-medium text-text">
 			Efectivo contado (S/)
 			<input
 				data-caja-conteo
@@ -70,12 +70,12 @@ import StatusPill from '../ui/StatusPill.astro';
 				inputmode="decimal"
 			/>
 		</label>
-		<p class="mt-2 text-base text-text-muted">
+		<p class="mt-2 text-xs text-text-muted">
 			Cuenta el efectivo que queda en la caja antes de cerrar.
 		</p>
 		<!-- diferencia en vivo (T3.7): text + tone while typing — three nodes,
 		     visibility only (§0.4): Faltan warning / Sobran info / Cuadra ok -->
-		<p data-caja-diff class="mt-2 text-base font-semibold" hidden>
+		<p data-caja-diff class="mt-2 text-sm font-medium" hidden>
 			<span data-caja-diff-cuadra class="text-success" hidden>Cuadra</span>
 			<span data-caja-diff-faltan class="text-warning" hidden>
 				Faltan <span data-caja-diff-faltan-valor class="tabular-nums"></span>
@@ -84,7 +84,7 @@ import StatusPill from '../ui/StatusPill.astro';
 				Sobran <span data-caja-diff-sobran-valor class="tabular-nums"></span>
 			</span>
 		</p>
-		<p data-caja-modal-error class="mt-2 text-base font-semibold text-danger" hidden></p>
+		<p data-caja-modal-error class="mt-2 text-sm font-semibold text-danger" hidden></p>
 		<button slot="actions" type="button" class="btn btn-secondary" data-modal-close>
 			Cancelar
 		</button>
