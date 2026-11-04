@@ -11,6 +11,13 @@
 // Delegates all drawing to ui/ (doc/astrobase.md §3.3). The sale-closure
 // ORDER (uuid → local snapshot → local stock → clear cart → immediate sync)
 // lives in islands/cart/checkout.ts, which follows base.md §7 literally.
+//
+// Owner request 2026-11-04: the ticket is TWO STEPS —
+//   1. Detalle: lines + Subtotal/IGV/Total + "Continuar al pago".
+//   2. Pago: amount to charge + método de pago + recibido/vuelto + COBRAR.
+// checkout.ts flips `hidden` on the two panels (no runtime classes, §0.4);
+// "Continuar al pago" / "Volver" are the ONLY step navigation (owner request
+// 2026-11-04: the 1·2 indicator pills were removed, they added no function).
 import Modal from '../ui/Modal.astro';
 import CartLine from '../ui/CartLine.astro';
 import CartTotals from '../ui/CartTotals.astro';
@@ -34,12 +41,23 @@ const metodos = [
 	<section
 		data-ticket
 		data-checkout-root
-		class="flex flex-col gap-3 lg:h-full lg:min-h-0"
+		class="flex h-full min-h-0 flex-col gap-3 p-4 lg:p-0"
 		aria-label="Ticket de compra"
 	>
+		<button
+			type="button"
+			data-ticket-sheet-toggle
+			aria-expanded="false"
+			aria-label="Expandir ticket"
+			title="Expandir ticket"
+			class="mx-auto flex h-6 w-14 shrink-0 items-center justify-center lg:hidden"
+		>
+			<span aria-hidden="true" class="h-1 w-9 rounded-full bg-border"></span>
+		</button>
+
 		<!-- Header (§4.2A/G): badge count + cancel as danger OUTLINE — the
 		     mobile close ✕ only exists when the modal is a sheet (<lg). -->
-		<div class="flex items-center justify-between gap-3">
+		<div class="flex shrink-0 items-center justify-between gap-3">
 			<h2 class="text-base font-semibold text-text">
 				Ticket (<span data-cart-badge>0</span>)
 			</h2>
@@ -56,22 +74,55 @@ const metodos = [
 			</div>
 		</div>
 
-		<!-- Lines: scroll zone on desktop (§4.2B) — painted by cart-actions. -->
-		<ul data-cart-lines class="flex flex-col gap-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"></ul>
-		<CartLine />
+		<!-- ── Step 1 — lines + totals up to Total ─────────────────────── -->
+		<div data-checkout-step="1" class="flex min-h-0 flex-1 flex-col gap-3">
+			<!-- Lines scroll independently; totals and the step action stay visible. -->
+			<ul data-cart-lines class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"></ul>
+			<CartLine />
 
-		<!-- Payment half stays anchored at the bottom of the column (§4.2B). -->
-		<div class="flex shrink-0 flex-col gap-3">
-			<CartTotals taxLabel={taxLabel} />
+			<div class="flex shrink-0 flex-col gap-3">
+				<CartTotals taxLabel={taxLabel} />
+				<button
+					type="button"
+					data-checkout-continue
+					disabled
+					class="btn btn-primary min-h-14 w-full text-base font-semibold"
+				>
+					Continuar al pago
+				</button>
+			</div>
+		</div>
 
-			<fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3">
+		<!-- ── Step 2 — payment method ─────────────────────────────────── -->
+		<div
+			data-checkout-step="2"
+			hidden
+			class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden"
+		>
+			<div class="min-h-0 flex-1 space-y-3 overflow-y-auto">
+				<button
+					type="button"
+					data-checkout-back
+					class="btn btn-secondary min-h-9 w-fit px-3 text-xs"
+				>
+					<Icon name="chevron-left" class="h-4 w-4" />
+					Volver al detalle
+				</button>
+
+			<!-- The same total the charge button carries, kept in view. -->
+				<div class="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg px-3.5 py-3">
+					<span class="text-sm text-text-muted">Total a cobrar</span>
+					<span data-checkout-total-amount class="text-xl font-bold tabular-nums text-text"
+						>S/ 0.00</span
+					>
+				</div>
+
+				<fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3">
 				<legend class="px-1 text-sm font-semibold text-text">Método de pago</legend>
 				<div role="radiogroup" aria-label="Método de pago" class="grid grid-cols-3 gap-2">
 					{
 						metodos.map((metodo, index) => (
-							<label
-								class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-center text-sm font-medium text-text has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-content focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-							>
+							<label class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-border bg-surface px-2 py-1.5 text-center text-sm font-medium text-text has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-primary-content focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
 								<input
 									type="radio"
 									name="metodo_pago"
@@ -127,27 +178,30 @@ const metodos = [
 						Faltan <span data-checkout-faltan-amount class="tabular-nums">S/ 0.00</span>
 					</p>
 				</div>
-			</fieldset>
+				</fieldset>
+			</div>
 
-			<!-- 56px full-width charge (§4.2E); disabled ⇔ empty cart ∨ cash
-			     shortfall; the reason rides aria-describedby (single static
-			     instance — same status as sidebar-principal). -->
-			<button
-				type="button"
-				data-checkout-charge
-				aria-describedby="checkout-reason"
-				disabled
-				class="btn btn-primary min-h-14 w-full text-base font-semibold"
-			>
-				Cobrar
-			</button>
-			<p id="checkout-reason" data-checkout-reason hidden class="text-sm font-medium text-warning">
-				Faltan S/ 0.00 para poder cobrar.
-			</p>
+			<div class="flex shrink-0 flex-col gap-3">
+				<!-- 56px full-width charge (§4.2E); disabled ⇔ empty cart ∨ cash
+				     shortfall; the reason rides aria-describedby (single static
+				     instance — same status as sidebar-principal). -->
+				<button
+					type="button"
+					data-checkout-charge
+					aria-describedby="checkout-reason"
+					disabled
+					class="btn btn-primary min-h-14 w-full text-base font-semibold"
+				>
+					Cobrar
+				</button>
+				<p id="checkout-reason" data-checkout-reason hidden class="text-sm font-medium text-warning">
+					Faltan S/ 0.00 para poder cobrar.
+				</p>
 
-			<Alert name="checkout-error" tone="danger" hidden>
-				No se pudo enviar la venta al Sheet. Quedó guardada en este dispositivo.
-			</Alert>
+				<Alert name="checkout-error" tone="danger" hidden>
+					No se pudo enviar la venta al Sheet. Quedó guardada en este dispositivo.
+				</Alert>
+			</div>
 		</div>
 	</section>
 </Modal>

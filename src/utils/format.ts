@@ -5,9 +5,13 @@
 import { getAjustes } from './storage';
 
 // Dot decimal separator on purpose: the documented examples are "S/ 12.00"
-// and "S/ 3.50" (doc/stilesbase.md, doc/appscriptbase.md §4.1).
+const FORMATO_MONTO = new Intl.NumberFormat('es-PE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function formatCurrency(amount: number): string {
-  return `${getAjustes().moneda} ${amount.toFixed(2)}`;
+  return `${getAjustes().moneda} ${FORMATO_MONTO.format(Number.isFinite(amount) ? amount : 0)}`;
 }
 
 export function formatFecha(fecha: string | Date): string {

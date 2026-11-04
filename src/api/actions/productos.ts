@@ -13,6 +13,10 @@ import {
   isValidStockValue,
 } from '../../utils/validators';
 import { esBarcodeValido, normalizarBarcode } from '../../utils/barcode';
+import {
+  esAtributosValidos,
+  esPresentacionesValido,
+} from '../../utils/presentaciones';
 import type {
   DatosActualizarProducto,
   DatosCrearProducto,
@@ -21,6 +25,17 @@ import type {
   RespuestaProductos,
   RespuestaProductosAdmin,
 } from '../types';
+
+// product.md extensions: "descripción breve" — capped so a paste never
+// bloats the sheet cell (same policy as isValidMarca).
+function isValidDescripcion(descripcion: string): boolean {
+  const value = descripcion.trim();
+  return value === '' || value.length <= 300;
+}
+
+function esBooleanoOpcional(valor: unknown): boolean {
+  return valor === undefined || typeof valor === 'boolean';
+}
 
 export async function obtenerProductos(): Promise<ApiResult<RespuestaProductos>> {
   return llamarGet<RespuestaProductos>('productos');
@@ -45,7 +60,13 @@ export async function crearProducto(
     !isValidStockValue(data.stock) ||
     !isValidImageUrl(data.imagen_url ?? '') ||
     !isValidMarca(data.marca ?? '') ||
-    !esBarcodeValido(data.barcode ?? '')
+    !esBarcodeValido(data.barcode ?? '') ||
+    !isValidDescripcion(data.descripcion ?? '') ||
+    !esBooleanoOpcional(data.featured) ||
+    !esBooleanoOpcional(data.returnable) ||
+    !esBooleanoOpcional(data.activo) ||
+    !esAtributosValidos(data.atributos ?? {}) ||
+    !esPresentacionesValido(data.presentaciones ?? [])
   ) {
     return { status: 'api_error', error: 'payload_invalido' };
   }
@@ -54,6 +75,7 @@ export async function crearProducto(
     imagen_url: (data.imagen_url ?? '').trim(),
     marca: (data.marca ?? '').trim(),
     barcode: normalizarBarcode(data.barcode ?? ''),
+    descripcion: (data.descripcion ?? '').trim(),
   });
 }
 
@@ -62,7 +84,22 @@ export async function crearProducto(
 export async function actualizarProducto(
   data: DatosActualizarProducto,
 ): Promise<ApiResult<RespuestaOk>> {
-  const { id, nombre, categoria, precio, stock, imagen_url, activo, marca, barcode } = data;
+  const {
+    id,
+    nombre,
+    categoria,
+    precio,
+    stock,
+    imagen_url,
+    activo,
+    marca,
+    barcode,
+    descripcion,
+    atributos,
+    featured,
+    returnable,
+    presentaciones,
+  } = data;
   const tocaAlgo =
     nombre !== undefined ||
     categoria !== undefined ||
@@ -71,7 +108,12 @@ export async function actualizarProducto(
     imagen_url !== undefined ||
     activo !== undefined ||
     marca !== undefined ||
-    barcode !== undefined;
+    barcode !== undefined ||
+    descripcion !== undefined ||
+    atributos !== undefined ||
+    featured !== undefined ||
+    returnable !== undefined ||
+    presentaciones !== undefined;
   if (
     !id ||
     !tocaAlgo ||
@@ -82,7 +124,12 @@ export async function actualizarProducto(
     (imagen_url !== undefined && !isValidImageUrl(imagen_url)) ||
     (activo !== undefined && typeof activo !== 'boolean') ||
     (marca !== undefined && !isValidMarca(marca)) ||
-    (barcode !== undefined && !esBarcodeValido(barcode))
+    (barcode !== undefined && !esBarcodeValido(barcode)) ||
+    (descripcion !== undefined && !isValidDescripcion(descripcion)) ||
+    (featured !== undefined && typeof featured !== 'boolean') ||
+    (returnable !== undefined && typeof returnable !== 'boolean') ||
+    (atributos !== undefined && !esAtributosValidos(atributos)) ||
+    (presentaciones !== undefined && !esPresentacionesValido(presentaciones))
   ) {
     return { status: 'api_error', error: 'payload_invalido' };
   }
@@ -90,5 +137,6 @@ export async function actualizarProducto(
     ...data,
     ...(marca !== undefined ? { marca: marca.trim() } : {}),
     ...(barcode !== undefined ? { barcode: normalizarBarcode(barcode) } : {}),
+    ...(descripcion !== undefined ? { descripcion: descripcion.trim() } : {}),
   });
 }

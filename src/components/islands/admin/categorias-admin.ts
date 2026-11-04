@@ -179,7 +179,7 @@ if (root) {
         feedback.ok(
           esAlta
             ? 'Categoría creada.'
-            : 'Categoría renombrada — los productos que la usan quedaron actualizados.',
+            : 'Categoría renombrada. Productos actualizados.',
         );
         modoNuevo();
         await cargar();

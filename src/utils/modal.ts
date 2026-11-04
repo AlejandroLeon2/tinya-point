@@ -16,6 +16,16 @@ interface ActiveModal {
 
 // Module-level state only — no side effects at import time.
 let active: ActiveModal | null = null;
+const sheetOpenFrames = new WeakMap<HTMLElement, number>();
+const sheetCloseTimers = new WeakMap<HTMLElement, number>();
+const sheetCloseCleanups = new WeakMap<HTMLElement, () => void>();
+
+function isMobileTicketSheet(modal: HTMLElement): boolean {
+  return (
+    modal.dataset.modalVariant === 'ticket' &&
+    window.matchMedia('(max-width: 1023.98px)').matches
+  );
+}
 
 function getFocusable(modal: HTMLElement): HTMLElement[] {
   // Visible-only: `hidden`/display:none controls (e.g. the image "Quitar"
@@ -30,11 +40,35 @@ function getFocusable(modal: HTMLElement): HTMLElement[] {
 export function openModal(modal: HTMLElement, trigger?: HTMLElement | null): void {
   if (active) closeModal(active.modal);
 
+  const isTicketSheet = isMobileTicketSheet(modal);
+  sheetCloseCleanups.get(modal)?.();
+  const closeTimer = sheetCloseTimers.get(modal);
+  if (closeTimer !== undefined) window.clearTimeout(closeTimer);
+  sheetCloseTimers.delete(modal);
+  const openFrame = sheetOpenFrames.get(modal);
+  if (openFrame !== undefined) window.cancelAnimationFrame(openFrame);
+
   const origin =
     trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 
+  if (isTicketSheet) modal.dataset.sheetState = 'closed';
   modal.hidden = false;
   if (!modal.hasAttribute('tabindex')) modal.setAttribute('tabindex', '-1');
+
+  if (isTicketSheet) {
+    void modal.offsetHeight;
+    const frame = window.requestAnimationFrame(() => {
+      sheetOpenFrames.delete(modal);
+      if (!modal.hidden && modal.dataset.sheetState === 'closed') {
+        modal.dataset.sheetState = 'mid';
+      }
+    });
+    sheetOpenFrames.set(modal, frame);
+    const toggle = modal.querySelector<HTMLElement>('[data-ticket-sheet-toggle]');
+    toggle?.setAttribute('aria-expanded', 'false');
+    toggle?.setAttribute('aria-label', 'Expandir ticket');
+    if (toggle) toggle.title = 'Expandir ticket';
+  }
 
   const onKey = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
@@ -76,7 +110,46 @@ export function closeModal(modal: HTMLElement): void {
   if (!active || active.modal !== modal) return;
 
   document.removeEventListener('keydown', active.onKey);
-  modal.hidden = true;
-  if (active.trigger && document.contains(active.trigger)) active.trigger.focus();
+  const openFrame = sheetOpenFrames.get(modal);
+  if (openFrame !== undefined) {
+    window.cancelAnimationFrame(openFrame);
+    sheetOpenFrames.delete(modal);
+  }
+
+  const restoreFocus = active.trigger;
   active = null;
+  if (isMobileTicketSheet(modal) && modal.dataset.sheetState !== 'closed') {
+    const dialog = modal.querySelector<HTMLElement>('[role="dialog"]');
+    let finished = false;
+    let closeTimer = 0;
+    const cleanup = (): void => {
+      dialog?.removeEventListener('transitionend', onTransitionEnd);
+      window.clearTimeout(closeTimer);
+      sheetCloseTimers.delete(modal);
+      sheetCloseCleanups.delete(modal);
+    };
+    const finish = (): void => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      modal.hidden = true;
+      if (restoreFocus && document.contains(restoreFocus) && !active) restoreFocus.focus();
+    };
+    const onTransitionEnd = (event: TransitionEvent): void => {
+      if (event.target === dialog && event.propertyName === 'transform') finish();
+    };
+
+    dialog?.addEventListener('transitionend', onTransitionEnd);
+    sheetCloseCleanups.set(modal, cleanup);
+    modal.dataset.sheetState = 'closed';
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      finish();
+    } else {
+      closeTimer = window.setTimeout(finish, 400);
+      sheetCloseTimers.set(modal, closeTimer);
+    }
+  } else {
+    modal.hidden = true;
+    if (restoreFocus && document.contains(restoreFocus)) restoreFocus.focus();
+  }
 }

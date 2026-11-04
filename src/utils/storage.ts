@@ -2,6 +2,8 @@
 // getter/setter per key (doc/astrobase.md §3.5; keys from doc/base.md
 // §2.3/§3, plus §2.4 for `cajas`).
 
+import type { AtributosProducto, Presentacion } from './presentaciones';
+
 // Fixed data contract — Spanish key names on purpose (doc/extras.md §7).
 const KEY_CATALOGO_CACHE = 'catalogo_cache';
 const KEY_CARRITO_ACTUAL = 'carrito_actual';
@@ -38,6 +40,13 @@ export interface Producto {
   // plan-camara-barras: optional product barcode, ALWAYS a string (leading
   // zeros are part of the code). Absent on caches written before the feature.
   barcode?: string;
+  // product.md extensions — all optional so caches written before them keep
+  // working (missing = "not set", same rule as barcode/marca).
+  descripcion?: string;
+  atributos?: AtributosProducto;
+  featured?: boolean;
+  returnable?: boolean;
+  presentaciones?: Presentacion[];
 }
 
 export interface CatalogoCache {
@@ -47,10 +56,18 @@ export interface CatalogoCache {
 
 export interface ItemCarrito {
   id: string;
+  // Real product id — the wire and the stock discount use this one, because
+  // `id` is the LINE key and two presentations of the same product are two
+  // independent cart lines (missing = same as id, legacy lines).
+  productoId?: string;
   nombre: string;
   precio: number;
   cantidad: number;
   imagen_url?: string;
+  // Selected presentation pill ("Unidad", "Paquete x12") — display only.
+  presentacion?: string;
+  // Base units ONE line unit represents: 12 for a x12 pack (missing = 1).
+  unidades?: number;
 }
 
 export interface ItemVenta {

@@ -43,6 +43,11 @@ No usar Tina CMS: asume un editor de contenido dedicado, lo cual no aplica cuand
 | sku / codigo_barras | string | opcional — es la columna del wire `barcode` (plan-camara-barras): la lee/escribe el backend como string (conserva ceros iniciales) y valida que no esté duplicada en todo el catálogo; el backend también acepta una columna llamada `barcode` |
 | imagen_url | string | opcional |
 | activo | boolean | para ocultar sin borrar |
+| descripcion | string | opcional — descripción breve del producto (product.md) |
+| atributos | string (JSON) | opcional — mapa `{"tamano":"500 ml",…}`; las claves las sugiere el formulario según la categoría |
+| featured | boolean | opcional — Destacado / Más pedido en el catálogo |
+| returnable | boolean | opcional — producto con envases retornables |
+| presentaciones | string (JSON) | opcional — lista `[{id,name,units,sku,priceTiers:[{minQty,price}]}]`; cada rango es el precio POR PRESENTACIÓN (product.md) |
 
 ### 2.2 Google Sheet — hoja "Ventas" (log de respaldo, append-only)
 

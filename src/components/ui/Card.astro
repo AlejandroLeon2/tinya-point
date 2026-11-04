@@ -1,72 +1,133 @@
 ---
 // Product card — SINGLE source of truth for card markup (option A decision,
 // plan-features Fase 2, 2026-09-22): the markup lives inside a <template>,
-// inert at build time; islands/catalog.ts clones it once per product and
-// fills every [data-card-*] slot. Never fetches data — ui/ rule (astrobase §1).
+// inert at build time; islands/catalog/catalog.ts clones it once per product
+// and fills every [data-card-*] slot. Never fetches data — ui/ rule
+// (astrobase §1).
 //
-// refactorUI §4.2D (Fase 2): the WHOLE card is the add trigger — an overlay
-// <button data-add-to-cart> covers it (valid HTML: a <button> cannot contain
-// the <h3>, so the button sits on top with aria-label "Agregar {nombre}",
-// painted by the island). The quantity stepper is GONE (quantity in the
-// ticket only) and stock 0 disables the overlay button.
+// Owner request 2026-11-04 (POS redesign):
+//   · category TAG pinned top-left over the image,
+//   · title = marca + descripción (fallback: nombre),
+//   · PRESENTATION PILLS ("Unidad", "Paquete x12", …) from the product's
+//     presentaciones — the selected pill drives the displayed price,
+//   · price + the ONE add trigger.
+// Only the add BUTTON adds to the cart now: the old full-card overlay is
+// gone, so picking a pill (or tapping the card) never adds anything. The
+// island disables the button when the selected presentation needs more units
+// than there is stock.
+//
+// The pills template sits OUTSIDE the card template on purpose: the catalog
+// island clones it once per option and appends the clones to the card's
+// [data-card-presentaciones] group (nested <template> cloning is avoided).
+import Icon from "./Icon.astro";
 ---
+
 <template data-card-template>
-	<article
-		class="card relative flex flex-col gap-2 overflow-hidden transition-shadow hover:border-primary/60 hover:shadow-card"
-		data-product-card
-	>
-		<button
-			type="button"
-			data-add-to-cart
-			aria-label=""
-			class="absolute inset-0 z-10 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-primary"
-		>
-		</button>
-		<div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-bg">
-			<!-- T4.4 fix: NOT display:none while loading — Chrome never fetches
+  <article
+    class="card relative flex flex-col gap-2.5 overflow-hidden"
+    data-product-card
+  >
+    <div class="relative aspect-[4/3] overflow-hidden rounded-lg bg-bg">
+      <!-- Category tag (product.md): top-left OVER the image. Text +
+			     surface, never color alone (stilesbase §5.2). -->
+      <span
+        data-card-category
+        hidden
+        class="absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate rounded-full bg-surface/95 px-2 py-0.5 text-xs font-medium text-text ring-1 ring-border"
+      ></span>
+      <!-- T4.4 fix: NOT display:none while loading — Chrome never fetches
 			     a loading=lazy image without a rendered box (deadlock: hidden
 			     until `load` + lazy = `load` never fires → placeholder forever).
-			     opacity-0 keeps the box (lazy intersects, no layout shift) and
-			     sits UNDER the placeholder (both absolute, placeholder later in
-			     DOM paints on top) until the island reveals it. -->
-			<img
-				data-card-img
-				class="absolute inset-0 h-full w-full object-cover opacity-0"
-				loading="lazy"
-				alt=""
-			/>
-			<div
-				data-card-placeholder
-				class="absolute inset-0 flex h-full w-full items-center justify-center text-text-muted"
-			>
-				<!-- Generic product icon (extras.md §4): never a broken-image
+			     opacity-0 keeps the box and sits UNDER the placeholder until
+			     the island reveals it. -->
+      <img
+        data-card-img
+        class="absolute inset-0 h-full w-full object-cover opacity-0"
+        loading="lazy"
+        alt=""
+      />
+      <div
+        data-card-placeholder
+        class="absolute inset-0 flex h-full w-full items-center justify-center text-text-muted"
+      >
+        <!-- Generic product icon (extras.md §4): never a broken-image
 				     icon nor a blank space; decorative (aria-hidden) because
 				     the product name sits right below as real text. -->
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="1.5"
-					class="h-12 w-12"
-					aria-hidden="true"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-					/>
-				</svg>
-			</div>
-		</div>
-		<h3 data-card-name class="relative line-clamp-2 text-sm font-medium text-text"></h3>
-		<!-- Brand — hidden ⇔ the product has no marca (painted by the island);
-		     muted, it qualifies the name without competing with the price. -->
-		<p data-card-brand hidden class="relative text-xs text-text-muted"></p>
-		<p data-card-price class="relative text-base font-semibold tabular-nums text-text"></p>
-		<!-- Tags: text + tone, never color alone (stilesbase §5.2). Both
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          class="h-12 w-12"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+          ></path>
+        </svg>
+      </div>
+    </div>
+    <!-- Title (product.md): "Marca · descripción" — falls back to the
+		     plain nombre when neither exists. Painted via textContent. -->
+    <h3
+      data-card-name
+      class="line-clamp-2 text-sm font-medium leading-snug text-text"
+    >
+    </h3>
+
+	<div class="flex-1"></div>
+    <!-- Presentation pills: filled by the catalog island from the product's
+		     presentaciones (always ≥1: the base "Unidad"). Picking one updates
+		     the price below — it never adds to the cart. -->
+    <div
+      data-card-presentaciones
+      role="group"
+      aria-label="Presentación"
+      class="flex flex-wrap gap-1.5"
+    >
+    </div>
+    <div class="mt-auto flex items-center justify-between gap-2">
+      <p
+        data-card-price
+        class="min-w-0 truncate text-base font-semibold tabular-nums text-text"
+      >
+      </p>
+      <!-- The ONE add trigger now (owner request 2026-11-04): aria-label
+			     is painted by the island ("Agregar {nombre} · {presentación}"). -->
+      <button
+        type="button"
+        data-add-to-cart
+        aria-label=""
+        title="Agregar al carrito"
+        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-content transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-40"
+      >
+        <Icon name="plus" class="h-5 w-5" />
+      </button>
+    </div>
+    <!-- Tags: text + tone, never color alone (stilesbase §5.2). Both
 		     start hidden — the island reveals the matching one. -->
-		<p data-card-stock class="hidden text-xs font-semibold text-danger">Agotado</p>
-		<p data-card-low class="badge-warning hidden"></p>
-	</article>
+    <div class="flex flex-wrap items-center gap-1.5">
+      <p data-card-stock class="hidden text-xs font-semibold text-danger">
+        Agotado
+      </p>
+      <p data-card-low class="badge-warning hidden"></p>
+    </div>
+  </article>
+</template>
+
+<!-- Presentation pill — cloned once per option by the catalog island.
+     aria-pressed carries the selected state; runtime only flips attributes
+     and text (never classes), and the state styles are static here. -->
+<template data-card-pres-template>
+  <button
+    type="button"
+    data-pres-pill
+    aria-pressed="false"
+    class="inline-flex min-h-7 items-center rounded-full border border-border bg-bg px-2.5 text-[11px] font-medium leading-none text-text-muted transition-colors hover:border-primary/40 hover:text-text aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-text-muted"
+  >
+    <span data-pres-label></span>
+  </button>
 </template>

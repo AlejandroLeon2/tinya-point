@@ -17,6 +17,10 @@
 // belong to cart-actions; THIS island owns only the payment half: method,
 // recibido + quick amounts, vuelto/faltan, charge button (+reason), the
 // venta-ok modal, errors and the queue. The internal sale flow is UNCHANGED.
+//
+// Owner request 2026-11-04: the ticket is split in TWO STEPS — step 1 shows
+// the lines + totals up to Total, step 2 is the payment method. The step is
+// pure UI state owned here; an empty cart always lands back on step 1.
 // Browser-only module, loaded via an Astro <script>.
 
 import type { DatosRegistrarVenta } from '../../../api/types';
@@ -55,6 +59,13 @@ if (root) {
   const reasonEl = qs<HTMLElement>(root, '[data-checkout-reason]');
   const errorEl = qs<HTMLElement>(root, '[data-alert="checkout-error"]');
 
+  // Two-step ticket (owner request 2026-11-04): "Detalle" → "Pago".
+  const stepDetail = qs<HTMLElement>(root, '[data-checkout-step="1"]');
+  const stepPay = qs<HTMLElement>(root, '[data-checkout-step="2"]');
+  const continueBtn = qs<HTMLButtonElement>(root, '[data-checkout-continue]');
+  const backBtn = qs<HTMLButtonElement>(root, '[data-checkout-back]');
+  const payTotalEl = qs<HTMLElement>(root, '[data-checkout-total-amount]');
+
   // Sale-closure modal (§4.2F) — lives outside the ticket section but in
   // the same page; queried globally (no ids, §0.2).
   const ventaOkRoot = qs<HTMLElement>(document, '[data-modal-root="venta-ok"]');
@@ -66,6 +77,21 @@ if (root) {
 
   let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
   let lastTotal = 0;
+  let step: 1 | 2 = 1;
+
+  // Step switching is attribute-only: `hidden` on the two panels. The
+  // buttons are the whole navigation (no indicator pills — owner request).
+  function goToStep(next: 1 | 2): void {
+    step = next;
+    setHidden(stepDetail, next !== 1);
+    setHidden(stepPay, next !== 2);
+  }
+
+  // Line units: a "Paquete x12" line moves 12 base units of stock, a unit
+  // line 1 (legacy lines carry no `unidades`).
+  function unidadesDe(item: { unidades?: number }): number {
+    return Math.max(1, Math.floor(item.unidades ?? 1));
+  }
 
   function selectedMethod(): MetodoPago {
     const checked = qs<HTMLInputElement>(root, 'input[name="metodo_pago"]:checked');
@@ -105,9 +131,13 @@ if (root) {
   }
 
   function updateChargeState(): void {
-    if (!chargeBtn || !reasonEl) return;
     const items = getCart();
     const total = round2(calcTotal(cartSubtotal()));
+    // Step 1 can only continue with something in the ticket; step 2 shows
+    // the same total the charge button carries.
+    if (continueBtn) continueBtn.disabled = items.length === 0;
+    setText(payTotalEl, formatCurrency(total));
+    if (!chargeBtn || !reasonEl) return;
     setText(chargeBtn, `Cobrar ${formatCurrency(total)}`);
 
     let blocked = items.length === 0;
@@ -178,7 +208,17 @@ if (root) {
     // 1. Client-generated uuid.
     const idVenta = crypto.randomUUID();
     const metodo = selectedMethod();
-    const wireItems = items.map((item) => ({ id: item.id, cantidad: item.cantidad, precio: item.precio }));
+    // Sale lines keep the presentation quantity/price (sum = total); the
+    // stock payload below converts packs to base units.
+    const wireItems = items.map((item) => ({
+      id: item.productoId ?? item.id,
+      cantidad: item.cantidad,
+      precio: item.precio,
+    }));
+    const stockItems = items.map((item) => ({
+      id: item.productoId ?? item.id,
+      cantidadVendida: item.cantidad * unidadesDe(item),
+    }));
     const subtotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
     const total = round2(calcTotal(subtotal));
     const recibido = metodo === 'efectivo' ? receivedAmount() : null;
@@ -187,8 +227,13 @@ if (root) {
     // 2. Local snapshot BEFORE any network — with `nombre` (local history) —
     //    while the wire payload below stays nombre-less (appscriptbase §4.3).
     const localItems: ItemVenta[] = items.map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
+      id: item.productoId ?? item.id,
+      // Only packs get the presentation suffix: a plain unit sale keeps the
+      // clean product name in the receipt/history.
+      nombre:
+        unidadesDe(item) > 1 && item.presentacion
+          ? `${item.nombre} · ${item.presentacion}`
+          : item.nombre,
       cantidad: item.cantidad,
       precio: item.precio,
     }));
@@ -202,12 +247,13 @@ if (root) {
     };
     setHistorialVentas([ventaLocal, ...getHistorialVentas()]); // newest first
 
-    // 3. Local stock discount — plain decrement, no merge games (base.md §8).
+    // 3. Local stock discount — plain decrement in BASE UNITS, no merge
+    //    games (base.md §8). A x12 pack line discounts 12 per unit sold.
     const cache = getCatalogoCache();
     if (cache) {
-      for (const item of items) {
-        const product = cache.productos.find((p) => p.id === item.id);
-        if (product) product.stock = Math.max(0, product.stock - item.cantidad);
+      for (const sold of stockItems) {
+        const product = cache.productos.find((p) => p.id === sold.id);
+        if (product) product.stock = Math.max(0, product.stock - sold.cantidadVendida);
       }
       setCatalogoCache(cache); // timestamp untouched: a sale is not a sync
     }
@@ -231,8 +277,7 @@ if (root) {
     // debeEncolar (D4) imported from utils/api-result — shared with caja.ts.
 
     if (ventaResult.status === 'success') {
-      for (const wireItem of wireItems) {
-        const stockPayload = { id: wireItem.id, cantidadVendida: wireItem.cantidad };
+      for (const stockPayload of stockItems) {
         const stockResult = await actualizarStock(stockPayload);
         if (debeEncolar(stockResult)) {
           enqueue('actualizarStock', stockPayload);
@@ -247,8 +292,8 @@ if (root) {
       // Sale did not reach the Sheet: enqueue venta FIRST, then its stock
       // updates — strict FIFO replays them in the same order later.
       enqueue('registrarVenta', payload);
-      for (const wireItem of wireItems) {
-        enqueue('actualizarStock', { id: wireItem.id, cantidadVendida: wireItem.cantidad });
+      for (const stockPayload of stockItems) {
+        enqueue('actualizarStock', stockPayload);
       }
       return;
     }
@@ -260,6 +305,18 @@ if (root) {
 
   chargeBtn?.addEventListener('click', () => {
     void charge();
+  });
+
+  // Step 1 → step 2 (only with something in the cart). Focus the first
+  // payment option so the keyboard flow keeps moving.
+  continueBtn?.addEventListener('click', () => {
+    if (getCart().length === 0) return;
+    goToStep(2);
+    qs<HTMLInputElement>(root, 'input[name="metodo_pago"]')?.focus();
+  });
+
+  backBtn?.addEventListener('click', () => {
+    goToStep(1);
   });
 
   for (const radio of qsa<HTMLInputElement>(root, 'input[name="metodo_pago"]')) {
@@ -291,9 +348,15 @@ if (root) {
 
   // F9 = charge (only when the ticket is the visible ≥lg column — below that
   // it is a bottom sheet and the charge button is not on screen, §4.2C/E).
+  // With the two-step ticket it advances to the payment step first instead
+  // of charging a sale whose payment nobody reviewed.
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'F9' || !esTicketFijo()) return;
     event.preventDefault();
+    if (step === 1) {
+      if (continueBtn && !continueBtn.disabled) continueBtn.click();
+      return;
+    }
     if (chargeBtn && !chargeBtn.disabled) chargeBtn.click();
   });
 
@@ -306,5 +369,8 @@ if (root) {
     // A cart change starts a fresh sale cycle — stale feedback would lie.
     setHidden(errorEl, true);
     renderChange();
+    // An empty ticket has nothing to pay; a NEW line added while the payment
+    // step is open also goes back to step 1 so the cashier reviews it.
+    if (items.length === 0 || step === 2) goToStep(1);
   });
 }

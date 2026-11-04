@@ -50,6 +50,14 @@ var HOJAS = [
       { encabezado: 'sku/codigo_barras', tipo: 'texto', ancho: 160 },
       { encabezado: 'imagen_url', tipo: 'texto', ancho: 300 },
       { encabezado: 'activo', tipo: 'booleano', ancho: 70 },
+      // ProductForm extensions — setup adds these columns automatically and
+      // the backend keeps them header-driven, so older sheets can run without
+      // them. atributos / presentaciones hold JSON TEXT.
+      { encabezado: 'descripcion', tipo: 'texto', ancho: 300 },
+      { encabezado: 'atributos', tipo: 'texto', ancho: 220 },
+      { encabezado: 'featured', tipo: 'booleano', ancho: 80 },
+      { encabezado: 'returnable', tipo: 'booleano', ancho: 90 },
+      { encabezado: 'presentaciones', tipo: 'texto', ancho: 400 },
     ],
   },
   {

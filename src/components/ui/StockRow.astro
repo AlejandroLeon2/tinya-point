@@ -34,14 +34,14 @@ import Icon from './Icon.astro';
 			</div>
 			<p data-stock-precio class="text-sm font-semibold text-text tabular-nums"></p>
 		</div>
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		<div class="flex items-center justify-between gap-2">
 			<!-- Inline restock stepper: ± icon buttons step the number, the
 			     input takes direct entry — changes stay LOCAL until Guardar. -->
 			<div data-stock-stepper class="flex items-center gap-1.5">
 				<button
 					type="button"
 					data-stock-step="-1"
-					class="btn btn-secondary px-3"
+					class="btn btn-secondary px-2"
 					aria-label="Restar una unidad"
 				>
 					<Icon name="minus" class="h-5 w-5" />
@@ -58,14 +58,14 @@ import Icon from './Icon.astro';
 				<button
 					type="button"
 					data-stock-step="1"
-					class="btn btn-secondary px-3"
+					class="btn btn-secondary px-2"
 					aria-label="Sumar una unidad"
 				>
 					<Icon name="plus" class="h-5 w-5" />
 				</button>
 			</div>
 			<button type="button" data-stock-save="" class="btn btn-primary" disabled>
-				<Icon name="save" class="h-4 w-4" />
+				<Icon name="save" class="h-4 w-4 text-sm" />
 				Guardar
 			</button>
 		</div>

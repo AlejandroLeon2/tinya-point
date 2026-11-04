@@ -23,7 +23,7 @@ const { columns, class: cls = '', hiddenBelowLg = [] } = Astro.props;
 <div class={`hidden rounded-xl border border-border bg-surface shadow-card md:block ${cls}`}>
   <table class="w-full text-sm text-text">
     <!-- top-[49px] = below the sticky TopBar (--topbar-h) in either scrollport. -->
-    <thead class="sticky top-[49px] z-10 bg-bg">
+    <thead class="sticky top-[60px] z-10 bg-bg">
       <tr class="border-b border-border text-left text-text-muted">
         {columns.map((column, index) => (
           <th
