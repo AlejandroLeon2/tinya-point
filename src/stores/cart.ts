@@ -23,7 +23,15 @@ export function getCart(): ItemCarrito[] {
 }
 
 export function addToCart(
-  producto: { id: string; nombre: string; precio: number; imagen_url?: string },
+  producto: {
+    id: string;
+    productoId?: string;
+    nombre: string;
+    precio: number;
+    imagen_url?: string;
+    presentacion?: string;
+    unidades?: number;
+  },
   cantidad = 1,
 ): void {
   // Adding zero or a nonsensical quantity is a no-op.

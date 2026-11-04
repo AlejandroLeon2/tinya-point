@@ -12,7 +12,8 @@ export function mostrarErrorCampo(input: HTMLElement, mensaje: string): void {
   const p = document.createElement('p');
   p.setAttribute('data-field-error', '');
   p.setAttribute('role', 'alert');
-  p.className = 'text-base font-semibold text-danger';
+  // Delgado y pequeño: el error se lee sin gritar ni romper el ritmo del form.
+  p.className = 'mt-1 text-xs font-normal text-danger';
   p.textContent = mensaje;
   input.insertAdjacentElement('afterend', p);
   input.setAttribute('aria-invalid', 'true');

@@ -19,6 +19,14 @@ export async function refreshCatalogoFromApi(): Promise<boolean> {
         imagen_url: p.imagen_url,
         // Older deployments omit it — the POS treats missing as "no code".
         ...(p.barcode !== undefined ? { barcode: p.barcode } : {}),
+        // product.md extensions — same rule: absent on older deployments /
+        // caches, so the card falls back to the legacy layout per field.
+        ...(p.marca !== undefined ? { marca: p.marca } : {}),
+        ...(p.descripcion !== undefined ? { descripcion: p.descripcion } : {}),
+        ...(p.atributos !== undefined ? { atributos: p.atributos } : {}),
+        ...(p.featured !== undefined ? { featured: p.featured } : {}),
+        ...(p.returnable !== undefined ? { returnable: p.returnable } : {}),
+        ...(p.presentaciones !== undefined ? { presentaciones: p.presentaciones } : {}),
       })),
       timestamp: Date.now(),
     };

@@ -67,6 +67,109 @@ function esBarcodeValidoServidor(valor) {
   return String(valor).trim().length <= 64;
 }
 
+// ── product.md extensions (optional columns, header-driven like barcode) ──
+// descripcion = plain text; atributos / presentaciones = JSON TEXT cells;
+// featured / returnable / activo = booleans (TRUE/FALSE like activo).
+
+/**
+ * Sheet boolean cell -> boolean (TRUE / 'TRUE' / 'true' all count).
+ * @param {*} valor raw cell
+ * @return {boolean}
+ */
+function leerBooleanoCelda(valor) {
+  return valor === true || valor === 'TRUE' || valor === 'true';
+}
+
+/**
+ * JSON text cell -> parsed value; empty/garbage cells are "absent".
+ * @param {*} valor raw cell
+ * @return {*} parsed value or undefined
+ */
+function leerJsonCelda(valor) {
+  if (valor === null || valor === undefined) return undefined;
+  const texto = String(valor).trim();
+  if (texto === '') return undefined;
+  try {
+    return JSON.parse(texto);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+/**
+ * Optional boolean on the wire.
+ * @param {*} valor
+ * @return {boolean}
+ */
+function esBooleanoOpcional(valor) {
+  return valor === undefined || typeof valor === 'boolean';
+}
+
+/**
+ * Optional brief description: string, trimmed length <= 300.
+ * @param {*} valor
+ * @return {boolean}
+ */
+function esDescripcionValida(valor) {
+  if (valor === undefined) return true;
+  return typeof valor === 'string' && valor.trim().length <= 300;
+}
+
+/**
+ * Optional attributes map: plain object of short string -> short string.
+ * @param {*} valor
+ * @return {boolean}
+ */
+function esAtributosValidosServidor(valor) {
+  if (valor === undefined) return true;
+  if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) return false;
+  const claves = Object.keys(valor);
+  if (claves.length > 20) return false;
+  for (let i = 0; i < claves.length; i++) {
+    const clave = claves[i];
+    if (clave.trim() === '' || clave.length > 64) return false;
+    if (typeof valor[clave] !== 'string' || valor[clave].length > 128) return false;
+  }
+  return true;
+}
+
+/**
+ * Optional presentations list: name/units/sku + priceTiers with unique
+ * integer minQty (lowest = 1) and price > 0. JSON must fit a Sheet cell.
+ * @param {*} valor
+ * @return {boolean}
+ */
+function esPresentacionesValidasServidor(valor) {
+  if (valor === undefined) return true;
+  if (!Array.isArray(valor) || valor.length > 20) return false;
+  for (let i = 0; i < valor.length; i++) {
+    const p = valor[i];
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+    if (typeof p.name !== 'string' || p.name.trim() === '' || p.name.length > 64) return false;
+    if (typeof p.units !== 'number' || !Number.isInteger(p.units) || p.units < 1) return false;
+    if (p.sku !== undefined && (typeof p.sku !== 'string' || p.sku.length > 64)) return false;
+    if (p.id !== undefined && typeof p.id !== 'string') return false;
+    if (!Array.isArray(p.priceTiers) || p.priceTiers.length < 1 || p.priceTiers.length > 50) {
+      return false;
+    }
+    const vistos = {};
+    let minimo = Infinity;
+    for (let t = 0; t < p.priceTiers.length; t++) {
+      const tier = p.priceTiers[t];
+      if (!tier || typeof tier !== 'object' || Array.isArray(tier)) return false;
+      if (typeof tier.minQty !== 'number' || !Number.isInteger(tier.minQty) || tier.minQty < 1) {
+        return false;
+      }
+      if (typeof tier.price !== 'number' || !isFinite(tier.price) || tier.price <= 0) return false;
+      if (vistos[tier.minQty] === true) return false;
+      vistos[tier.minQty] = true;
+      if (tier.minQty < minimo) minimo = tier.minQty;
+    }
+    if (minimo !== 1) return false;
+  }
+  return JSON.stringify(valor).length <= 40000;
+}
+
 /**
  * Duplicate guard across the WHOLE catalog (active AND inactive rows — a
  * deactivated product keeps its code). Compares trimmed strings exactly.
@@ -122,6 +225,25 @@ function obtenerProductos() {
     // Sheets may store the flag as boolean TRUE or as text after a paste.
     if (activo !== true && activo !== 'TRUE' && activo !== 'true') continue;
 
+    // product.md extensions — emitted only when the sheet carries the
+    // column AND the cell has content (a sheet without them = feature absent).
+    const extra = {};
+    if (cols.descripcion !== undefined && fila[cols.descripcion]) {
+      extra.descripcion = String(fila[cols.descripcion]);
+    }
+    if (cols.atributos !== undefined) {
+      const atributos = leerJsonCelda(fila[cols.atributos]);
+      if (atributos !== undefined && typeof atributos === 'object' && !Array.isArray(atributos)) {
+        extra.atributos = atributos;
+      }
+    }
+    if (cols.featured !== undefined) extra.featured = leerBooleanoCelda(fila[cols.featured]);
+    if (cols.returnable !== undefined) extra.returnable = leerBooleanoCelda(fila[cols.returnable]);
+    if (cols.presentaciones !== undefined) {
+      const presentaciones = leerJsonCelda(fila[cols.presentaciones]);
+      if (Array.isArray(presentaciones)) extra.presentaciones = presentaciones;
+    }
+
     productos.push({
       id: String(fila[cols.id]),
       nombre: String(fila[cols.nombre]),
@@ -138,6 +260,7 @@ function obtenerProductos() {
         : String(fila[cols.marca]).trim(),
       // plan-camara-barras (§4.1): always present, '' when empty/absent.
       barcode: idxBarcode === -1 ? '' : leerBarcodeCelda(fila[idxBarcode]),
+      ...extra,
     });
   }
 
@@ -181,6 +304,25 @@ function productosAdmin(token, data) {
   for (let f = 1; f < datos.length; f++) {
     const fila = datos[f];
     const activo = fila[cols.activo];
+
+    // product.md extensions — same rule as the public read (column + cell).
+    const extra = {};
+    if (cols.descripcion !== undefined && fila[cols.descripcion]) {
+      extra.descripcion = String(fila[cols.descripcion]);
+    }
+    if (cols.atributos !== undefined) {
+      const atributos = leerJsonCelda(fila[cols.atributos]);
+      if (atributos !== undefined && typeof atributos === 'object' && !Array.isArray(atributos)) {
+        extra.atributos = atributos;
+      }
+    }
+    if (cols.featured !== undefined) extra.featured = leerBooleanoCelda(fila[cols.featured]);
+    if (cols.returnable !== undefined) extra.returnable = leerBooleanoCelda(fila[cols.returnable]);
+    if (cols.presentaciones !== undefined) {
+      const presentaciones = leerJsonCelda(fila[cols.presentaciones]);
+      if (Array.isArray(presentaciones)) extra.presentaciones = presentaciones;
+    }
+
     productos.push({
       id: String(fila[cols.id]),
       nombre: String(fila[cols.nombre]),
@@ -198,6 +340,7 @@ function productosAdmin(token, data) {
       // local duplicate pre-guard.
       barcode: idxBarcode === -1 ? '' : leerBarcodeCelda(fila[idxBarcode]),
       activo: activo === true || activo === 'TRUE' || activo === 'true',
+      ...extra,
     });
   }
 
@@ -232,7 +375,13 @@ function crearProducto(token, data) {
     (data.imagen_url !== undefined && typeof data.imagen_url !== 'string') ||
     (data.marca !== undefined &&
       (typeof data.marca !== 'string' || data.marca.trim().length > 64)) ||
-    !esBarcodeValidoServidor(data.barcode)
+    !esBarcodeValidoServidor(data.barcode) ||
+    !esDescripcionValida(data.descripcion) ||
+    !esBooleanoOpcional(data.featured) ||
+    !esBooleanoOpcional(data.returnable) ||
+    !esBooleanoOpcional(data.activo) ||
+    !esAtributosValidosServidor(data.atributos) ||
+    !esPresentacionesValidasServidor(data.presentaciones)
   ) {
     return respuestaError('payload_invalido', 'crearProducto: bad data');
   }
@@ -242,6 +391,12 @@ function crearProducto(token, data) {
   // plan-camara-barras: trim ONCE here; the string (leading zeros intact)
   // travels to the sheet under whichever barcode header exists.
   const barcode = data.barcode === undefined ? '' : String(data.barcode).trim();
+  // product.md extensions: plain text / JSON text cells / booleans.
+  const descripcion = data.descripcion === undefined ? '' : String(data.descripcion).trim();
+  const atributosTexto =
+    data.atributos === undefined ? '' : JSON.stringify(data.atributos);
+  const presentacionesTexto =
+    data.presentaciones === undefined ? '' : JSON.stringify(data.presentaciones);
 
   const nuevoId = Utilities.getUuid();
 
@@ -269,7 +424,14 @@ function crearProducto(token, data) {
       // Wire key matches the sheet header, so the generic row build below
       // writes it — or drops it when the sheet lacks the column.
       marca: marca,
-      activo: true,
+      // product.md extensions — same header-driven rule; "Disponible"
+      // defaults to TRUE when the client omits it.
+      descripcion: descripcion,
+      atributos: atributosTexto,
+      featured: data.featured === true,
+      returnable: data.returnable === true,
+      presentaciones: presentacionesTexto,
+      activo: data.activo === false ? false : true,
     };
     const cols = {};
     for (let c = 0; c < encabezados.length; c++) {
@@ -318,6 +480,15 @@ function actualizarProducto(token, data) {
   if (data.marca !== undefined) campos.marca = String(data.marca).trim();
   // plan-camara-barras: "" is a legitimate value — it CLEARS the code.
   if (data.barcode !== undefined) campos.barcode = String(data.barcode).trim();
+  // product.md extensions: "" / {} / [] are legitimate values that CLEAR
+  // the stored field (same rule as marca/barcode).
+  if (data.descripcion !== undefined) campos.descripcion = String(data.descripcion).trim();
+  if (data.atributos !== undefined) campos.atributos = JSON.stringify(data.atributos);
+  if (data.featured !== undefined) campos.featured = data.featured;
+  if (data.returnable !== undefined) campos.returnable = data.returnable;
+  if (data.presentaciones !== undefined) {
+    campos.presentaciones = JSON.stringify(data.presentaciones);
+  }
 
   if (Object.keys(campos).length === 0) {
     return respuestaError('payload_invalido', 'actualizarProducto: no fields');
@@ -336,7 +507,13 @@ function actualizarProducto(token, data) {
     (campos.activo !== undefined && typeof campos.activo !== 'boolean') ||
     (campos.marca !== undefined &&
       (typeof campos.marca !== 'string' || campos.marca.length > 64)) ||
-    (data.barcode !== undefined && !esBarcodeValidoServidor(data.barcode))
+    (data.barcode !== undefined && !esBarcodeValidoServidor(data.barcode)) ||
+    (data.descripcion !== undefined && !esDescripcionValida(data.descripcion)) ||
+    (data.featured !== undefined && typeof data.featured !== 'boolean') ||
+    (data.returnable !== undefined && typeof data.returnable !== 'boolean') ||
+    (data.atributos !== undefined && !esAtributosValidosServidor(data.atributos)) ||
+    (data.presentaciones !== undefined &&
+      !esPresentacionesValidasServidor(data.presentaciones))
   ) {
     return respuestaError('payload_invalido', 'actualizarProducto: bad fields');
   }

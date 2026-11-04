@@ -37,12 +37,20 @@ const overlayClass = {
 const boxClass = {
 	center: 'max-w-md rounded-xl p-6 shadow-modal',
 	drawer:
-		'max-h-[85vh] w-full overflow-y-auto rounded-t-xl p-6 shadow-modal ' +
-		'md:h-full md:max-h-none md:max-w-md md:overflow-visible md:rounded-none md:shadow-drawer',
+		'max-h-[85vh] w-full overflow-hidden rounded-t-xl p-6 shadow-modal ' +
+		// overflow-y-auto on BOTH breakpoints: the product form (4 sections +
+		// dynamic presentations, product.md) is taller than the viewport, so
+		// the desktop drawer must scroll too (was md:overflow-visible).
+		// max-w-lg (was md): the price-tier tables + paired fields need the
+		// extra 64px to stop wrapping mid-label.
+		'md:h-full md:max-h-none md:max-w-lg md:overflow-hidden md:rounded-none md:shadow-drawer',
 	sheet: 'max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-xl p-6 shadow-modal',
 	ticket:
-		'max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-xl p-6 shadow-modal ' +
-		'lg:flex lg:max-h-none lg:w-full lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none',
+		'h-dvh w-full max-w-none overflow-hidden rounded-none p-0 shadow-modal ' +
+		// ≥lg: the column panel MUST take the column's whole height (flex-1) —
+		// otherwise it grows with its content and the ticket lines push the
+		// totals/charge button out of the clipped column (found 2026-11-04).
+		'lg:flex lg:h-full lg:max-h-none lg:min-h-0 lg:w-full lg:flex-1 lg:overflow-hidden lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none',
 }[variant];
 // Ticket at ≥lg: leaves the fixed-overlay world and becomes grid child #2 —
 // full height of the POS grid, transparent, no z-stacking (§4.2B/C).
@@ -52,12 +60,14 @@ const rootExtra = variant === 'ticket'
 ---
 <div
 	data-modal-root={modalKey}
+	data-modal-variant={variant}
+	data-sheet-state={variant === 'ticket' ? 'closed' : undefined}
 	hidden
 	tabindex="-1"
 	class={`fixed inset-0 z-50 flex bg-text/60 ${overlayClass}${rootExtra}`}
 >
 	<div
-		class={`flex w-full flex-col gap-4 border border-border bg-surface ${boxClass}`}
+		class={`${variant === 'drawer' ? 'relative ' : ''}flex w-full flex-col gap-4 border border-border bg-surface ${boxClass}`}
 		role="dialog"
 		aria-modal="true"
 		aria-label={title ?? 'Panel'}
@@ -67,12 +77,16 @@ const rootExtra = variant === 'ticket'
 			   cancel + close) is the visible title (§4.2G). Other variants
 			   always keep the ✕; the <h2> only renders when a title exists
 			   (product drawer: the FORM's h2 is the visible heading). */
-			variant !== 'ticket' && (
-				<div class="flex items-start justify-between gap-3">
+			variant !== 'ticket' && variant !== 'drawer' && (
+				<div
+					class={variant === 'drawer'
+						? 'pointer-events-none absolute inset-x-6 top-4 z-20 flex items-start justify-end gap-3'
+						: 'flex items-start justify-between gap-3'}
+				>
 					{title && <h2 class="text-sm font-medium text-text">{title}</h2>}
 					<button
 						type="button"
-						class="btn btn-secondary ml-auto"
+						class={`btn btn-secondary pointer-events-auto ${variant === 'drawer' ? '' : 'ml-auto'}`}
 						data-modal-close
 						aria-label="Cerrar"
 					>
@@ -82,7 +96,7 @@ const rootExtra = variant === 'ticket'
 			)
 		}
 		<div
-			class={`text-sm text-text${variant === 'ticket' ? ' lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}
+			class={`text-sm text-text${variant === 'ticket' || variant === 'drawer' ? ' flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : ''}`}
 		>
 			<slot />
 		</div>
@@ -95,3 +109,37 @@ const rootExtra = variant === 'ticket'
 		}
 	</div>
 </div>
+
+<style>
+	@media (max-width: 1023.98px) {
+		:global([data-modal-variant="ticket"]) {
+			transition: opacity 320ms ease;
+		}
+
+		:global([data-modal-variant="ticket"][data-sheet-state="closed"]) {
+			opacity: 0;
+		}
+
+		:global([data-modal-variant="ticket"][data-sheet-state="mid"]),
+		:global([data-modal-variant="ticket"][data-sheet-state="full"]) {
+			opacity: 1;
+		}
+
+		:global([data-modal-variant="ticket"]) [role="dialog"] {
+			height: 65dvh;
+			max-height: 100dvh;
+			transform: translateY(0);
+			transition:
+				height 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+				transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+		}
+
+		:global([data-modal-variant="ticket"][data-sheet-state="closed"]) [role="dialog"] {
+			transform: translateY(100%);
+		}
+
+		:global([data-modal-variant="ticket"][data-sheet-state="full"]) [role="dialog"] {
+			height: 100dvh;
+		}
+	}
+</style>

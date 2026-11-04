@@ -1,15 +1,17 @@
 ---
-// Catalog section — presentational shell: big search input, category chips,
+// Catalog section — presentational shell: big search input, filter DROPDOWNS,
 // stale notice, loading skeletons and the grid where the Card template
 // renders (astrobase §3.2). Every interactive behavior belongs to
-// islands/catalog.ts — this file only draws, props/DOM only (ui/ rule).
+// islands/catalog/catalog.ts — this file only draws, props/DOM only (ui/ rule).
 //
-// refactorUI §4.2D (Fase 2):
+// Owner request 2026-11-04: the category chips became a compact filter panel
+// with four native <select>s — categoría, marca, atributo and (revealed once
+// an attribute is picked) its value. The island fills every option from the
+// in-memory catalog; only "Todas/Todos" ships at build time. "Limpiar" only
+// appears while some filter is active.
+//
 //   - search: icon + big input, Esc clears, Enter adds a unique result
 //     (island).
-//   - categories: ChipGroup-style horizontal chips replace the old <select>
-//     (hook data-catalog-category stays on the WRAPPER, data-category-value
-//     on each chip; first chip "Todas" is static).
 //   - stale: compact inline notice, no full-width block.
 //   - skeleton: 8 cards while the first paint decision runs (island hides it
 //     on the first render()).
@@ -88,34 +90,54 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 		</a>
 	</Alert>
 
-	<!-- Category chips (§4.2D): wrapper KEEPS the data-catalog-category hook
-	     (the island reads the selected data-category-value from it). First
-	     chip is static "Todas"; the island clones the template per category. -->
-	<div
-		data-catalog-category
-		role="group"
-		aria-label="Categoría"
-		class="flex items-center gap-2 overflow-x-auto py-1"
-	>
-		<button
-			type="button"
-			data-category-value=""
-			aria-pressed="true"
-			class="btn btn-secondary w-full min-w-24 min-h-9 rounded-full px-3.5 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
-		>
-			Todas
-		</button>
+	<!-- Filters (owner request 2026-11-04): native dropdowns, all filled by
+	     the island from the loaded catalog — categoría, marca, atributo and
+	     the attribute VALUE (revealed only while a key is selected). -->
+	<div class="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3">
+		<div class="flex items-center justify-between gap-3">
+			<p class="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+				Filtros
+			</p>
+			<button
+				data-catalog-clear
+				type="button"
+				hidden
+				class="text-xs font-medium text-primary hover:underline"
+			>
+				Limpiar filtros
+			</button>
+		</div>
+		<div class="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+			<label class="flex flex-col gap-1 text-[11px] font-medium text-text-muted">
+				Categoría
+				<select data-catalog-filter="categoria" class="input-field min-h-10 py-1.5 text-sm">
+					<option value="">Todas</option>
+				</select>
+			</label>
+			<label class="flex flex-col gap-1 text-[11px] font-medium text-text-muted">
+				Marca
+				<select data-catalog-filter="marca" class="input-field min-h-10 py-1.5 text-sm">
+					<option value="">Todas</option>
+				</select>
+			</label>
+			<label class="flex flex-col gap-1 text-[11px] font-medium text-text-muted">
+				Atributo
+				<select data-catalog-filter="atributo" class="input-field min-h-10 py-1.5 text-sm">
+					<option value="">Todos</option>
+				</select>
+			</label>
+			<label
+				data-catalog-valor-wrap
+				hidden
+				class="flex flex-col gap-1 text-[11px] font-medium text-text-muted"
+			>
+				Valor
+				<select data-catalog-filter="valor" class="input-field min-h-10 py-1.5 text-sm">
+					<option value="">Todos</option>
+				</select>
+			</label>
+		</div>
 	</div>
-	<template data-category-chip-template>
-		<button
-			type="button"
-			data-category-value=""
-			aria-pressed="false"
-			class="btn btn-secondary w-full min-w-24 min-h-9 rounded-full px-3.5 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-content"
-		>
-			<span data-chip-label></span>
-		</button>
-	</template>
 
 	<!-- "Catálogo desactualizado" — compact inline notice (§4.2D: text set by
 	     the island with formatNumero; hidden until the cache is stale and
@@ -192,3 +214,23 @@ import BarcodeScanner from "./BarcodeScanner.astro";
 		>
 	</nav>
 </section>
+
+<style>
+	@media (min-width: 1024px) and (max-width: 1280px) {
+		:global(body:has([data-sidebar-root]:not([data-sidebar-collapse])))
+			[data-catalog-skeleton],
+		:global(body:has([data-sidebar-root]:not([data-sidebar-collapse])))
+			[data-catalog-grid] {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (min-width: 1281px) and (max-width: 1400px){
+		:global(body:has([data-sidebar-root]:not([data-sidebar-collapse])))
+			[data-catalog-skeleton],
+		:global(body:has([data-sidebar-root]:not([data-sidebar-collapse])))
+			[data-catalog-grid] {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+</style>

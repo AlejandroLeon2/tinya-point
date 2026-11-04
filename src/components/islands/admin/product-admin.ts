@@ -39,8 +39,24 @@ import {
 import { crearFeedback } from '../../../utils/feedback';
 import { createFormManager } from '../../../utils/form-manager';
 import { formatCurrency } from '../../../utils/format';
-import { limpiarErrorCampo, limpiarErroresForm } from '../../../utils/form-errors';
+import {
+  limpiarErrorCampo,
+  limpiarErroresForm,
+  mostrarErrorCampo,
+  observarCampo,
+} from '../../../utils/form-errors';
 import { closeModal, openModal } from '../../../utils/modal';
+// product.md: presentations / price tiers / attributes domain helpers —
+// validation on read, category-adapted suggestion keys, quantity label.
+import {
+  nuevaPresentacionId,
+  ordenarTiers,
+  claveAtributoPermitida,
+  sugerenciasAtributos,
+  type AtributosProducto,
+  type Presentacion,
+  type RangoPrecio,
+} from '../../../utils/presentaciones';
 import { getAjustes, setCatalogoCache } from '../../../utils/storage';
 import { mostrarToast } from '../../../utils/toast';
 import {
@@ -87,11 +103,31 @@ if (root) {
   const barcodeInput = qs<HTMLInputElement>(root, '[data-product-barcode]');
   const barcodeScanBtn = qs<HTMLButtonElement>(root, '[data-product-barcode-scan]');
   const barcodeOk = qs<HTMLElement>(root, '[data-product-barcode-ok]');
+  // product.md — section A: descripción + dynamic attributes.
+  const descripcionInput = qs<HTMLTextAreaElement>(root, '[data-product-descripcion]');
+  const attrContainer = qs<HTMLElement>(root, '[data-product-atributos]');
+  const attrTemplate = qs<HTMLTemplateElement>(root, '[data-attribute-template]');
+  const attrSuggestions = qs<HTMLElement>(root, '[data-attr-suggestions]');
+  const attrChipTemplate = qs<HTMLTemplateElement>(root, '[data-attr-chip-template]');
+  // product.md — section B: the three switches.
+  const featuredInput = qs<HTMLInputElement>(root, '[data-product-featured]');
+  const returnableInput = qs<HTMLInputElement>(root, '[data-product-returnable]');
+  const availableInput = qs<HTMLInputElement>(root, '[data-product-available]');
+  // product.md — section C: presentations + price tiers.
+  const presContainer = qs<HTMLElement>(root, '[data-product-presentations]');
+  const presEmpty = qs<HTMLElement>(root, '[data-pres-empty]');
+  const presAddBtn = qs<HTMLButtonElement>(root, '[data-pres-add]');
+  const presTemplate = qs<HTMLTemplateElement>(root, '[data-presentation-template]');
+  const tierTemplate = qs<HTMLTemplateElement>(root, '[data-price-tier-template]');
   const precioInput = qs<HTMLInputElement>(root, '[data-product-precio]');
   const stockInput = qs<HTMLInputElement>(root, '[data-product-stock]');
   const imagenInput = qs<HTMLInputElement>(root, '[data-product-imagen]');
   const imagenFileInput = qs<HTMLInputElement>(root, '[data-product-imagen-file]');
   const imagenPreview = qs<HTMLImageElement>(root, '[data-product-imagen-preview]');
+  // Camera placeholder inside the upload frame — shown ⇔ there is no photo.
+  const imagenPlaceholder = qs<HTMLElement>(root, '[data-product-imagen-placeholder]');
+  // Upload button copy flips with the state: Subir foto ⇄ Cambiar foto.
+  const imagenLabel = qs<HTMLElement>(root, '[data-product-imagen-label]');
   const imagenQuitarBtn = qs<HTMLButtonElement>(root, '[data-product-imagen-quitar]');
   const imagenEstado = qs<HTMLElement>(root, '[data-product-imagen-estado]');
   const imagenError = qs<HTMLElement>(root, '[data-product-imagen-error]');
@@ -148,6 +184,13 @@ if (root) {
   // lives inside createFormManager (enVuelo).
   let enviandoToggle = false;
   let subiendoImagen = false;
+
+  // A stored URL may be dead (asset removed, typo): fall back to the upload
+  // placeholder instead of leaving a broken-image glyph in the tile.
+  imagenPreview?.addEventListener('error', () => {
+    setHidden(imagenPreview, true);
+    setHidden(imagenPlaceholder, false);
+  });
 
   // Categoría <select>s (plan-productos-v2.md Fase 3 + toolbar T3.2): options
   // come from the public GET ?action=categorias; when that action isn't
@@ -242,7 +285,10 @@ if (root) {
       imagenPreview.src = url;
       setHidden(imagenPreview, url === '');
     }
+    // The frame shows EITHER the photo OR the camera placeholder.
+    setHidden(imagenPlaceholder, url !== '');
     setHidden(imagenQuitarBtn, url === '');
+    setText(imagenLabel, url === '' ? 'Subir foto' : 'Cambiar foto');
   }
 
   function mostrarErrorImagen(mensaje: string): void {
@@ -286,6 +332,318 @@ if (root) {
       subiendoImagen = false;
       if (imagenFileInput) imagenFileInput.disabled = false;
     }
+  }
+
+  // ── product.md: dynamic sections (attributes / presentations / tiers) ──
+  // Every row is cloned from a ui/ <template> — this file owns behavior and
+  // copy only, never markup classes (stilesbase gates).
+
+  function sincronizarPresVacio(): void {
+    const bloques = presContainer
+      ? [...presContainer.querySelectorAll<HTMLElement>('[data-presentation]')]
+      : [];
+    setHidden(presEmpty, bloques.length > 0);
+    // Numbered headings ("Presentación 1/2/3") keep a long form scannable and
+    // stay correct after any block is removed.
+    bloques.forEach((bloque, index) => {
+      setText(qs<HTMLElement>(bloque, '[data-pres-title]'), `Presentación ${index + 1}`);
+    });
+  }
+
+  /** One price-tier row; default min = next integer after the current max. */
+  function agregarRango(bloque: HTMLElement, minQty?: number, precio?: number): void {
+    if (!tierTemplate) return;
+    const fila = cloneTemplate(tierTemplate);
+    if (!fila) return;
+    const tiersEl = qs<HTMLElement>(bloque, '[data-pres-tiers]');
+    const minInput = qs<HTMLInputElement>(fila, '[data-tier-min]');
+    const priceInput = qs<HTMLInputElement>(fila, '[data-tier-price]');
+    if (!tiersEl || !minInput || !priceInput) return;
+
+    let siguiente = minQty;
+    if (siguiente === undefined) {
+      const mins = [...tiersEl.querySelectorAll<HTMLInputElement>('[data-tier-min]')]
+        .map((input) => Number(input.value))
+        .filter((valor) => Number.isInteger(valor) && valor >= 1);
+      siguiente = mins.length === 0 ? 1 : Math.max(...mins) + 1;
+    }
+    minInput.value = String(siguiente);
+    if (precio !== undefined) priceInput.value = String(precio);
+
+    // Inline errors die as soon as the user retypes (plan-form-ux Fase 1).
+    observarCampo(minInput);
+    observarCampo(priceInput);
+    qs<HTMLButtonElement>(fila, '[data-tier-delete]')?.addEventListener('click', () => {
+      fila.remove();
+    });
+    tiersEl.append(fila);
+  }
+
+  /**
+   * One presentation block. `existente` marks a block loaded from the sheet
+   * — only those ask for confirmation before being removed (product.md §2).
+   */
+  function agregarPresentacion(p?: Presentacion, existente = false): void {
+    if (!presTemplate || !presContainer) return;
+    const bloque = cloneTemplate(presTemplate);
+    if (!bloque) return;
+    bloque.setAttribute('data-pres-existing', existente ? 'true' : 'false');
+    // Stable id for EVERY block: keep the stored one, mint a new one for a
+    // fresh block (ids travel inside the JSON, product.md pres_* ids).
+    bloque.setAttribute('data-pres-id', p?.id ?? nuevaPresentacionId());
+
+    const nameInput = qs<HTMLInputElement>(bloque, '[data-pres-name]');
+    const unitsInput = qs<HTMLInputElement>(bloque, '[data-pres-units]');
+    const skuInput = qs<HTMLInputElement>(bloque, '[data-pres-sku]');
+    if (p) {
+      if (nameInput) nameInput.value = p.name;
+      if (unitsInput) unitsInput.value = String(p.units);
+      if (skuInput) skuInput.value = p.sku ?? '';
+    }
+    for (const input of [nameInput, unitsInput, skuInput]) {
+      if (input) observarCampo(input);
+    }
+
+    const tiers = p?.priceTiers ? ordenarTiers(p.priceTiers) : [];
+    if (tiers.length === 0) {
+      agregarRango(bloque, 1); // first range always starts at quantity 1
+    } else {
+      for (const tier of tiers) agregarRango(bloque, tier.minQty, tier.price);
+    }
+
+    qs<HTMLButtonElement>(bloque, '[data-tier-add]')?.addEventListener('click', () => {
+      agregarRango(bloque);
+      const nuevos = bloque.querySelectorAll<HTMLInputElement>('[data-tier-min]');
+      nuevos[nuevos.length - 1]?.focus();
+    });
+
+    // Delete: new blocks go straight out; existing ones confirm inline first.
+    const confirmBox = qs<HTMLElement>(bloque, '[data-pres-confirm]');
+    qs<HTMLButtonElement>(bloque, '[data-pres-delete]')?.addEventListener('click', () => {
+      if (bloque.getAttribute('data-pres-existing') === 'true') {
+        setHidden(confirmBox, false);
+        qs<HTMLButtonElement>(confirmBox, '[data-pres-confirm-no]')?.focus();
+        return;
+      }
+      bloque.remove();
+      sincronizarPresVacio();
+    });
+    qs<HTMLButtonElement>(confirmBox, '[data-pres-confirm-no]')?.addEventListener('click', () => {
+      setHidden(confirmBox, true);
+    });
+    qs<HTMLButtonElement>(confirmBox, '[data-pres-confirm-yes]')?.addEventListener('click', () => {
+      bloque.remove();
+      sincronizarPresVacio();
+    });
+
+    presContainer.append(bloque);
+    sincronizarPresVacio();
+  }
+
+  /** One row for a fixed attribute key and its editable value. */
+  function agregarAtributo(clave: string, valor = ''): void {
+    if (!attrTemplate || !attrContainer) return;
+    const claveCanonica = claveAtributoPermitida(clave);
+    if (!claveCanonica) return;
+    const yaExiste = [...attrContainer.querySelectorAll<HTMLElement>('[data-attribute-row]')]
+      .some((fila) => fila.dataset.attributeKey === claveCanonica);
+    if (yaExiste) return;
+
+    const fila = cloneTemplate(attrTemplate);
+    if (!fila) return;
+    const valueInput = qs<HTMLInputElement>(fila, '[data-attr-value]');
+    fila.dataset.attributeKey = claveCanonica;
+    setText(qs<HTMLElement>(fila, '[data-attr-name]'), claveCanonica);
+    if (valueInput) {
+      valueInput.setAttribute('aria-label', `Valor de ${claveCanonica}`);
+      valueInput.placeholder = {
+        Tamaño: 'Ej. 500 ml',
+        Sabor: 'Ej. Naranja',
+        Envase: 'Ej. Botella',
+      }[claveCanonica] ?? 'Escribe el valor';
+      valueInput.value = valor;
+      observarCampo(valueInput);
+    }
+    // The row error belongs to the value field and clears as soon as it changes.
+    fila.addEventListener('input', () => {
+      setHidden(qs<HTMLElement>(fila, '[data-attr-error]'), true);
+      valueInput?.removeAttribute('aria-invalid');
+    });
+    qs<HTMLButtonElement>(fila, '[data-attr-delete]')?.addEventListener('click', () => {
+      fila.remove();
+      pintarSugerencias();
+    });
+    attrContainer.append(fila);
+    pintarSugerencias();
+  }
+
+  // Only the three supported attribute keys can be added from these chips.
+  function pintarSugerencias(): void {
+    if (!attrSuggestions || !attrChipTemplate) return;
+    attrSuggestions.replaceChildren();
+    const existentes = new Set(
+      [...(attrContainer?.querySelectorAll<HTMLElement>('[data-attribute-row]') ?? [])]
+        .map((fila) => fila.dataset.attributeKey),
+    );
+    for (const sugerencia of sugerenciasAtributos(categoriaInput?.value ?? '')) {
+      if (existentes.has(sugerencia)) continue;
+      const chip = cloneTemplate(attrChipTemplate);
+      if (!chip) continue;
+      chip.dataset.attrSuggestion = sugerencia;
+      setText(qs<HTMLElement>(chip, '[data-attr-suggestion-label]'), sugerencia);
+      attrSuggestions.append(chip);
+    }
+  }
+
+  /**
+   * Read the dynamic sections on submit. Returns null (after painting the
+   * first inline error) when something is invalid — guardar() then aborts
+   * before any network call.
+   */
+  function leerExtras(): {
+    featured: boolean;
+    returnable: boolean;
+    activo: boolean;
+    atributos: AtributosProducto;
+    presentaciones: Presentacion[];
+  } | null {
+    // ── attributes: only supported keys are serialized; values are required ──
+    const atributos: AtributosProducto = {};
+    const filasAttr = attrContainer
+      ? [...attrContainer.querySelectorAll<HTMLElement>('[data-attribute-row]')]
+      : [];
+    for (const fila of filasAttr) {
+      const clave = claveAtributoPermitida(fila.dataset.attributeKey ?? '');
+      const valueInput = qs<HTMLInputElement>(fila, '[data-attr-value]');
+      if (!clave || !valueInput) continue;
+      const valor = valueInput.value.trim();
+      if (valor === '') {
+        mostrarErrorAtributo(fila, valueInput, `Ingresa el valor de ${clave.toLowerCase()}.`);
+        return null;
+      }
+      if (valor.length > 128) {
+        mostrarErrorAtributo(fila, valueInput, 'El valor de la característica es demasiado largo.');
+        return null;
+      }
+      if (atributos[clave] !== undefined) {
+        mostrarErrorAtributo(fila, valueInput, `Ya agregaste ${clave.toLowerCase()}.`);
+        return null;
+      }
+      atributos[clave] = valor;
+    }
+
+    // ── presentations: name + units + ≥1 valid tier, first minQty = 1 ──────
+    const bloques = presContainer
+      ? [...presContainer.querySelectorAll<HTMLElement>('[data-presentation]')]
+      : [];
+    const presentaciones: Presentacion[] = [];
+    for (const bloque of bloques) {
+      const nameInput = qs<HTMLInputElement>(bloque, '[data-pres-name]');
+      const unitsInput = qs<HTMLInputElement>(bloque, '[data-pres-units]');
+      const skuInput = qs<HTMLInputElement>(bloque, '[data-pres-sku]');
+      const errorEl = qs<HTMLElement>(bloque, '[data-pres-error]');
+      if (errorEl) {
+        setHidden(errorEl, true);
+        setText(errorEl, '');
+      }
+      if (!nameInput || !unitsInput) continue;
+
+      const nombre = nameInput.value.trim();
+      if (nombre === '' || nombre.length > 64) {
+        mostrarErrorCampo(nameInput, 'Ingresa el nombre de la presentación.');
+        nameInput.focus();
+        return null;
+      }
+      const unidades = Number(unitsInput.value);
+      if (unitsInput.value === '' || !Number.isInteger(unidades) || unidades < 1) {
+        mostrarErrorCampo(
+          unitsInput,
+          'Ingresa la cantidad de unidades (número entero mayor a 0).',
+        );
+        unitsInput.focus();
+        return null;
+      }
+
+      const tierRows = [...bloque.querySelectorAll<HTMLElement>('[data-price-tier]')];
+      const tiers: RangoPrecio[] = [];
+      for (const fila of tierRows) {
+        const minInput = qs<HTMLInputElement>(fila, '[data-tier-min]');
+        const priceInput = qs<HTMLInputElement>(fila, '[data-tier-price]');
+        if (!minInput || !priceInput) continue;
+        const min = Number(minInput.value);
+        if (minInput.value === '' || !Number.isInteger(min) || min < 1) {
+          mostrarErrorCampo(minInput, 'La cantidad desde debe ser un número entero mayor a 0.');
+          minInput.focus();
+          return null;
+        }
+        const precio = Number(priceInput.value);
+        if (priceInput.value === '' || !Number.isFinite(precio) || precio <= 0) {
+          mostrarErrorCampo(priceInput, 'Ingresa un precio mayor a 0.');
+          priceInput.focus();
+          return null;
+        }
+        tiers.push({ minQty: min, price: precio });
+      }
+      if (tiers.length === 0) {
+        mostrarErrorBloque(bloque, 'Agrega al menos un rango de precios.');
+        qs<HTMLButtonElement>(bloque, '[data-tier-add]')?.focus();
+        return null;
+      }
+      const minimos = tiers.map((t) => t.minQty);
+      if (new Set(minimos).size !== minimos.length) {
+        mostrarErrorBloque(bloque, 'No repitas la misma cantidad mínima.');
+        return null;
+      }
+      if (Math.min(...minimos) !== 1) {
+        mostrarErrorBloque(bloque, 'El primer rango debe comenzar en cantidad 1.');
+        const primerMin = bloque.querySelector<HTMLInputElement>('[data-tier-min]');
+        primerMin?.focus();
+        return null;
+      }
+
+      const sku = (skuInput?.value ?? '').trim();
+      const id = bloque.getAttribute('data-pres-id') ?? undefined;
+      presentaciones.push({
+        ...(id ? { id } : {}),
+        name: nombre,
+        units: unidades,
+        ...(sku !== '' ? { sku } : {}),
+        priceTiers: ordenarTiers(tiers),
+      });
+    }
+
+    return {
+      featured: featuredInput?.checked ?? false,
+      returnable: returnableInput?.checked ?? false,
+      // "Disponible" defaults to ON when the sheet has no activo column yet.
+      activo: availableInput?.checked ?? true,
+      atributos,
+      presentaciones,
+    };
+  }
+
+  /**
+   * Attribute row error: ONE slot under both fields (never inserted between an
+   * input and its sibling), so the pair stays aligned when a message appears.
+   */
+  function mostrarErrorAtributo(
+    fila: HTMLElement,
+    input: HTMLInputElement,
+    mensaje: string,
+  ): void {
+    const errorEl = qs<HTMLElement>(fila, '[data-attr-error]');
+    setText(errorEl, mensaje);
+    setHidden(errorEl, false);
+    input.setAttribute('aria-invalid', 'true');
+    input.focus();
+  }
+
+  /** Block-level error (no single input owns the message). */
+  function mostrarErrorBloque(bloque: HTMLElement, mensaje: string): void {
+    const errorEl = qs<HTMLElement>(bloque, '[data-pres-error]');
+    if (!errorEl) return;
+    setText(errorEl, mensaje);
+    setHidden(errorEl, false);
   }
 
   // Spanish copy per transport outcome / §4.5 code — the code itself never
@@ -529,6 +887,26 @@ if (root) {
       setText(barcodeOk, '');
       setHidden(barcodeOk, true);
     }
+    // product.md — section A: descripción + atributos (legacy rows without
+    // the fields load as '' / no rows, exactly like the other optional data).
+    if (descripcionInput) descripcionInput.value = producto.descripcion ?? '';
+    attrContainer?.replaceChildren();
+    for (const [clave, valor] of Object.entries(producto.atributos ?? {})) {
+      const clavePermitida = claveAtributoPermitida(clave);
+      if (clavePermitida) agregarAtributo(clavePermitida, valor);
+    }
+    pintarSugerencias();
+    // product.md — section B: switches mirror the stored flags.
+    if (featuredInput) featuredInput.checked = producto.featured === true;
+    if (returnableInput) returnableInput.checked = producto.returnable === true;
+    if (availableInput) availableInput.checked = producto.activo !== false;
+    // product.md — section C: rebuild the blocks; each one is marked as
+    // EXISTING so deleting it asks for confirmation first.
+    presContainer?.replaceChildren();
+    for (const presentacion of producto.presentaciones ?? []) {
+      agregarPresentacion(presentacion, true);
+    }
+    sincronizarPresVacio();
     ocultarAlertas();
     ocultarEstadoImagen();
     sincronizarImagen();
@@ -536,6 +914,17 @@ if (root) {
     // Focus return to the Editar button is handled by utils/modal on close.
     if (formModal) openModal(formModal);
     nombreInput?.focus();
+  }
+
+  /**
+   * Focus the name field once the drawer is actually visible. The TopBar/empty
+   * CTA and modal-controller share ONE click: whichever handler runs first, the
+   * rAF lands after both, so a hidden input never swallows the focus.
+   */
+  function enfocarNombreAlAbrir(): void {
+    requestAnimationFrame(() => {
+      if (formModal && !formModal.hidden) nombreInput?.focus();
+    });
   }
 
   function modoNuevo(): void {
@@ -548,6 +937,12 @@ if (root) {
       setText(barcodeOk, '');
       setHidden(barcodeOk, true);
     }
+    // product.md: dynamic rows are NOT reset by form.reset() — clear them
+    // by hand. The switches return to their HTML defaults (available ON).
+    attrContainer?.replaceChildren();
+    presContainer?.replaceChildren();
+    sincronizarPresVacio();
+    pintarSugerencias();
     ocultarAlertas();
     ocultarEstadoImagen();
     sincronizarImagen();
@@ -561,9 +956,17 @@ if (root) {
     precio: number;
     stock: number;
     imagen_url: string;
+    // product.md: brief description (optional, section A).
+    descripcion: string;
   };
 
   async function guardar(datos: DatosForm): Promise<void> {
+    // product.md: dynamic sections are validated HERE (they are not plain
+    // inputs, so createFormManager's schema can't own them). leerExtras()
+    // paints the first inline error and returns null → abort, no network.
+    const extras = leerExtras();
+    if (!extras) return;
+
     // Local duplicate pre-guard (plan-camara-barras): the loaded catalog is
     // checked BEFORE any network call — same strategy as categorias-admin's
     // categoria_duplicada pre-guard. The backend validates again (and the
@@ -583,10 +986,19 @@ if (root) {
     const textoOriginal = esAlta ? 'Guardar producto' : 'Guardar cambios';
     setText(submitBtn, esAlta ? 'Creando…' : 'Guardando…');
 
+    const payload = {
+      ...datos,
+      featured: extras.featured,
+      returnable: extras.returnable,
+      activo: extras.activo,
+      atributos: extras.atributos,
+      presentaciones: extras.presentaciones,
+    };
+
     try {
       const resultado = esAlta
-        ? await crearProducto(datos)
-        : await actualizarProducto({ id: idEditando, ...datos });
+        ? await crearProducto(payload)
+        : await actualizarProducto({ id: idEditando, ...payload });
 
       if (resultado.status === 'success') {
         mostrarOk(esAlta ? 'Producto creado.' : 'Producto actualizado.');
@@ -689,6 +1101,12 @@ if (root) {
         error: 'La imagen debe ser una URL que empiece con http:// o https://.',
         optional: true,
       },
+      // product.md: brief optional description (textarea rides the same
+      // schema — FieldRule accepts HTMLTextAreaElement).
+      descripcion: {
+        el: descripcionInput,
+        optional: true,
+      },
     },
     onSubmit: (datos) => guardar(datos),
   });
@@ -719,6 +1137,51 @@ if (root) {
     if (imagenInput) imagenInput.value = '';
     ocultarEstadoImagen();
     sincronizarImagen();
+  });
+
+  // ── product.md: dynamic-section wiring (delegated where rows come and
+  // go; per-row listeners are attached at clone time inside the builders) ──
+  presAddBtn?.addEventListener('click', () => {
+    agregarPresentacion();
+    const bloques = presContainer?.querySelectorAll<HTMLElement>('[data-presentation]');
+    bloques?.[bloques.length - 1]?.querySelector<HTMLInputElement>('[data-pres-name]')?.focus();
+  });
+
+  // Suggestion chip → add a value row for the fixed attribute key.
+  attrSuggestions?.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const chip = target.closest<HTMLElement>('[data-attr-suggestion]');
+    if (!chip) return;
+    const clave = chip.dataset.attrSuggestion ?? '';
+    if (clave === '') return;
+    const filas = attrContainer
+      ? [...attrContainer.querySelectorAll<HTMLElement>('[data-attribute-row]')]
+      : [];
+    for (const fila of filas) {
+      if (fila.dataset.attributeKey === clave) {
+        qs<HTMLInputElement>(fila, '[data-attr-value]')?.focus();
+        return;
+      }
+    }
+    agregarAtributo(clave);
+    const nuevas = attrContainer?.querySelectorAll<HTMLElement>('[data-attribute-row]');
+    nuevas?.[nuevas.length - 1]?.querySelector<HTMLInputElement>('[data-attr-value]')?.focus();
+  });
+
+  // Block-level errors (data-pres-error) clear as soon as the user edits
+  // anything inside that presentation — field-level ones self-clear via
+  // observarCampo.
+  presContainer?.addEventListener('input', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const bloque = target.closest<HTMLElement>('[data-presentation]');
+    if (!bloque) return;
+    const errorEl = qs<HTMLElement>(bloque, '[data-pres-error]');
+    if (errorEl && !errorEl.hidden) {
+      setHidden(errorEl, true);
+      setText(errorEl, '');
+    }
   });
 
   // Camera scan (plan-camara-barras Opción B): the button opens the shared
@@ -781,7 +1244,10 @@ if (root) {
   document.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
-    if (target.closest('[data-product-new]')) modoNuevo();
+    if (target.closest('[data-product-new]')) {
+      modoNuevo();
+      enfocarNombreAlAbrir();
+    }
   });
 
   // Estado chips (T3.2): exclusive selection, aria-pressed flips, local only.

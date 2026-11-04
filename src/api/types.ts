@@ -3,6 +3,7 @@
 // shapes — contract changes are made here first (doc/astrobase.md §3.7).
 
 import type { MetodoPago } from '../utils/storage';
+import type { AtributosProducto, Presentacion } from '../utils/presentaciones';
 
 // §4.5 — closed union of server error codes; the same strings everywhere.
 // categoria_* added by plan-productos-v2 Fase 2 (§4.12–§4.14); marca_* by
@@ -59,6 +60,13 @@ export interface ProductoApi {
   // feature simply omits it, and every consumer treats missing as "no code".
   // ALWAYS a string when present — leading zeros are part of the code.
   barcode?: string;
+  // product.md extensions — all OPTIONAL so a backend/sheet that predates
+  // them keeps working (missing = "not set", same rule as barcode).
+  descripcion?: string;
+  atributos?: AtributosProducto;
+  featured?: boolean;
+  returnable?: boolean;
+  presentaciones?: Presentacion[];
 }
 
 export interface RespuestaProductos {
@@ -219,6 +227,15 @@ export interface DatosCrearProducto {
   marca?: string;
   // Optional (plan-camara-barras): empty string = no code, stored as string.
   barcode?: string;
+  // product.md extensions — every one optional (older clients never send
+  // them; the server defaults them: '', {}, false, [], activo true).
+  descripcion?: string;
+  atributos?: AtributosProducto;
+  featured?: boolean;
+  returnable?: boolean;
+  presentaciones?: Presentacion[];
+  // "Disponible" switch — defaults to true when omitted.
+  activo?: boolean;
 }
 
 export interface PeticionCrearProducto {
@@ -246,6 +263,13 @@ export interface DatosActualizarProducto {
   marca?: string;
   // Optional since plan-camara-barras; "" clears the stored code.
   barcode?: string;
+  // product.md extensions — "" / {} / [] are legitimate values that CLEAR
+  // the stored field (same rule as marca/barcode).
+  descripcion?: string;
+  atributos?: AtributosProducto;
+  featured?: boolean;
+  returnable?: boolean;
+  presentaciones?: Presentacion[];
 }
 
 export interface PeticionActualizarProducto {

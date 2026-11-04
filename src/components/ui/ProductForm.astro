@@ -5,134 +5,525 @@
 // no query params: /productos is one static page). Validation copy is set by
 // the island in simple Spanish (§5.7), never raw error codes.
 // ui/ draws, never fetches (astrobase §1).
-import Button from './Button.astro';
-import Icon from './Icon.astro';
+//
+// product.md (owner request 2026-11-03): five visual sections —
+//   1. Información general (nombre, categoría/marca, precio/stock, código, descripción)
+//   2. Presentaciones y precios (dynamic blocks with price-tier tables)
+//   3. Atributos (Tamaño, Sabor, Envase)
+//   4. Configuración (three compact switches)
+//   5. Imagen
+// Attribute errors render BELOW the value field so a message never shifts
+// neighboring controls out of line.
+// Existing hooks are kept EXACTLY as they were; only additions here.
+// Dynamic rows (presentations / tiers / attributes / suggestion chips) live
+// in <template>s below — the island clones and fills them (ui/ draws only).
+import Button from "./Button.astro";
+import Icon from "./Icon.astro";
 ---
-<form data-product-form novalidate class="flex flex-col gap-4">
-	<h2 data-product-form-title class="text-base font-semibold text-text">Nuevo producto</h2>
 
-	<label class="flex flex-col gap-1 text-sm font-medium text-text">
-		Nombre
-		<input data-product-nombre type="text" class="input-field" autocomplete="off" />
-	</label>
-	<label class="flex flex-col gap-1 text-sm font-medium text-text">
-		Categoría
-		<!-- <select> fed from GET ?action=categorias with a products-derived
-		     fallback (plan-productos-v2.md Fase 3/D2) — the island rebuilds
-		     the options; ui/ only draws the shell. -->
-		<select data-product-categoria class="input-field">
-			<option value="">Elige una categoría</option>
-		</select>
-	</label>
-	<label class="flex flex-col gap-1 text-sm font-medium text-text">
-		Marca
-		<!-- Same contract as Categoría: GET ?action=marcas with a products-
-		     derived fallback; marca is optional so the blank option leads. -->
-		<select data-product-marca class="input-field">
-			<option value="">Sin marca</option>
-		</select>
-	</label>
+<form
+  data-product-form
+  novalidate
+  class="flex h-full min-h-0 min-w-0 flex-1 flex-col"
+>
+  <header class="flex shrink-0 items-center justify-between gap-3">
+    <h2 data-product-form-title class="text-base font-semibold text-text">
+      Nuevo producto
+    </h2>
+    <button
+      type="button"
+      class="btn btn-secondary min-h-11 px-3"
+      data-modal-close
+      aria-label="Cerrar formulario"
+    >
+      ✕
+    </button>
+  </header>
 
-	<!-- Código de barras (plan-camara-barras): manual input (write/paste) OR
-	     camera scan via the icon button — same field stores both paths. The
-	     `relative block` span keeps the camera button pinned to the input AND
-	     lets form-manager's inline error <p> render under the input without
-	     breaking the label layout. Optional field (a product may ship with no
-	     code); always a STRING so leading zeros survive. -->
-	<label class="flex flex-col gap-1 text-sm font-medium text-text">
-		Código de barras (opcional)
-		<span class="relative block">
-			<input
-				data-product-barcode
-				type="text"
-				class="input-field pr-14"
-				autocomplete="off"
-				spellcheck="false"
-				inputmode="text"
-				placeholder="Ingresar o pegar el código…"
-			/>
-			<button
-				data-product-barcode-scan
-				type="button"
-				aria-label="Escanear código de barras con la cámara"
-				title="Escanear con la cámara"
-				class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted"
-			>
-				<Icon name="camera" class="h-6 w-6" />
-			</button>
-		</span>
-		<!-- Confirmation after a successful camera read (aria-live: announced
-		     without stealing focus; the island clears it on the next edit). -->
-		<p
-			data-product-barcode-ok
-			hidden
-			aria-live="polite"
-			class="text-sm font-medium text-success"
-		>
-		</p>
-	</label>
+  <div class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-1 py-1">
+  <!-- ══ 1. Información general ══════════════════════════════════════ -->
+  <section class="flex min-w-0 flex-col gap-3 pb-5">
+    <label class="flex flex-col gap-1 text-sm font-medium text-text">
+      <span>
+        Nombre
+        <span class="text-danger" aria-hidden="true">*</span>
+        <span class="sr-only">(obligatorio)</span>
+      </span>
+      <input
+        data-product-nombre
+        type="text"
+        class="input-field"
+        autocomplete="off"
+        required
+        placeholder="Ej. Gaseosa 500 ml"
+      />
+    </label>
 
-	<div class="flex flex-wrap gap-3">
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-text">
-			Precio (S/)
-			<input
-				data-product-precio
-				type="number"
-				class="input-field"
-				min="0"
-				step="0.01"
-				inputmode="decimal"
-			/>
-		</label>
-		<label class="flex min-w-40 flex-1 flex-col gap-1 text-sm font-medium text-text">
-			Stock
-			<input
-				data-product-stock
-				type="number"
-				class="input-field"
-				min="0"
-				step="1"
-				inputmode="numeric"
-			/>
-		</label>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm font-medium text-text">
+        <span>
+          Categoría
+          <span class="text-danger" aria-hidden="true">*</span>
+          <span class="sr-only">(obligatorio)</span>
+        </span>
+        <!-- <select> fed from GET ?action=categorias with a products-derived
+				     fallback (plan-productos-v2.md Fase 3/D2) — the island rebuilds
+				     the options; ui/ only draws the shell. -->
+        <select data-product-categoria class="input-field text-sm" required>
+          <option value="">Elige una categoría</option>
+        </select>
+      </label>
+      <label class="flex flex-col gap-1 text-sm font-medium text-text">
+        Marca
+        <!-- Same contract as Categoría: GET ?action=marcas with a products-
+				     derived fallback; marca is optional so the blank option leads. -->
+        <select data-product-marca class="input-field text-sm">
+          <option value="">Sin marca</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-2">
+      <label class="flex flex-col gap-1 text-sm font-medium text-text">
+        <span>
+          Precio base
+          <span class="text-danger" aria-hidden="true">*</span>
+          <span class="sr-only">(obligatorio)</span>
+        </span>
+        <!-- Currency prefix INSIDE the field: the label stays short and the
+				     amount cannot be misread as another unit. form-errors' <p>
+				     lands inside this wrapper, right under the input. -->
+        <span class="relative block">
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-text-muted"
+            >S/</span
+          >
+          <input
+            data-product-precio
+            type="number"
+            class="input-field pl-11"
+            min="0"
+            step="0.01"
+            inputmode="decimal"
+            required
+            placeholder="0.00"
+          />
+        </span>
+      </label>
+      <label class="flex flex-col gap-1 text-sm font-medium text-text">
+        <span>
+          Stock
+          <span class="text-danger" aria-hidden="true">*</span>
+          <span class="sr-only">(obligatorio)</span>
+        </span>
+        <input
+          data-product-stock
+          type="number"
+          class="input-field"
+          min="0"
+          step="1"
+          inputmode="numeric"
+          required
+          placeholder="0"
+        />
+      </label>
+    </div>
+
+    <!-- Código de barras (plan-camara-barras): manual input (write/paste) OR
+		     camera scan via the icon button — same field stores both paths. The
+		     `relative block` span keeps the camera button pinned to the input AND
+		     lets form-manager's inline error <p> render under the input without
+		     breaking the label layout. Optional field (a product may ship with no
+		     code); always a STRING so leading zeros survive. -->
+    <label class="flex flex-col gap-1 text-sm font-medium text-text">
+      Código de barras
+      <span class="relative block">
+        <input
+          data-product-barcode
+          type="text"
+          class="input-field pr-14"
+          autocomplete="off"
+          spellcheck="false"
+          inputmode="text"
+          placeholder="Escríbelo o usa la cámara…"
+        />
+        <button
+          data-product-barcode-scan
+          type="button"
+          aria-label="Escanear código de barras con la cámara"
+          title="Escanear con la cámara"
+          class="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-alt hover:text-text"
+        >
+          <Icon name="camera" class="h-6 w-6" />
+        </button>
+      </span>
+      <!-- Confirmation after a successful camera read (aria-live: announced
+			     without stealing focus; the island clears it on the next edit). -->
+      <p
+        data-product-barcode-ok
+        hidden
+        aria-live="polite"
+        class="text-sm font-medium text-success"
+      >
+      </p>
+    </label>
+
+    <label class="flex flex-col gap-1 text-sm font-medium text-text">
+      Descripción
+      <textarea
+        data-product-descripcion
+        rows="2"
+        class="input-field resize-y"
+        placeholder="Breve descripción del producto…"></textarea>
+    </label>
+  </section>
+
+  <!-- ══ 2. Presentaciones y precios ═════════════════════════════════ -->
+  <section class="flex min-w-0 flex-col gap-3 pb-5">
+    <header class="flex flex-wrap items-center justify-between gap-2">
+      <h3 class="text-base font-semibold text-text">
+        Presentaciones y precios
+      </h3>
+    </header>
+	<button type="button" data-pres-add class="btn btn-secondary">
+        <Icon name="plus" class="h-5 w-5" />
+        Agregar presentación
+      </button>
+    <div data-product-presentations class="flex flex-col gap-3">
+		
 	</div>
+  </section>
 
-	<!-- Imagen (plan-cierre.md Fase 3): upload to Cloudinary via unsigned
-	     preset — the file input lives inside its label (keyboard-reachable),
-	     the resulting secure_url lands in the hidden [data-product-imagen]
-	     input that leerFormulario() already validates. Preview + states are
-	     pure markup; the island fills them (ui/ draws, never fetches). -->
-	<div class="flex flex-col gap-2">
-		<span class="text-sm font-medium text-text">Imagen (opcional)</span>
-		<img
-			data-product-imagen-preview
-			alt=""
-			hidden
-			class="h-24 w-24 rounded-lg border border-border object-cover"
-		/>
-		<input data-product-imagen type="url" class="hidden" tabindex="-1" aria-hidden="true" autocomplete="off" />
-		<div class="flex flex-wrap items-center gap-3">
-			<label
-				class="btn btn-secondary inline-flex cursor-pointer items-center justify-center focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-			>
-				Subir foto
-				<input
-					data-product-imagen-file
-					type="file"
-					accept="image/*"
-					class="sr-only"
-				/>
-			</label>
-			<button type="button" data-product-imagen-quitar class="btn btn-secondary" hidden>
-				Quitar imagen
-			</button>
-		</div>
-		<p data-product-imagen-estado class="text-xs text-text-muted" aria-live="polite" hidden></p>
-		<p data-product-imagen-error class="text-sm text-danger" role="alert" hidden></p>
-	</div>
+  <!-- ══ 3. Atributos ═════════════════════════════════════════════════ -->
+  <section class="flex min-w-0 flex-col gap-3 pb-5">
+    <header>
+      <h3 class="text-base font-semibold text-text">Atributos</h3>
+    </header>
+    <div data-attr-suggestions class="flex flex-wrap gap-2"></div>
+    <div data-product-atributos class="flex min-w-0 flex-col gap-2"></div>
+  </section>
 
-	<div class="flex flex-wrap gap-3">
-		<Button type="submit" variant="primary" data-product-submit>Guardar producto</Button>
-		<Button type="button" variant="secondary" data-product-cancel hidden>Cancelar</Button>
-	</div>
+  <!-- ══ 4. Configuración ════════════════════════════════════════════ -->
+  <section class="flex min-w-0 flex-col gap-3 pb-5">
+    <h3 class="text-base font-semibold text-text">Configuración</h3>
+    <div class="flex flex-wrap gap-x-6 gap-y-3">
+      <label
+        class="inline-flex min-w-0 cursor-pointer items-center gap-2 text-sm font-medium text-text"
+      >
+        <input
+          data-product-featured
+          type="checkbox"
+          class="h-5 w-5 shrink-0 accent-primary"
+        />
+        Destacado
+      </label>
+      <label
+        class="inline-flex min-w-0 cursor-pointer items-center gap-2 text-sm font-medium text-text"
+      >
+        <input
+          data-product-returnable
+          type="checkbox"
+          class="h-5 w-5 shrink-0 accent-primary"
+        />
+        Retornable
+      </label>
+      <label
+        class="inline-flex min-w-0 cursor-pointer items-center gap-2 text-sm font-medium text-text"
+      >
+        <input
+          data-product-available
+          type="checkbox"
+          checked
+          class="h-5 w-5 shrink-0 accent-primary"
+        />
+        Disponible
+      </label>
+    </div>
+  </section>
+
+  <!-- ══ 5. Imagen ════════════════════════════════════════════════════ -->
+  <section class="flex min-w-0 flex-col gap-3 pb-2">
+    <header>
+      <h3 class="text-base font-semibold text-text">Imagen</h3>
+    </header>
+
+    <!-- The image upload is separate from product attributes and placed last. -->
+    <div class="flex items-center gap-3">
+      <div
+        class="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-surface-alt/60 text-text-muted"
+      >
+        <img
+          data-product-imagen-preview
+          alt=""
+          hidden
+          class="absolute inset-0 h-full w-full object-cover"
+        />
+        <span
+          data-product-imagen-placeholder
+          class="flex items-center justify-center"
+        >
+          <Icon name="camera" class="h-6 w-6" />
+        </span>
+      </div>
+      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <label
+            class="btn btn-secondary cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+          >
+            <span data-product-imagen-label>Subir foto</span>
+            <input
+              data-product-imagen-file
+              type="file"
+              accept="image/*"
+              class="sr-only"
+            />
+          </label>
+          <button
+            type="button"
+            data-product-imagen-quitar
+            aria-label="Quitar imagen"
+            class="btn btn-secondary text-danger"
+            hidden
+          >
+            Quitar
+          </button>
+        </div>
+        <p class="text-xs text-text-muted">JPG, PNG o WebP · máx. 5 MB</p>
+        <p
+          data-product-imagen-estado
+          class="text-xs text-text-muted"
+          aria-live="polite"
+          hidden
+        >
+        </p>
+        <p
+          data-product-imagen-error
+          class="text-xs text-danger"
+          role="alert"
+          hidden
+        >
+        </p>
+      </div>
+      <input
+        data-product-imagen
+        type="url"
+        class="hidden"
+        tabindex="-1"
+        aria-hidden="true"
+        autocomplete="off"
+      />
+    </div>
+  </section>
+  </div>
+
+  <div class="flex shrink-0 flex-col gap-3 pt-3">
+    <Button
+      type="submit"
+      variant="primary"
+      data-product-submit
+      class="min-h-14 w-full text-base font-semibold"
+    >
+      Guardar producto
+    </Button>
+    <Button type="button" variant="secondary" data-product-cancel hidden
+      >Cancelar</Button
+    >
+  </div>
 </form>
+
+<style>
+  form[data-product-form] input::placeholder,
+  form[data-product-form] textarea::placeholder {
+    font-size: 0.875rem;
+  }
+</style>
+
+<!-- ══ Dynamic row templates (cloned by islands/admin/product-admin.ts) ══ -->
+
+
+<template data-presentation-template>
+  <div
+    data-presentation
+    data-pres-existing="false"
+    class="flex min-w-0 flex-col gap-3 rounded-xl border border-border p-3"
+  >
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between">
+      <h4
+        data-pres-title
+        class="text-sm font-semibold text-text"
+      >
+        Nueva presentación
+      </h4>
+
+      <button
+        type="button"
+        data-pres-delete
+        aria-label="Eliminar presentación"
+        title="Eliminar presentación"
+        class="flex h-7 w-7 items-center justify-center rounded-md
+               text-text-muted hover:bg-surface-alt hover:text-danger"
+      >
+        <Icon name="trash-2" class="h-5 w-5" />
+      </button>
+    </div>
+
+    <!-- Nombre y unidades -->
+    <div class="grid grid-cols-2 gap-3">
+      <label class="flex min-w-0 flex-col gap-1 text-sm font-medium text-text">
+        Nombre
+        <input
+          data-pres-name
+          type="text"
+          class="input-field"
+          autocomplete="off"
+          placeholder="Ej. Paquete"
+        />
+      </label>
+
+      <label class="flex min-w-0 flex-col gap-1 text-sm font-medium text-text">
+        Unidades
+        <input
+          data-pres-units
+          type="number"
+          class="input-field"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="Ej. 12"
+        />
+      </label>
+    </div>
+
+    <!-- Precios -->
+    <div class="flex min-w-0 flex-col gap-3">
+      <div data-pres-tiers class="flex min-w-0 flex-col gap-3"></div>
+      <button
+        type="button"
+        data-tier-add
+        class="btn btn-secondary w-full"
+      >
+        <Icon name="plus" class="h-4 w-4" />
+        Agregar rango
+      </button>
+    </div>
+
+    <!-- Error -->
+    <p
+      data-pres-error
+      hidden
+      role="alert"
+      class="text-xs font-normal text-danger"
+    ></p>
+
+    <!-- Confirmación de eliminación -->
+    <div
+      data-pres-confirm
+      hidden
+      class="flex flex-wrap items-center justify-between gap-2
+             rounded-lg bg-surface-alt p-2"
+    >
+      <span class="text-sm text-text">
+        ¿Eliminar esta presentación?
+      </span>
+
+      <span class="flex gap-2">
+        <button
+          type="button"
+          data-pres-confirm-no
+          class="btn btn-secondary"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          data-pres-confirm-yes
+          class="btn btn-danger"
+        >
+          Eliminar
+        </button>
+      </span>
+    </div>
+  </div>
+</template>
+
+<template data-price-tier-template>
+  <div data-price-tier class="grid min-w-0 grid-cols-2 items-end gap-3">
+    <label class="flex min-w-0 flex-col gap-1 text-sm font-medium text-text">
+      Desde
+      <input
+        data-tier-min
+        type="number"
+        class="input-field min-w-0"
+        min="1"
+        step="1"
+        inputmode="numeric"
+        aria-label="Cantidad desde"
+        placeholder="1"
+      />
+    </label>
+    <div class="flex min-w-0 items-end">
+      <label class="flex min-w-0 flex-1 flex-col gap-1 text-sm font-medium text-text">
+        Precio (S/)
+        <input
+          data-tier-price
+          type="number"
+          class="input-field min-w-0"
+          min="0.01"
+          step="0.01"
+          inputmode="decimal"
+          aria-label="Precio por presentación"
+          placeholder="0.00"
+        />
+      </label>
+      <button
+        type="button"
+        data-tier-delete
+        aria-label="Eliminar rango de precios"
+        title="Eliminar rango"
+        class="mb-px flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <Icon name="trash-2" class="h-5 w-5" />
+      </button>
+    </div>
+  </div>
+</template>
+
+<template data-attribute-template>
+  <div data-attribute-row class="flex min-w-0 flex-col gap-1.5">
+    <div class="grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)_2.75rem] items-center gap-3">
+      <span data-attr-name class="text-sm font-medium text-text"></span>
+      <input
+        data-attr-value
+        type="text"
+        class="input-field min-w-0"
+        autocomplete="off"
+        aria-label="Valor del atributo"
+        placeholder="Escribe el valor"
+      />
+      <button
+        type="button"
+        data-attr-delete
+        aria-label="Eliminar atributo"
+        title="Eliminar atributo"
+        class="flex h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <Icon name="trash-2" class="h-5 w-5" />
+      </button>
+    </div>
+    <p data-attr-error hidden role="alert" class="text-xs font-normal text-danger"></p>
+  </div>
+</template>
+
+<template data-attr-chip-template>
+  <button
+    type="button"
+    data-attr-suggestion
+    class="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-sm font-medium text-text transition-colors hover:border-primary hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+  >
+    <Icon name="plus" class="h-4 w-4" />
+    <span data-attr-suggestion-label></span>
+  </button>
+</template>
