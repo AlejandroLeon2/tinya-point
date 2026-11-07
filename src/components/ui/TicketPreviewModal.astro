@@ -1,0 +1,58 @@
+---
+// Vista previa del ticket 58 mm (owner 2026-11-05, rediseño; ajustado
+// 2026-11-06): modal con el MISMO documento HTML que imprime el popup de
+// ticket-print.ts, pintado en un iframe srcdoc — un solo renderer para
+// preview y papel (el app DOM nunca ve innerHTML: el string ya escapó todo
+// en generarHtmlTicket). Montado en LayoutApp → disponible en / (modal
+// post-venta) y /historial/venta. El botón "Imprimir" abre la ventana
+// independiente con @page 58 mm (patrón window.open + document.write de la
+// referencia del owner); si el popup sale bloqueado, ticket-print.ts avisa
+// con alert.
+import Modal from './Modal.astro';
+---
+<Modal modalKey="ticket-preview" title="Ticket de venta">
+	<div
+		data-ticket-preview-body
+		class="flex max-h-[65vh] items-start justify-center overflow-y-auto p-1"
+	>
+		<div class="ticket-card">
+			<iframe
+				data-ticket-preview-frame
+				title="Vista previa del ticket"
+				class="ticket-frame"
+			></iframe>
+		</div>
+	</div>
+	<button slot="actions" type="button" data-modal-close class="btn btn-secondary">
+		Cerrar
+	</button>
+	<button slot="actions" type="button" data-ticket-preview-print class="btn btn-primary">
+		Imprimir
+	</button>
+</Modal>
+
+<style>
+	/* Card hugs the 58 mm paper (219 px @96dpi + 12 px body padding ≈
+	   232 px), centered in the dialog. The iframe carries the white
+	   paper background. */
+	.ticket-card {
+		width: min(232px, 100%);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		background: #fff;
+		box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+		overflow: hidden;
+	}
+
+	.ticket-frame {
+		display: block;
+		width: 100%;
+		min-height: 240px;
+		border: 0;
+		background: #fff;
+	}
+</style>
+
+<script>
+	import '../islands/cart/ticket-print';
+</script>

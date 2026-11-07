@@ -226,6 +226,12 @@ const metodos = [
 	<button slot="actions" type="button" data-venta-ok-nueva class="btn btn-primary">
 		Nueva venta
 	</button>
+	<!-- Imprimir ticket (owner 2026-11-05, rediseño): opens the shared
+	     ticket-preview modal — the 58 mm ticket shown ready to print;
+	     its "Imprimir" button runs the popup. checkout.ts owns the handler. -->
+	<button slot="actions" type="button" data-venta-ok-print class="btn btn-secondary">
+		Imprimir ticket
+	</button>
 	<a slot="actions" data-venta-ok-detail href="/historial/venta/" class="btn btn-secondary">
 		Ver detalle
 	</a>

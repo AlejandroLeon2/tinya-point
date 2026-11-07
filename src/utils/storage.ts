@@ -89,6 +89,11 @@ export interface VentaLocal {
   subtotal?: number;
   total: number;
   metodo_pago: MetodoPago;
+  // Cash snapshot for the printed ticket (owner 2026-11-05) — local-only,
+  // same precedent as `subtotal`. Present ONLY when metodo_pago is
+  // efectivo and the cashier entered a recibido; older sales lack them.
+  recibido?: number;
+  vuelto?: number;
 }
 
 // One caja session (plan-mejoras-2 Fase 2). `fecha_dia` is ASCII on purpose:
