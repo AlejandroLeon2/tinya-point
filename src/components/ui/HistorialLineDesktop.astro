@@ -2,25 +2,24 @@
 // Desktop (≥md) row of a history sale (plan T3.5, refactorUI §6.1) — SINGLE
 // <tr> template cloned by islands/historial.ts into each day's DataTable
 // tbody. Same data hooks as ui/HistorialLine so the shared paintLine()
-// paints BOTH templates. Display is gated by the DataTable wrapper
-// (hidden md:block) plus the natural table-row display — no hidden attr, so
-// the base [hidden]{display:none!important} rule never traps it (§0.4 gotcha).
-// ui/ draws, never fetches or reads local data (astrobase §1).
+// paints BOTH templates. Hora is plain text — the detail action lives in
+// the LAST column as an eye icon link (owner request 2026-11-06: la acción
+// se trasladó de la hora al icono "Ver detalle"; data-hist-link stays on
+// that anchor so paintLine keeps setting the ?id= href). Display is gated
+// by the DataTable wrapper (hidden md:block) plus the natural table-row
+// display — no hidden attr, so the base [hidden]{display:none!important}
+// rule never traps it (§0.4 gotcha). ui/ draws, never fetches or reads
+// local data (astrobase §1).
+import Icon from './Icon.astro';
 import StatusPill from './StatusPill.astro';
 ---
 <template data-hist-line-desktop-template>
 	<tr data-hist-line="" class="border-b border-border">
 		<td class="px-4 py-2.5">
-			<a
-				data-hist-link
-				href="/historial/venta/"
-				class="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-			>
-				<span data-hist-hora></span>
-			</a>
+			<span data-hist-hora class="font-medium text-text"></span>
 		</td>
 		<td class="px-4 py-2.5"><span data-hist-metodo class="text-text-muted"></span></td>
-		<td class="px-4 py-2.5"><span data-hist-items class="text-text-muted"></span></td>
+		<td class="hidden px-4 py-2.5 lg:table-cell"><span data-hist-items class="text-text-muted"></span></td>
 		<td class="px-4 py-2.5 text-right">
 			<span data-hist-total class="font-semibold tabular-nums"></span>
 		</td>
@@ -30,6 +29,17 @@ import StatusPill from './StatusPill.astro';
 				<StatusPill tone="warn" data-hist-sync-state="pendiente" hidden>Pendiente</StatusPill>
 				<StatusPill tone="danger" data-hist-sync-state="error" hidden>Error</StatusPill>
 			</span>
+		</td>
+		<td class="px-2 py-2.5">
+			<a
+				data-hist-link
+				href="/historial/venta/"
+				class="btn btn-secondary px-3"
+				aria-label="Ver detalle"
+				title="Ver detalle"
+			>
+				<Icon name="eye" class="h-5 w-5" />
+			</a>
 		</td>
 	</tr>
 </template>

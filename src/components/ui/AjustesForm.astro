@@ -46,6 +46,85 @@
 				Se usa en precios, totales y tickets.
 			</span>
 		</label>
+
+		<!-- Logo del ticket (owner 2026-11-05): file → canvas resize (≤256 px)
+		     → dataURL stored in `ajustes.logo` by the island. Not part of the
+		     form-manager schema — file inputs carry no usable .value. -->
+		<div class="flex flex-col gap-1 text-sm font-medium text-text">
+			<span>Logo del ticket</span>
+			<div class="flex items-center gap-3">
+				<img
+					data-ajustes-logo-preview
+					alt="Logo actual del ticket"
+					hidden
+					class="h-12 w-12 rounded-lg border border-border object-cover"
+				/>
+				<label class="btn btn-secondary cursor-pointer">
+					<input
+						data-ajustes-logo
+						type="file"
+						accept="image/*"
+						class="sr-only"
+					/>
+					Subir logo
+				</label>
+				<button
+					type="button"
+					data-ajustes-logo-quitar
+					class="btn btn-secondary"
+					hidden
+				>
+					Quitar
+				</button>
+			</div>
+			<span class="text-xs font-normal text-text-muted">
+				Aparece en el ticket impreso. Sin logo se usa el ícono de la app.
+			</span>
+		</div>
+
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
+			RUC (opcional)
+			<input
+				data-ajustes-ruc
+				type="text"
+				class="input-field"
+				placeholder="Ej: 20123456789"
+				autocomplete="off"
+				maxlength="20"
+			/>
+			<span class="text-xs font-normal text-text-muted">
+				Se muestra debajo del nombre en el ticket.
+			</span>
+		</label>
+
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
+			Dirección (opcional)
+			<input
+				data-ajustes-direccion
+				type="text"
+				class="input-field"
+				placeholder="Ej: Av. Principal 123"
+				autocomplete="street-address"
+			/>
+			<span class="text-xs font-normal text-text-muted">
+				Se muestra en el ticket impreso.
+			</span>
+		</label>
+
+		<label class="flex flex-col gap-1 text-sm font-medium text-text">
+			Teléfono (opcional)
+			<input
+				data-ajustes-telefono
+				type="text"
+				class="input-field"
+				placeholder="Ej: 987 654 321"
+				autocomplete="tel"
+				maxlength="20"
+			/>
+			<span class="text-xs font-normal text-text-muted">
+				Se muestra en el ticket impreso.
+			</span>
+		</label>
 	</section>
 
 	<!-- ── Sección: Impuestos ───────────────────────────────────────── -->

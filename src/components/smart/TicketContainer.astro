@@ -77,7 +77,21 @@ const metodos = [
 		<!-- ── Step 1 — lines + totals up to Total ─────────────────────── -->
 		<div data-checkout-step="1" class="flex min-h-0 flex-1 flex-col gap-3">
 			<!-- Lines scroll independently; totals and the step action stay visible. -->
-			<ul data-cart-lines class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"></ul>
+			<ul data-cart-lines class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+				<!-- Empty-cart hint (owner 2026-11-05): the lines area rendered
+				     completely blank with no products. paint() hides this as
+				     soon as a line exists (setHidden, never class churn §0.4). -->
+				<li
+					data-cart-empty
+					class="flex min-h-full flex-1 list-none flex-col items-center justify-center gap-2 p-6 text-center"
+				>
+					<Icon name="carrito" class="h-8 w-8 text-text-muted" />
+					<p class="text-sm font-medium text-text-muted">Agrega productos</p>
+					<p class="text-xs text-text-muted">
+						Toca “Agregar” en un producto para empezar la venta
+					</p>
+				</li>
+			</ul>
 			<CartLine />
 
 			<div class="flex shrink-0 flex-col gap-3">
@@ -225,6 +239,12 @@ const metodos = [
 	</div>
 	<button slot="actions" type="button" data-venta-ok-nueva class="btn btn-primary">
 		Nueva venta
+	</button>
+	<!-- Imprimir ticket (owner 2026-11-05, rediseño): opens the shared
+	     ticket-preview modal — the 58 mm ticket shown ready to print;
+	     its "Imprimir" button runs the popup. checkout.ts owns the handler. -->
+	<button slot="actions" type="button" data-venta-ok-print class="btn btn-secondary">
+		Imprimir ticket
 	</button>
 	<a slot="actions" data-venta-ok-detail href="/historial/venta/" class="btn btn-secondary">
 		Ver detalle

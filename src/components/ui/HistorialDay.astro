@@ -5,8 +5,8 @@
 // purchase recap (fecha larga "Mié 23 sep" + "N ventas" + método en pill +
 // per-method breakdown in TEXT + total tabular — stilesbase §5.2, never color
 // alone). ≥md each day lists its ventas in a DataTable (Hora · Método ·
-// Productos · Total · Estado); <md keeps the HistorialLine card list —
-// breakpoint classes are static styling, allowed (§0.4). Only today's group
+// Productos · Total · Estado · Ver detalle); <md keeps the HistorialLine card
+// list — breakpoint classes are static styling, allowed (§0.4). Only today's group
 // starts open, first paint only (island rule). ui/ draws, never fetches or
 // reads data (astrobase §1).
 import DataTable from './DataTable.astro';
@@ -59,8 +59,12 @@ import StatusPill from './StatusPill.astro';
 			<!-- md: variants sort AFTER base utilities in the generated
 			     stylesheet (same pattern as Modal's lg:border-0): the table
 			     drops its own rounded border/shadow inside this day card. -->
+			<!-- T4.4 (810px, md–lg sin scrollport): la columna "Ver detalle"
+			     empuja la tabla ~9px más ancha que la tarjeta del día —
+			     Productos (la menos crítica) se oculta hasta lg. -->
 			<DataTable
-				columns={['Hora', 'Método', 'Productos', 'Total', 'Estado']}
+				columns={['Hora', 'Método', 'Productos', 'Total', 'Estado', 'Ver detalle']}
+				hiddenBelowLg={[2]}
 				class="md:rounded-none md:border-0 md:shadow-none"
 			/>
 		</div>

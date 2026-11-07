@@ -143,8 +143,10 @@ function paint(items: ItemCarrito[]): void {
     setText(totalEl, formatCurrency(calcTotal(subtotal)));
   }
 
-  // An empty cart has nothing to cancel.
+  // An empty cart has nothing to cancel — and shows the light "Agrega
+  // productos" hint instead of a blank panel (owner 2026-11-05).
   setHidden(cancelTrigger, items.length === 0);
+  setHidden(qs<HTMLElement>(linesEl, '[data-cart-empty]'), items.length > 0);
 }
 
 document.addEventListener('click', (event) => {

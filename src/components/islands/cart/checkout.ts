@@ -44,6 +44,7 @@ import type { MetodoPago } from '../../../utils/storage';
 import { qs, qsa, setText, setHidden } from '../../../utils/dom';
 import { esTicketFijo } from '../../../utils/media';
 import { debeEncolar } from '../../../utils/api-result';
+import { abrirPreviewTicket } from './ticket-print';
 
 const root = qs<HTMLElement>(document, '[data-checkout-root]');
 
@@ -73,11 +74,16 @@ if (root) {
   const ventaOkVuelto = qs<HTMLElement>(document, '[data-venta-ok-vuelto]');
   const ventaOkVueltoAmount = qs<HTMLElement>(document, '[data-venta-ok-vuelto-amount]');
   const ventaOkNueva = qs<HTMLButtonElement>(document, '[data-venta-ok-nueva]');
+  const ventaOkPrint = qs<HTMLButtonElement>(document, '[data-venta-ok-print]');
   const ventaOkDetail = qs<HTMLAnchorElement>(document, '[data-venta-ok-detail]');
 
   let autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
   let lastTotal = 0;
   let step: 1 | 2 = 1;
+  // Last closed sale (owner 2026-11-05) — payload for "Imprimir ticket" in
+  // the venta-ok modal. Set by charge() right before showVentaOk(); the
+  // modal never re-reads the cart (it is already cleared at that point).
+  let ventaParaImprimir: VentaLocal | null = null;
 
   // Step switching is attribute-only: `hidden` on the two panels. The
   // buttons are the whole navigation (no indicator pills — owner request).
@@ -244,8 +250,14 @@ if (root) {
       subtotal, // local-only snapshot for /historial/venta detail (Fase 3, G9)
       total,
       metodo_pago: metodo,
+      // Cash snapshot for the printed ticket (owner 2026-11-05) — local-only,
+      // same precedent as subtotal; only efectivo ever computes a recibido.
+      ...(recibido !== null ? { recibido, vuelto: change } : {}),
     };
     setHistorialVentas([ventaLocal, ...getHistorialVentas()]); // newest first
+    // "Imprimir ticket" payload for the venta-ok modal — ventaLocal already
+    // carries everything the boleta needs (the cart is cleared right after).
+    ventaParaImprimir = ventaLocal;
 
     // 3. Local stock discount — plain decrement in BASE UNITS, no merge
     //    games (base.md §8). A x12 pack line discounts 12 per unit sold.
@@ -344,6 +356,15 @@ if (root) {
     const search = qs<HTMLInputElement>(document, '[data-catalog-search]');
     search?.focus();
     search?.select();
+  });
+
+  // "Imprimir ticket" (owner 2026-11-05, rediseño): opens the shared
+  // ticket-preview modal — the ticket shown ready to print; its own
+  // "Imprimir" button runs the popup. The 8 s autoclose is cancelled so
+  // the confirmation is still there when the cashier returns.
+  ventaOkPrint?.addEventListener('click', () => {
+    if (autoCloseTimer) clearTimeout(autoCloseTimer);
+    if (ventaParaImprimir) abrirPreviewTicket(ventaParaImprimir);
   });
 
   // F9 = charge (only when the ticket is the visible ≥lg column — below that

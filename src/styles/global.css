@@ -235,15 +235,23 @@
   .pill-info { @apply pill border-info/50 bg-info/10 text-info; }
 }
 
-/* ── Comprobante 80 mm (refactorUI §6.2 / plan T3.6) ───────────────────
-   Print shows ONLY the sale receipt: every chrome piece leaves the flow
-   (display:none → no blank-page height), everything else loses its ink
-   (visibility), and [data-venta-root] keeps it. Named colors only — the
-   hex gate keeps @theme as the single color source. */
+/* ── Impresión del ticket 58 mm (rediseño 2026-11-05; ajustado 2026-11-06) ─
+   La impresión PRINCIPAL sale por el popup de islands/cart/ticket-print.ts
+   — un documento independiente con su propio @page 58 mm y auto
+   window.print() (patrón window.open de la referencia del owner). Esta
+   hoja solo evita que un Cmd+P accidental vuelque toda la app: se oculta
+   el chrome; si el preview del ticket está abierto, se imprime ese (el
+   iframe vive dentro — flatten el overlay y el resto del diálogo).
+   Cerrado, el atributo hidden + preflight lo mantienen fuera (capa base
+   gana en el orden invertido de !important). Named colors only — the hex
+   gate keeps @theme as the single color source. */
 @media print {
+  /* Sin size a propósito: una sola longitud (58mm) haría una página
+     CUADRADA 58x58mm y partiría el ticket en 3 hojas (2026-11-06); el
+     ancho lo fija .tk en el documento del ticket. 3mm a la izquierda
+     para que la tinta no toque el borde del papel. */
   @page {
-    size: 80mm auto;
-    margin: 5mm;
+    margin: 0 0 0 3mm;
   }
 
   body {
@@ -251,39 +259,66 @@
     color: black;
   }
 
-  /* Chrome out of the document flow (header, sidebar, tabbar, sheet,
-     toasts, banner, skip link, receipt actions). */
   body > a,
-  header,
-  nav[data-sidebar-root],
-  nav[data-tabbar],
-  [data-modal-root],
+  [data-app-shell],
   [data-toast-region],
   [data-offline-banner],
-  [data-venta-acciones] {
+  [data-modal-root]:not([data-modal-root="ticket-preview"]) {
     display: none !important;
   }
 
-  /* Ink only inside the receipt. */
-  body * {
-    visibility: hidden;
-  }
-
-  [data-venta-root],
-  [data-venta-root] * {
-    visibility: visible;
-  }
-
-  [data-venta-root] {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Kill the mobile bottom-safe padding — it would tip a short receipt
-     onto a second page. */
-  #contenido {
+  /* Preview abierto → fuera el overlay: solo pasa el ticket. */
+  [data-modal-root="ticket-preview"] {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
     padding: 0 !important;
+    z-index: auto !important;
+  }
+
+  [data-modal-root="ticket-preview"] [role="dialog"] {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Solo el contenedor del iframe — título, botones y scroll fuera
+     (:has cubre el wrapper del slot; el iframe queda como única tinta). */
+  [data-modal-root="ticket-preview"] [role="dialog"] > * {
+    display: none !important;
+  }
+
+  [data-modal-root="ticket-preview"] [role="dialog"] > *:has([data-ticket-preview-body]) {
+    display: block !important;
+  }
+
+  [data-ticket-preview-body] {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .ticket-card {
+    width: 100% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  [data-ticket-preview-frame] {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border: 0 !important;
   }
 }
 

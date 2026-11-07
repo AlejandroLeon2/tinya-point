@@ -41,6 +41,16 @@ if (root) {
   const monedaInput = qs<HTMLInputElement>(root, '[data-ajustes-moneda]');
   const igvInput = qs<HTMLInputElement>(root, '[data-ajustes-igv]');
   const stockAlertaInput = qs<HTMLInputElement>(root, '[data-ajustes-stock-alerta]');
+  // Business identity for the printed ticket (owner 2026-11-05): RUC /
+  // dirección / teléfono travel through the form-manager like `nombre`; the
+  // LOGO does not — a file input's .value is unusable, so it lives in its
+  // own dataURL variable resized on change.
+  const rucInput = qs<HTMLInputElement>(root, '[data-ajustes-ruc]');
+  const direccionInput = qs<HTMLInputElement>(root, '[data-ajustes-direccion]');
+  const telefonoInput = qs<HTMLInputElement>(root, '[data-ajustes-telefono]');
+  const logoInput = qs<HTMLInputElement>(root, '[data-ajustes-logo]');
+  const logoPreview = qs<HTMLImageElement>(root, '[data-ajustes-logo-preview]');
+  const logoQuitarBtn = qs<HTMLButtonElement>(root, '[data-ajustes-logo-quitar]');
   const errorAlert = qs<HTMLElement>(root, '[data-alert="ajustes-error"]');
   const errorText = qs<HTMLElement>(root, '[data-ajustes-error-text]');
   const preview = qs<HTMLElement>(root, '[data-ajustes-preview]');
@@ -57,6 +67,9 @@ if (root) {
   // Snapshot of the values loaded at boot — the dirty bar compares against
   // THIS, never against storage (storage only changes on save).
   let cargados: Ajustes = getAjustes();
+  // Pending logo dataURL ('' = none). Updated by the file handler below,
+  // compared by hayCambios, persisted by onSubmit — never written directly.
+  let logoActual: string = cargados.logo;
 
   const feedback = crearFeedback(errorAlert, errorText);
   const pendingBtn = crearPendingButton(guardarBtn, 'Guardando…');
@@ -66,6 +79,9 @@ if (root) {
     moneda: string;
     igv: number;
     stockAlerta: number;
+    ruc: string;
+    direccion: string;
+    telefono: string;
   }
 
   const formManager = createFormManager<DatosAjustesForm>({
@@ -94,6 +110,18 @@ if (root) {
         error: 'Ingresa un número entre 0 y 999 para la alerta de stock.',
         transform: (raw) => Math.round(Number(raw)),
       },
+      ruc: {
+        el: rucInput,
+        optional: true,
+      },
+      direccion: {
+        el: direccionInput,
+        optional: true,
+      },
+      telefono: {
+        el: telefonoInput,
+        optional: true,
+      },
     },
     onSubmit: (datos) => {
       const ajustes: Ajustes = {
@@ -102,6 +130,10 @@ if (root) {
         igv_tasa: datos.igv,
         stock_alerta_min: datos.stockAlerta,
         sidebar_colapsado: getAjustes().sidebar_colapsado,
+        logo: logoActual,
+        ruc: datos.ruc,
+        direccion: datos.direccion,
+        telefono: datos.telefono,
       };
 
       try {
@@ -128,6 +160,10 @@ if (root) {
       // Preserve the sidebar rail preference — full save of the Ajustes
       // interface; dropping it would reset the collapsed rail every time.
       sidebar_colapsado: getAjustes().sidebar_colapsado,
+      logo: logoActual,
+      ruc: rucInput?.value.trim() ?? '',
+      direccion: direccionInput?.value.trim() ?? '',
+      telefono: telefonoInput?.value.trim() ?? '',
     };
   }
 
@@ -137,7 +173,11 @@ if (root) {
       a.nombre_local !== cargados.nombre_local ||
       a.moneda !== cargados.moneda ||
       a.igv_tasa !== cargados.igv_tasa ||
-      a.stock_alerta_min !== cargados.stock_alerta_min
+      a.stock_alerta_min !== cargados.stock_alerta_min ||
+      a.logo !== cargados.logo ||
+      a.ruc !== cargados.ruc ||
+      a.direccion !== cargados.direccion ||
+      a.telefono !== cargados.telefono
     );
   }
 
@@ -176,13 +216,84 @@ if (root) {
 
   function llenar(): void {
     cargados = getAjustes();
+    logoActual = cargados.logo;
     if (nombreInput) nombreInput.value = cargados.nombre_local;
     if (monedaInput) monedaInput.value = cargados.moneda;
     if (igvInput) igvInput.value = String(cargados.igv_tasa);
     if (stockAlertaInput) stockAlertaInput.value = String(cargados.stock_alerta_min);
+    if (rucInput) rucInput.value = cargados.ruc;
+    if (direccionInput) direccionInput.value = cargados.direccion;
+    if (telefonoInput) telefonoInput.value = cargados.telefono;
+    pintarLogoPreview();
     pintarPreview();
     pintarSuciedad();
   }
+
+  // ── Logo del ticket (owner 2026-11-05) ──────────────────────────────────
+  // File → canvas resize (≤256 px, JPEG q0.8) → dataURL in memory. The
+  // preview mirrors `logoActual`; nothing touches storage until Guardar.
+  function pintarLogoPreview(): void {
+    if (logoPreview) {
+      if (logoActual) {
+        logoPreview.src = logoActual;
+        logoPreview.hidden = false;
+      } else {
+        logoPreview.removeAttribute('src');
+        logoPreview.hidden = true;
+      }
+    }
+    setHidden(logoQuitarBtn, logoActual === '');
+  }
+
+  function redimensionarLogo(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const max = 256;
+        const escala = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * escala));
+        const h = Math.max(1, Math.round(img.height * escala));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('canvas-no-disponible'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('imagen-no-legible'));
+      };
+      img.src = url;
+    });
+  }
+
+  logoInput?.addEventListener('change', () => {
+    const file = logoInput.files?.[0];
+    if (!file) return;
+    void redimensionarLogo(file)
+      .then((dataUrl) => {
+        logoActual = dataUrl;
+        pintarLogoPreview();
+        pintarSuciedad();
+      })
+      .catch(() => {
+        feedback.error('No se pudo leer la imagen. Prueba con otro archivo.');
+      });
+  });
+
+  logoQuitarBtn?.addEventListener('click', () => {
+    logoActual = '';
+    if (logoInput) logoInput.value = '';
+    pintarLogoPreview();
+    pintarSuciedad();
+  });
 
   // One delegated listener covers dirty-tracking + the live preview.
   form?.addEventListener('input', () => {

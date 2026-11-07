@@ -18,7 +18,9 @@
 //   - sync pill (three states, `hidden` toggle) from cola_sync matched by
 //     payload.id_venta — answers "¿esta venta ya subió?".
 //   - nota discreta "Estimado con la tasa actual" visible ⇔ NO snapshot.
-//   - Imprimir → window.print() (80 mm @media print sheet in global.css).
+//   - Imprimir → shared ticket-preview modal (owner 2026-11-05, unified
+//     with the post-sale button; rediseño: preview on screen + popup
+//     print via islands/cart/ticket-print.ts).
 //   - unknown id hides the standalone action row (its CTA lives in the
 //     EmptyState, T0.1). Hooks are data-* scoped to [data-venta-root]; item
 // text always via textContent.
@@ -29,6 +31,7 @@ import { sincronizarHistorial } from '../../../utils/historial-sync';
 import { calcTax, etiquetaIgv, getTaxRate } from '../../../utils/tax';
 import { qs, setText, setHidden, cloneTemplate, setPillState } from '../../../utils/dom';
 import { METODO_LABEL } from '../../../utils/metodos';
+import { abrirPreviewTicket } from '../cart/ticket-print';
 
 const root = qs<HTMLElement>(document, '[data-venta-root]');
 
@@ -37,6 +40,7 @@ if (root) {
   const noEncontrada = qs<HTMLElement>(root, '[data-venta-no-encontrada]');
   const acciones = qs<HTMLElement>(root, '[data-venta-acciones]');
   const printBtn = qs<HTMLButtonElement>(root, '[data-venta-print]');
+  const backBtn = qs<HTMLButtonElement>(root, '[data-venta-back]');
   const localEl = qs<HTMLElement>(root, '[data-venta-local]');
   const syncWrap = qs<HTMLElement>(root, '[data-venta-sync]');
   const fechaEl = qs<HTMLElement>(root, '[data-venta-fecha]');
@@ -141,7 +145,24 @@ if (root) {
     }
   }
 
-  // Imprimir (T3.6): the @media print sheet in global.css isolates this
-  // receipt at 80 mm — window.print() is all the trigger needs.
-  printBtn?.addEventListener('click', () => window.print());
+  // Imprimir (owner 2026-11-05, unified with the post-sale button):
+  // opens the shared ticket-preview modal — the 58 mm ticket ready to
+  // print; its "Imprimir" button runs the popup document. The on-screen
+  // comprobante above stays screen-only (owner decision: two options in
+  // the historial come later — "ver ticket" vs "boleta").
+  printBtn?.addEventListener('click', () => {
+    if (venta) abrirPreviewTicket(venta);
+  });
+
+  // Volver atrás (owner 2026-11-06): history back to wherever the tab came
+  // from. A tab opened directly (or from another origin) has no same-origin
+  // entry to pop — fall back to /historial instead of doing nothing.
+  backBtn?.addEventListener('click', () => {
+    const ref = document.referrer;
+    if (ref !== '' && new URL(ref).origin === window.location.origin) {
+      window.history.back();
+    } else {
+      window.location.href = '/historial';
+    }
+  });
 }

@@ -7,6 +7,7 @@ import TabBar from '../components/ui/TabBar.astro';
 import Modal from '../components/ui/Modal.astro';
 import ToastRegion from '../components/ui/ToastRegion.astro';
 import Icon from '../components/ui/Icon.astro';
+import TicketPreviewModal from '../components/ui/TicketPreviewModal.astro';
 
 // App shell variant: same document infrastructure as Layout.astro plus the
 // sidebar + content column (doc/astrobase.md §3.1 — variants live in their
@@ -104,7 +105,10 @@ const isActive = (href: string) => normalize(href) === current;
 			Saltar al contenido
 		</a>
 
-		<div class="flex min-h-screen">
+		<!-- data-app-shell: @media print hides this WHOLE block — printing
+		     goes through the ticket popup (ticket-print.ts); a stray
+		     Cmd+P only reprints the open preview modal, if any. -->
+		<div data-app-shell class="flex min-h-screen">
 			<Sidebar id="sidebar-principal" groups={navGroups} currentPath={currentPath}>
 				<!-- Logout trigger for islands/sidebar.ts (Fase 3): only the token
 				     is dropped — cart and history survive (stores/session). -->
@@ -238,6 +242,11 @@ const isActive = (href: string) => normalize(href) === current;
 
 		<!-- Success toasts (utils/toast.ts — D9: no layout shift, 4 s, aria-live) -->
 		<ToastRegion />
+
+		<!-- Ticket preview 58 mm (owner 2026-11-05, rediseño): shared by BOTH
+		     "Imprimir" paths (post-sale modal + /historial/venta) — shows the
+		     ticket ready to print; its "Imprimir" button opens the popup. -->
+		<TicketPreviewModal />
 
 		<!-- Route guard: everything behind /login (plan-features Fase 1, owner decision 2026-09-22) -->
 		<script>import '../components/islands/runtime/route-guard';</script>
