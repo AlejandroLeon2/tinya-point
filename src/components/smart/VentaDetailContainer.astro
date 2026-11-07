@@ -5,10 +5,13 @@
 // fecha, hora, método, sync pill), lines as a <table>, totals right-aligned
 // with a highlighted total, the nota discreta for derived-IGV sales, and the
 // EmptyState (with its own "Volver al historial" CTA — T0.1 fix) for an
-// unknown ?id=. Imprimir runs window.print() against an 80 mm @media print
-// sheet that shows ONLY this receipt (global.css). Zero API: everything
-// comes from the local historial (base.md §7 "del propio dispositivo").
+// unknown ?id=. Imprimir opens the SHARED ticket-preview modal (owner
+// 2026-11-05 — unified with the post-sale button; rediseño: preview on
+// screen + popup print, this receipt stays screen-only). Zero API:
+// everything comes from the local historial (base.md §7 "del propio
+// dispositivo").
 import EmptyState from '../ui/EmptyState.astro';
+import Icon from '../ui/Icon.astro';
 import StatusPill from '../ui/StatusPill.astro';
 import VentaLine from '../ui/VentaLine.astro';
 import { etiquetaIgv } from '../../utils/tax';
@@ -20,6 +23,15 @@ const taxLabel = etiquetaIgv();
 ---
 <section data-venta-root class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6">
 	<!-- The h1 lives in the LayoutApp TopBar (ONE h1 per page, §3.1). -->
+
+	<!-- Navegación (owner 2026-11-06): back to wherever the user came from
+	     (post-sale "Ver detalle" → POS, listado → historial). Always
+	     visible — including the not-found state: it is chrome, not venta
+	     content. venta-detail.ts owns the handler. -->
+	<button type="button" data-venta-back class="btn btn-secondary w-fit">
+		<Icon name="chevron-left" class="h-5 w-5" />
+		Volver atrás
+	</button>
 
 	<div data-venta-contenido class="flex flex-col gap-4">
 		<!-- Comprobante header (T3.6): local name + fecha/hora + método pill
