@@ -257,6 +257,14 @@ export interface Ajustes {
   // existing JSON on purpose — the map caps localStorage at 7 keys, so no
   // new key is created for a UI preference.
   sidebar_colapsado: boolean;
+  // Business identity for the printed ticket (owner 2026-11-05). All strings
+  // live INSIDE this same JSON (7-key cap). `logo` is a dataURL resized to
+  // ≤256 px by the settings island before saving — never a raw file.
+  // Empty degrades per field: logo → PWA icon fallback, the rest → hidden row.
+  logo: string;
+  ruc: string;
+  direccion: string;
+  telefono: string;
 }
 
 export const AJUSTES_DEFAULT: Ajustes = {
@@ -265,6 +273,10 @@ export const AJUSTES_DEFAULT: Ajustes = {
   igv_tasa: 18,
   stock_alerta_min: 5,
   sidebar_colapsado: false,
+  logo: '',
+  ruc: '',
+  direccion: '',
+  telefono: '',
 };
 
 // Field-wise validation: a partially corrupted payload degrades per field
@@ -299,6 +311,12 @@ export function getAjustes(): Ajustes {
       typeof crudo.sidebar_colapsado === 'boolean'
         ? crudo.sidebar_colapsado
         : AJUSTES_DEFAULT.sidebar_colapsado,
+    logo: typeof crudo.logo === 'string' ? crudo.logo : AJUSTES_DEFAULT.logo,
+    ruc: typeof crudo.ruc === 'string' ? crudo.ruc : AJUSTES_DEFAULT.ruc,
+    direccion:
+      typeof crudo.direccion === 'string' ? crudo.direccion : AJUSTES_DEFAULT.direccion,
+    telefono:
+      typeof crudo.telefono === 'string' ? crudo.telefono : AJUSTES_DEFAULT.telefono,
   };
 }
 
